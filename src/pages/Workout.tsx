@@ -180,7 +180,7 @@ export function Workout() {
         <ExerciseCard
           exercise={session.currentExercise}
           barWeight={settings.barWeightLbs}
-          availablePlates={settings.availablePlates}
+          plateInventory={settings.plateInventory}
           unit={settings.weightUnit}
           onCompleteSet={handleCompleteSet}
           onWeightChange={updateCurrentExerciseWeight}

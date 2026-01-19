@@ -4,7 +4,7 @@ import { Dumbbell } from 'lucide-react'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import type { WeightUnit } from '../lib/types'
-import { UNIT_CONFIG, getDefaultStartingWeights } from '../lib/units'
+import { UNIT_CONFIG, getDefaultStartingWeights, getDefaultPlateInventory } from '../lib/units'
 
 export function Setup() {
   const navigate = useNavigate()
@@ -26,7 +26,7 @@ export function Setup() {
     await updateSettings({
       weightUnit: unit,
       barWeightLbs: config.barWeight,
-      availablePlates: [...config.plates],
+      plateInventory: getDefaultPlateInventory(unit),
     })
 
     await initialize(weights)

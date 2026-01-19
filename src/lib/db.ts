@@ -17,7 +17,14 @@ export { db }
 
 export const DEFAULT_SETTINGS: UserSettings = {
   barWeightLbs: 45,
-  availablePlates: [45, 35, 25, 10, 5, 2.5],
+  plateInventory: {
+    '45': 2,
+    '35': 2,
+    '25': 2,
+    '10': 2,
+    '5': 2,
+    '2.5': 2,
+  },
   restTimers: {
     t1Seconds: 180,
     t2Seconds: 120,

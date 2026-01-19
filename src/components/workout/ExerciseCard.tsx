@@ -6,7 +6,7 @@ import { getExerciseName } from '../../hooks/useWorkoutSession'
 interface ExerciseCardProps {
   exercise: ExerciseLog
   barWeight: number
-  availablePlates: number[]
+  plateInventory: Record<string, number>
   unit: WeightUnit
   onCompleteSet: (setIndex: number, reps: number) => void
   onWeightChange?: (newWeight: number) => void
@@ -21,7 +21,7 @@ const tierColors: Record<Tier, string> = {
 export function ExerciseCard({
   exercise,
   barWeight,
-  availablePlates,
+  plateInventory,
   unit,
   onCompleteSet,
   onWeightChange,
@@ -47,7 +47,7 @@ export function ExerciseCard({
         <PlateDisplay
           targetWeight={exercise.weightLbs}
           barWeight={barWeight}
-          availablePlates={availablePlates}
+          plateInventory={plateInventory}
           unit={unit}
           onWeightChange={onWeightChange}
         />

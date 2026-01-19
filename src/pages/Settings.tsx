@@ -4,7 +4,7 @@ import { Dumbbell, History, Settings as SettingsIcon, Download, Upload, Trash2 }
 import { useSettingsStore } from '../stores/settingsStore'
 import { useProgramStore } from '../stores/programStore'
 import { db } from '../lib/db'
-import { UNIT_CONFIG } from '../lib/units'
+import { UNIT_CONFIG, getDefaultPlateInventory } from '../lib/units'
 
 export function Settings() {
   const { settings, loaded, load, update } = useSettingsStore()
@@ -117,16 +117,60 @@ export function Settings() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm">Available Plates</label>
-              <p className="text-sm text-zinc-400">
-                {settings.availablePlates.join(', ')} {unit}
-              </p>
+              <label className="mb-2 block text-sm">Available Plates</label>
+              <div className="space-y-2">
+                {UNIT_CONFIG[unit].plates.map((plate) => {
+                  const quantity = settings.plateInventory?.[plate.toString()] ?? 0
+                  const isEnabled = quantity > 0
+                  return (
+                    <div key={plate} className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isEnabled}
+                        onChange={(e) => {
+                          const newInventory = { ...settings.plateInventory }
+                          newInventory[plate.toString()] = e.target.checked ? 2 : 0
+                          update({ plateInventory: newInventory })
+                        }}
+                        className="h-5 w-5 rounded border-zinc-600 bg-zinc-700 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className={`flex-1 ${isEnabled ? 'text-white' : 'text-zinc-500'}`}>
+                        {plate} {unit}
+                      </span>
+                      {isEnabled && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              if (quantity > 2) {
+                                const newInventory = { ...settings.plateInventory }
+                                newInventory[plate.toString()] = quantity - 2
+                                update({ plateInventory: newInventory })
+                              }
+                            }}
+                            className="h-7 w-7 rounded bg-zinc-700 text-zinc-400 hover:bg-zinc-600"
+                          >
+                            −
+                          </button>
+                          <span className="w-8 text-center text-sm">{quantity}×</span>
+                          <button
+                            onClick={() => {
+                              const newInventory = { ...settings.plateInventory }
+                              newInventory[plate.toString()] = quantity + 2
+                              update({ plateInventory: newInventory })
+                            }}
+                            className="h-7 w-7 rounded bg-zinc-700 text-zinc-400 hover:bg-zinc-600"
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
               <button
-                onClick={() => {
-                  const defaults = UNIT_CONFIG[unit].plates
-                  update({ availablePlates: [...defaults] })
-                }}
-                className="mt-2 text-sm text-blue-400 hover:text-blue-300"
+                onClick={() => update({ plateInventory: getDefaultPlateInventory(unit) })}
+                className="mt-3 text-sm text-blue-400 hover:text-blue-300"
               >
                 Reset to defaults
               </button>

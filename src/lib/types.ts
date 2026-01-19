@@ -52,7 +52,7 @@ export interface Workout {
 
 export interface UserSettings {
   barWeightLbs: number
-  availablePlates: number[]
+  plateInventory: Record<string, number> // plate weight -> quantity (total, both sides)
   restTimers: {
     t1Seconds: number
     t2Seconds: number

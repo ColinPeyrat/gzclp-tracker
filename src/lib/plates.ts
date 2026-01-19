@@ -8,7 +8,7 @@ export interface PlateResult {
 export function calculatePlates(
   targetWeight: number,
   barWeight: number,
-  availablePlates: number[]
+  plateInventory: Record<string, number>
 ): PlateResult {
   const weightPerSide = (targetWeight - barWeight) / 2
 
@@ -20,21 +20,36 @@ export function calculatePlates(
     return { perSide: [], totalWeight: barWeight, achievable: true }
   }
 
-  // Sort plates from largest to smallest
-  const sortedPlates = [...availablePlates].sort((a, b) => b - a)
-  const smallestPlate = sortedPlates[sortedPlates.length - 1]
+  // Get available plates sorted from largest to smallest
+  const availablePlates = Object.entries(plateInventory)
+    .filter(([_, qty]) => qty > 0)
+    .map(([weight, _]) => parseFloat(weight))
+    .sort((a, b) => b - a)
 
+  if (availablePlates.length === 0) {
+    return { perSide: [], totalWeight: barWeight, achievable: false }
+  }
+
+  const smallestPlate = availablePlates[availablePlates.length - 1]
+
+  // Track how many of each plate we've used per side
+  const usedPerSide: Record<string, number> = {}
   const perSide: number[] = []
   let remaining = weightPerSide
 
-  for (const plate of sortedPlates) {
-    while (remaining >= plate) {
+  for (const plate of availablePlates) {
+    const maxPerSide = Math.floor((plateInventory[plate.toString()] || 0) / 2)
+    let usedCount = 0
+
+    while (remaining >= plate && usedCount < maxPerSide) {
       perSide.push(plate)
       remaining -= plate
+      usedCount++
     }
+    usedPerSide[plate.toString()] = usedCount
   }
 
-  const achievable = remaining === 0
+  const achievable = Math.abs(remaining) < 0.001 // Float tolerance
   const actualPerSide = perSide.reduce((sum, p) => sum + p, 0)
   const totalWeight = barWeight + actualPerSide * 2
 

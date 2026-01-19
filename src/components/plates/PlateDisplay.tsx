@@ -4,7 +4,7 @@ import type { WeightUnit } from '../../lib/types'
 interface PlateDisplayProps {
   targetWeight: number
   barWeight: number
-  availablePlates: number[]
+  plateInventory: Record<string, number>
   unit: WeightUnit
   onWeightChange?: (newWeight: number) => void
 }
@@ -23,11 +23,11 @@ const plateColors: Record<number, string> = {
   1.25: 'bg-zinc-400 text-zinc-900',
 }
 
-export function PlateDisplay({ targetWeight, barWeight, availablePlates, unit, onWeightChange }: PlateDisplayProps) {
-  const result = calculatePlates(targetWeight, barWeight, availablePlates)
+export function PlateDisplay({ targetWeight, barWeight, plateInventory, unit, onWeightChange }: PlateDisplayProps) {
+  const result = calculatePlates(targetWeight, barWeight, plateInventory)
 
   if (!result.achievable && result.suggestedWeight) {
-    const suggestedResult = calculatePlates(result.suggestedWeight, barWeight, availablePlates)
+    const suggestedResult = calculatePlates(result.suggestedWeight, barWeight, plateInventory)
     return (
       <div className="rounded-lg bg-yellow-900/30 p-3 text-sm">
         <div className="mb-2 text-center text-yellow-400">

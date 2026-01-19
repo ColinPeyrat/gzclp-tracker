@@ -35,11 +35,20 @@ export function getIncrement(tier: 'T1' | 'T2', isLower: boolean, unit: WeightUn
   return isLower ? config.incrementT2Lower : config.incrementT2Upper
 }
 
+export function getDefaultPlateInventory(unit: WeightUnit): Record<string, number> {
+  const config = UNIT_CONFIG[unit]
+  const inventory: Record<string, number> = {}
+  for (const plate of config.plates) {
+    inventory[plate.toString()] = 2
+  }
+  return inventory
+}
+
 export function getDefaultSettings(unit: WeightUnit) {
   const config = UNIT_CONFIG[unit]
   return {
-    barWeightLbs: config.barWeight, // rename to barWeight later
-    availablePlates: [...config.plates],
+    barWeightLbs: config.barWeight,
+    plateInventory: getDefaultPlateInventory(unit),
   }
 }
 
