@@ -79,7 +79,7 @@ export function Workout() {
     if (t1Exercise) {
       const liftId = workoutDef.t1
       const currentState = programState.t1[liftId]
-      const increment = getIncrement(LIFTS[liftId].isLower, unit)
+      const increment = getIncrement('T1', LIFTS[liftId].isLower, unit)
       const result = calculateT1Progression(currentState, t1Exercise, increment, unit)
       newProgramState.t1 = { ...newProgramState.t1, [liftId]: result.newState }
     }
@@ -89,7 +89,7 @@ export function Workout() {
     if (t2Exercise) {
       const liftId = workoutDef.t2
       const currentState = programState.t2[liftId]
-      const increment = getIncrement(LIFTS[liftId].isLower, unit)
+      const increment = getIncrement('T2', LIFTS[liftId].isLower, unit)
       const result = calculateT2Progression(currentState, t2Exercise, increment, unit)
       newProgramState.t2 = { ...newProgramState.t2, [liftId]: result.newState }
     }

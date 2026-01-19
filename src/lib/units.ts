@@ -5,16 +5,20 @@ export const UNIT_CONFIG = {
     label: 'lbs',
     barWeight: 45,
     plates: [45, 35, 25, 10, 5, 2.5],
-    incrementUpper: 5,
-    incrementLower: 10,
+    incrementT1Upper: 5,
+    incrementT1Lower: 10,
+    incrementT2Upper: 2.5,
+    incrementT2Lower: 5,
     incrementT3: 5,
   },
   kg: {
     label: 'kg',
     barWeight: 20,
     plates: [20, 15, 10, 5, 2.5, 1.25],
-    incrementUpper: 2.5,
-    incrementLower: 5,
+    incrementT1Upper: 2.5,
+    incrementT1Lower: 5,
+    incrementT2Upper: 1.25,
+    incrementT2Lower: 2.5,
     incrementT3: 2.5,
   },
 } as const
@@ -23,9 +27,12 @@ export function formatWeight(weight: number, unit: WeightUnit): string {
   return `${weight} ${unit}`
 }
 
-export function getIncrement(isLower: boolean, unit: WeightUnit): number {
+export function getIncrement(tier: 'T1' | 'T2', isLower: boolean, unit: WeightUnit): number {
   const config = UNIT_CONFIG[unit]
-  return isLower ? config.incrementLower : config.incrementUpper
+  if (tier === 'T1') {
+    return isLower ? config.incrementT1Lower : config.incrementT1Upper
+  }
+  return isLower ? config.incrementT2Lower : config.incrementT2Upper
 }
 
 export function getDefaultSettings(unit: WeightUnit) {

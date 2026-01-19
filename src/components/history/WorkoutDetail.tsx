@@ -93,7 +93,8 @@ function ExerciseResult({ exercise, tier, unit }: ExerciseResultProps) {
   // Calculate new weight for success case
   const liftId = exercise.liftId as LiftName
   const lift = LIFTS[liftId]
-  const increment = lift ? getIncrement(lift.isLower, unit) : UNIT_CONFIG[unit].incrementUpper
+  const tierForIncrement = tier as 'T1' | 'T2'
+  const increment = lift ? getIncrement(tierForIncrement, lift.isLower, unit) : UNIT_CONFIG[unit].incrementT1Upper
   const newWeight = exercise.weightLbs + increment
 
   return (

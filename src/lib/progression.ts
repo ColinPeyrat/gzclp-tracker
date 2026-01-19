@@ -80,12 +80,16 @@ export function calculateT1Progression(
     }
   }
 
-  // Stage 3 - reset to 85% of current weight
-  const roundTo = unit === 'kg' ? 2.5 : 5
-  const resetWeight = Math.floor((weightLbs * 0.85) / roundTo) * roundTo
+  // Stage 3 failure - set pending5RMTest flag, store AMRAP data for estimation
+  const amrapReps = getAmrapReps(exercise) ?? 0
   return {
-    newState: { ...currentState, stage: 1, weightLbs: resetWeight },
-    message: `Reset to 5×3 at ${resetWeight} ${unit} (85%)`,
+    newState: {
+      ...currentState,
+      pending5RMTest: true,
+      lastAmrapReps: amrapReps,
+      lastAmrapWeight: weightLbs,
+    },
+    message: `Test new 5RM to reset`,
   }
 }
 
@@ -125,9 +129,9 @@ export function calculateT2Progression(
     }
   }
 
-  // Stage 3 - reset to stage 1 with +15 lbs / +7.5 kg from last stage 1 weight
+  // Stage 3 - reset to stage 1 with +20 lbs / +10 kg from last stage 1 weight
   const baseWeight = lastStage1WeightLbs ?? weightLbs
-  const resetIncrement = unit === 'kg' ? 7.5 : 15
+  const resetIncrement = unit === 'kg' ? 10 : 20
   const resetWeight = baseWeight + resetIncrement
   return {
     newState: {
@@ -165,5 +169,28 @@ export function createInitialLiftState(
     tier,
     weightLbs: weight,
     stage: 1,
+  }
+}
+
+export function estimate5RM(weight: number, amrapReps: number, unit: WeightUnit): number {
+  // Epley formula: 1RM = weight × (1 + reps/30)
+  const estimated1RM = weight * (1 + amrapReps / 30)
+  // 5RM ≈ 87% of 1RM
+  const estimated5RM = estimated1RM * 0.87
+  // Round to nearest increment
+  const roundTo = unit === 'kg' ? 2.5 : 5
+  return Math.round(estimated5RM / roundTo) * roundTo
+}
+
+export function applyT1Reset(currentState: LiftState, new5RM: number, unit: WeightUnit): LiftState {
+  const roundTo = unit === 'kg' ? 2.5 : 5
+  const resetWeight = Math.round((new5RM * 0.85) / roundTo) * roundTo
+  return {
+    ...currentState,
+    stage: 1,
+    weightLbs: resetWeight,
+    pending5RMTest: undefined,
+    lastAmrapReps: undefined,
+    lastAmrapWeight: undefined,
   }
 }

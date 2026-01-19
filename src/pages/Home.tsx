@@ -1,19 +1,47 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Dumbbell, History, Settings, Play } from 'lucide-react'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { WORKOUTS, LIFTS, T3_EXERCISES } from '../lib/types'
-import { getStageConfig } from '../lib/progression'
+import { getStageConfig, estimate5RM, applyT1Reset } from '../lib/progression'
 
 export function Home() {
-  const { state, loaded: programLoaded, load: loadProgram } = useProgramStore()
+  const { state, loaded: programLoaded, load: loadProgram, save: saveProgram } = useProgramStore()
   const { settings, loaded: settingsLoaded, load: loadSettings } = useSettingsStore()
+  const [manual5RM, setManual5RM] = useState('')
 
   useEffect(() => {
     if (!programLoaded) loadProgram()
     if (!settingsLoaded) loadSettings()
   }, [programLoaded, settingsLoaded, loadProgram, loadSettings])
+
+  // Check if the T1 lift for the NEXT workout has a pending 5RM test
+  const nextWorkoutT1 = state ? WORKOUTS[state.nextWorkoutType].t1 : null
+  const nextT1State = state && nextWorkoutT1 ? state.t1[nextWorkoutT1] : null
+  const currentPending = nextT1State?.pending5RMTest
+    ? {
+        liftId: nextWorkoutT1!,
+        liftState: nextT1State,
+        liftName: LIFTS[nextWorkoutT1!].name,
+        estimated5RM: estimate5RM(
+          nextT1State.lastAmrapWeight ?? nextT1State.weightLbs,
+          nextT1State.lastAmrapReps ?? 0,
+          settings.weightUnit
+        ),
+      }
+    : null
+
+  const handleApply5RM = async (new5RM: number) => {
+    if (!state || !currentPending) return
+    const newLiftState = applyT1Reset(currentPending.liftState, new5RM, settings.weightUnit)
+    const newProgramState = {
+      ...state,
+      t1: { ...state.t1, [currentPending.liftId]: newLiftState },
+    }
+    await saveProgram(newProgramState)
+    setManual5RM('')
+  }
 
   if (!programLoaded || !settingsLoaded) {
     return (
@@ -107,6 +135,58 @@ export function Home() {
           Start Workout
         </Link>
       </main>
+
+      {currentPending && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-sm rounded-lg bg-zinc-800 p-6">
+            <h2 className="mb-2 text-lg font-bold">Reset {currentPending.liftName}</h2>
+            <p className="mb-4 text-sm text-zinc-400">
+              Enter your new 5RM or use the estimate based on your last AMRAP ({currentPending.liftState.lastAmrapReps} reps @ {currentPending.liftState.lastAmrapWeight} {settings.weightUnit}).
+            </p>
+
+            <div className="mb-4 space-y-3">
+              <button
+                onClick={() => handleApply5RM(currentPending.estimated5RM)}
+                className="w-full rounded-lg bg-blue-600 py-3 font-medium hover:bg-blue-500"
+              >
+                Use Estimate: {currentPending.estimated5RM} {settings.weightUnit}
+              </button>
+
+              <div className="flex items-center gap-2 text-sm text-zinc-400">
+                <div className="h-px flex-1 bg-zinc-700" />
+                <span>or enter manually</span>
+                <div className="h-px flex-1 bg-zinc-700" />
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={manual5RM}
+                  onChange={(e) => setManual5RM(e.target.value)}
+                  placeholder={`5RM in ${settings.weightUnit}`}
+                  className="flex-1 rounded-lg bg-zinc-700 px-4 py-3 text-white placeholder:text-zinc-500"
+                />
+                <button
+                  onClick={() => {
+                    const value = parseFloat(manual5RM)
+                    if (!isNaN(value) && value > 0) {
+                      handleApply5RM(value)
+                    }
+                  }}
+                  disabled={!manual5RM || isNaN(parseFloat(manual5RM))}
+                  className="rounded-lg bg-zinc-600 px-4 py-3 font-medium hover:bg-zinc-500 disabled:opacity-50"
+                >
+                  Use This
+                </button>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-500">
+              Your new working weight will be 85% of the 5RM you enter.
+            </p>
+          </div>
+        </div>
+      )}
 
       <nav className="border-t border-zinc-800 p-4">
         <div className="flex justify-around">

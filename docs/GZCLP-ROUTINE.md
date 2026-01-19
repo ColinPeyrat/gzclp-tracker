@@ -70,7 +70,7 @@ The program cycles through four workouts (A1, A2, B1, B2). You train 3 days per 
 
 **Rest Time:** 2-3 minutes between sets
 
-**Progression:** Same as T1 (5 lbs upper / 10 lbs lower)
+**Progression:** Half of T1 (2.5 lbs upper / 5 lbs lower, or 1.25/2.5 kg)
 
 ### T3 Exercises (Accessories)
 
@@ -88,7 +88,7 @@ The program cycles through four workouts (A1, A2, B1, B2). You train 3 days per 
 
 1. **Fail at 5×3?** → Keep same weight, switch to 6×2+
 2. **Fail at 6×2?** → Keep same weight, switch to 10×1+
-3. **Complete 10×1 cycle?** → Test new 5RM, restart at 85% of new 5RM with 5×3
+3. **Fail at 10×1?** → Test new 5RM (or use estimated 5RM), restart at 85% of new 5RM with 5×3
 
 ### T2 Failure Protocol
 
@@ -138,6 +138,6 @@ Once comfortable with the base program, you can add 1-2 additional T3 exercises 
 
 | Tier | Starting Scheme | Rest | Progression | Failure Protocol |
 |------|-----------------|------|-------------|------------------|
-| T1 | 5×3+ | 3-5 min | +5/10 lbs per session | 5×3 → 6×2 → 10×1 → reset |
-| T2 | 3×10 | 2-3 min | +5/10 lbs per session | 3×10 → 3×8 → 3×6 → reset |
+| T1 | 5×3+ | 3-5 min | +5/10 lbs per session | 5×3 → 6×2 → 10×1 → test 5RM → reset |
+| T2 | 3×10 | 2-3 min | +2.5/5 lbs per session | 3×10 → 3×8 → 3×6 → reset |
 | T3 | 3×15+ | 1-1.5 min | +weight at 25 AMRAP reps | N/A |
