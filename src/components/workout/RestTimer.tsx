@@ -14,7 +14,7 @@ export function RestTimer({ seconds, isRunning, onAddTime, onSkip }: RestTimerPr
   const progress = isRunning ? (seconds / 180) * 100 : 0 // Assume max 3 min for visual
 
   return (
-    <div className="fixed bottom-20 left-0 right-0 border-t border-zinc-700 bg-zinc-900 p-4">
+    <div className="fixed left-0 right-0 border-t border-zinc-700 bg-zinc-900 p-4 bottom-(--nav-height)">
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm text-zinc-400">Rest</span>
         <span className="text-3xl font-bold tabular-nums">{formatTime(seconds)}</span>

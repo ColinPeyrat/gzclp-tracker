@@ -1,5 +1,10 @@
 @import 'tailwindcss';
 
+:root {
+  --nav-height: 5rem;
+  --rest-timer-height: 9rem;
+}
+
 body {
   @apply bg-zinc-900 text-zinc-100 antialiased;
 }

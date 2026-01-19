@@ -25,7 +25,7 @@ function getExerciseName(liftId: string, tier: Tier): string {
 
 function getNextStageLabel(tier: Tier, currentStage: 1 | 2 | 3): string | null {
   if (currentStage === 3) {
-    return tier === 'T1' ? 'Reset to 5×3 at 85%' : 'Reset to 3×10'
+    return tier === 'T1' ? 'New cycle: test 5RM' : 'Reset to 3×10'
   }
 
   const nextStage = (currentStage + 1) as 1 | 2 | 3
@@ -170,27 +170,36 @@ export function WorkoutDetail({ workout, unit, onBack }: WorkoutDetailProps) {
             </div>
 
             <div className="space-y-1">
-              {exercise.sets.map((set, j) => (
-                <div
-                  key={j}
-                  className={`flex items-center justify-between rounded px-3 py-2 text-sm ${
-                    set.completed ? 'bg-zinc-700' : 'bg-zinc-900'
-                  }`}
-                >
-                  <span className="text-zinc-400">Set {set.setNumber}</span>
-                  <div className="flex items-center gap-2">
-                    <span>
-                      {set.reps}
-                      {set.isAmrap && ' (AMRAP)'}
-                    </span>
-                    {set.completed ? (
-                      <Check className="h-4 w-4 text-green-400" />
-                    ) : (
-                      <X className="h-4 w-4 text-red-400" />
-                    )}
+              {exercise.sets.map((set, j) => {
+                const isFailed = set.completed && set.reps === 0
+                return (
+                  <div
+                    key={j}
+                    className={`flex items-center justify-between rounded px-3 py-2 text-sm ${
+                      isFailed
+                        ? 'bg-red-900/20'
+                        : set.completed
+                          ? 'bg-zinc-700'
+                          : 'bg-zinc-900'
+                    }`}
+                  >
+                    <span className="text-zinc-400">Set {set.setNumber}</span>
+                    <div className="flex items-center gap-2">
+                      <span className={isFailed ? 'text-red-400' : ''}>
+                        {isFailed ? 'Failed' : set.reps}
+                        {set.isAmrap && !isFailed && ' (AMRAP)'}
+                      </span>
+                      {isFailed ? (
+                        <X className="h-4 w-4 text-red-400" />
+                      ) : set.completed ? (
+                        <Check className="h-4 w-4 text-green-400" />
+                      ) : (
+                        <X className="h-4 w-4 text-red-400" />
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             <ExerciseResult exercise={exercise} tier={exercise.tier} unit={unit} />

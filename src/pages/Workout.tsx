@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import { useProgramStore } from '../stores/programStore'
@@ -22,7 +22,8 @@ export function Workout() {
   const navigate = useNavigate()
   const { state: programState, loaded: programLoaded, load: loadProgram, save: saveProgram } = useProgramStore()
   const { settings, loaded: settingsLoaded, load: loadSettings } = useSettingsStore()
-  const { session, startWorkout, completeSet, nextExercise, prevExercise, finishWorkout } = useWorkoutSession()
+  const { session, startWorkout, completeSet, failRemainingCurrentExerciseSets, nextExercise, prevExercise, finishWorkout } = useWorkoutSession()
+  const [showFailModal, setShowFailModal] = useState(false)
   const restTimer = useRestTimer()
 
   // Block navigation if workout has started
@@ -57,6 +58,22 @@ export function Workout() {
             : settings.restTimers.t3Seconds
       restTimer.start(restDuration)
     }
+  }
+
+  const handleNextExercise = () => {
+    if (!session) return
+    const hasIncompleteSets = session.currentExercise.sets.some((s) => !s.completed)
+    if (hasIncompleteSets) {
+      setShowFailModal(true)
+    } else {
+      nextExercise()
+    }
+  }
+
+  const handleConfirmFail = () => {
+    failRemainingCurrentExerciseSets()
+    setShowFailModal(false)
+    nextExercise()
   }
 
   const handleFinishWorkout = async () => {
@@ -132,7 +149,7 @@ export function Workout() {
   )
 
   return (
-    <div className="flex min-h-screen flex-col pb-24">
+    <div className="flex min-h-screen flex-col pb-[calc(var(--nav-height)+var(--rest-timer-height))]">
       <header className="border-b border-zinc-800 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -169,8 +186,8 @@ export function Workout() {
         />
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-zinc-900 p-4">
-        <div className="flex items-center justify-between">
+      <div className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-zinc-900 px-4 h-(--nav-height) flex items-center">
+        <div className="flex w-full items-center justify-between">
           <button
             onClick={prevExercise}
             disabled={session.currentExerciseIndex === 0}
@@ -196,7 +213,7 @@ export function Workout() {
           </div>
 
           <button
-            onClick={nextExercise}
+            onClick={handleNextExercise}
             disabled={session.isLastExercise}
             className="flex items-center gap-1 rounded-lg px-4 py-2 text-zinc-400 hover:text-white disabled:opacity-30"
           >
@@ -234,6 +251,31 @@ export function Workout() {
                 className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
               >
                 Stay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showFailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-sm rounded-lg bg-zinc-800 p-6">
+            <h2 className="mb-2 text-lg font-bold">Incomplete Sets</h2>
+            <p className="mb-6 text-sm text-zinc-400">
+              You have {session.currentExercise.sets.filter((s) => !s.completed).length} incomplete sets. Mark them as failed and move on?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleConfirmFail}
+                className="flex-1 rounded-lg bg-red-600 py-2 font-medium hover:bg-red-500"
+              >
+                Mark Failed
+              </button>
+              <button
+                onClick={() => setShowFailModal(false)}
+                className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
+              >
+                Go Back
               </button>
             </div>
           </div>

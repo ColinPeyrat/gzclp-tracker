@@ -14,7 +14,7 @@ export function SetLogger({ set, targetReps, onComplete, isActive }: SetLoggerPr
   const [showAmrapInput, setShowAmrapInput] = useState(false)
 
   const handleTap = () => {
-    if (set.completed) return
+    if (set.completed || !isActive) return
 
     if (set.isAmrap) {
       setShowAmrapInput(true)
@@ -64,37 +64,48 @@ export function SetLogger({ set, targetReps, onComplete, isActive }: SetLoggerPr
     )
   }
 
+  const isFailed = set.completed && set.reps === 0
+
   return (
-    <button
-      onClick={handleTap}
-      disabled={set.completed}
-      className={`flex w-full items-center gap-3 rounded-lg p-3 transition-colors ${
-        set.completed
-          ? 'bg-green-900/30 text-green-400'
-          : isActive
-            ? 'bg-zinc-700 hover:bg-zinc-600'
-            : 'bg-zinc-800 hover:bg-zinc-700'
-      }`}
-    >
-      <span className="w-12 text-sm text-zinc-400">Set {set.setNumber}</span>
+    <div className="flex items-center gap-2">
+      <button
+        onClick={handleTap}
+        disabled={set.completed || !isActive}
+        className={`flex h-12 flex-1 items-center gap-3 rounded-lg px-3 transition-colors ${
+          isFailed
+            ? 'bg-red-900/30 text-red-400'
+            : set.completed
+              ? 'bg-green-900/30 text-green-400'
+              : isActive
+                ? 'bg-zinc-700 hover:bg-zinc-600'
+                : 'bg-zinc-800'
+        }`}
+      >
+        <span className="w-12 text-sm text-zinc-400">Set {set.setNumber}</span>
 
-      <div className="flex flex-1 items-center justify-center gap-2">
-        {set.completed ? (
-          <span className="text-lg font-medium">{set.reps}</span>
-        ) : set.isAmrap ? (
-          <span className="text-zinc-400">{targetReps}+ AMRAP</span>
-        ) : (
-          <span className="text-zinc-400">{targetReps}</span>
-        )}
-      </div>
+        <div className="flex flex-1 items-center justify-center gap-2">
+          {isFailed ? (
+            <span className="text-lg font-medium">Failed</span>
+          ) : set.completed ? (
+            <span className="text-lg font-medium">{set.reps}</span>
+          ) : set.isAmrap ? (
+            <span className="text-zinc-400">{targetReps}+ AMRAP</span>
+          ) : (
+            <span className="text-zinc-400">{targetReps}</span>
+          )}
+        </div>
 
-      <div className="w-8">
-        {set.completed ? (
-          <Check className="h-5 w-5 text-green-400" />
-        ) : (
-          <Minus className="h-5 w-5 text-zinc-500" />
-        )}
-      </div>
-    </button>
+        <div className="w-8">
+          {isFailed ? (
+            <X className="h-5 w-5 text-red-400" />
+          ) : set.completed ? (
+            <Check className="h-5 w-5 text-green-400" />
+          ) : (
+            <Minus className="h-5 w-5 text-zinc-500" />
+          )}
+        </div>
+      </button>
+
+    </div>
   )
 }

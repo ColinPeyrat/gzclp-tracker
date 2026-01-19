@@ -21,8 +21,8 @@ export interface LiftState {
   stage: 1 | 2 | 3
   lastStage1WeightLbs?: number // For T2 reset calculation
   pending5RMTest?: boolean // T1 only: true when awaiting 5RM input after stage 3 fail
-  lastAmrapReps?: number // Store AMRAP from failed 10×1 for estimation
-  lastAmrapWeight?: number // Weight at which AMRAP was performed
+  bestSetReps?: number // Best set reps from failed stage 3 for 5RM estimation
+  bestSetWeight?: number // Weight of best set
 }
 
 export interface SetLog {

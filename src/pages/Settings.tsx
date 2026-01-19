@@ -92,7 +92,7 @@ export function Settings() {
   const unit = settings.weightUnit
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col pb-(--nav-height)">
       <header className="border-b border-zinc-800 p-4">
         <h1 className="text-xl font-bold">Settings</h1>
       </header>
@@ -232,8 +232,8 @@ export function Settings() {
         </section>
       </main>
 
-      <nav className="border-t border-zinc-800 p-4">
-        <div className="flex justify-around">
+      <nav className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-zinc-900 px-4 h-(--nav-height) flex items-center">
+        <div className="flex w-full justify-around">
           <Link
             to="/"
             className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white"

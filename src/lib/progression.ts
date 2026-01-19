@@ -80,16 +80,16 @@ export function calculateT1Progression(
     }
   }
 
-  // Stage 3 failure - set pending5RMTest flag, store AMRAP data for estimation
-  const amrapReps = getAmrapReps(exercise) ?? 0
+  // Stage 3 failure - set pending5RMTest flag, store best set for estimation
+  const bestReps = Math.max(...exercise.sets.filter(s => s.completed).map(s => s.reps), 0)
   return {
     newState: {
       ...currentState,
       pending5RMTest: true,
-      lastAmrapReps: amrapReps,
-      lastAmrapWeight: weightLbs,
+      bestSetReps: bestReps,
+      bestSetWeight: weightLbs,
     },
-    message: `Test new 5RM to reset`,
+    message: `New cycle: test 5RM first`,
   }
 }
 
@@ -190,7 +190,7 @@ export function applyT1Reset(currentState: LiftState, new5RM: number, unit: Weig
     stage: 1,
     weightLbs: resetWeight,
     pending5RMTest: undefined,
-    lastAmrapReps: undefined,
-    lastAmrapWeight: undefined,
+    bestSetReps: undefined,
+    bestSetWeight: undefined,
   }
 }

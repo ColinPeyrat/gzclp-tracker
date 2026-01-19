@@ -18,6 +18,7 @@ interface UseWorkoutSessionReturn {
   startWorkout: (programState: ProgramState) => void
   completeSet: (setIndex: number, reps: number) => void
   failSet: (setIndex: number) => void
+  failRemainingCurrentExerciseSets: () => void
   nextExercise: () => void
   prevExercise: () => void
   finishWorkout: () => Workout | null
@@ -129,7 +130,21 @@ export function useWorkoutSession(): UseWorkoutSessionReturn {
       const exercises = [...prev.exercises]
       const exercise = { ...exercises[currentExerciseIndex] }
       const sets = [...exercise.sets]
-      sets[setIndex] = { ...sets[setIndex], reps: 0, completed: false }
+      sets[setIndex] = { ...sets[setIndex], reps: 0, completed: true }
+      exercise.sets = sets
+      exercises[currentExerciseIndex] = exercise
+      return { ...prev, exercises }
+    })
+  }, [currentExerciseIndex])
+
+  const failRemainingCurrentExerciseSets = useCallback(() => {
+    setWorkout((prev) => {
+      if (!prev) return null
+      const exercises = [...prev.exercises]
+      const exercise = { ...exercises[currentExerciseIndex] }
+      const sets = exercise.sets.map((set) =>
+        set.completed ? set : { ...set, reps: 0, completed: true }
+      )
       exercise.sets = sets
       exercises[currentExerciseIndex] = exercise
       return { ...prev, exercises }
@@ -159,6 +174,7 @@ export function useWorkoutSession(): UseWorkoutSessionReturn {
     startWorkout,
     completeSet,
     failSet,
+    failRemainingCurrentExerciseSets,
     nextExercise,
     prevExercise,
     finishWorkout,
