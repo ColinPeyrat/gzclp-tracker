@@ -14,7 +14,7 @@ export const UNIT_CONFIG = {
   kg: {
     label: 'kg',
     barWeight: 20,
-    plates: [20, 15, 10, 5, 2.5, 1.25],
+    plates: [20, 15, 10, 5, 2.5, 1.25, 0.5],
     incrementT1Upper: 2.5,
     incrementT1Lower: 5,
     incrementT2Upper: 1.25,
@@ -50,6 +50,8 @@ export function getDefaultStartingWeights(unit: WeightUnit) {
       bench: 40,
       deadlift: 60,
       ohp: 30,
+      latPulldown: 25,
+      dbRow: 12.5,
     }
   }
   return {
@@ -57,5 +59,7 @@ export function getDefaultStartingWeights(unit: WeightUnit) {
     bench: 95,
     deadlift: 135,
     ohp: 65,
+    latPulldown: 50,
+    dbRow: 25,
   }
 }

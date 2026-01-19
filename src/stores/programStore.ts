@@ -9,6 +9,8 @@ interface StartingWeights {
   bench: number
   deadlift: number
   ohp: number
+  latPulldown: number
+  dbRow: number
 }
 
 interface ProgramStore {
@@ -35,8 +37,8 @@ function createInitialState(weights: StartingWeights): ProgramState {
       ohp: createInitialLiftState('ohp', 'T2', Math.round(weights.ohp * 0.6)),
     },
     t3: {
-      'lat-pulldown': { weightLbs: 50 },
-      'dumbbell-row': { weightLbs: 25 },
+      'lat-pulldown': { weightLbs: weights.latPulldown },
+      'dumbbell-row': { weightLbs: weights.dbRow },
     },
     nextWorkoutType: 'A1',
     workoutCount: 0,

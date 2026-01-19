@@ -80,7 +80,7 @@ export function Setup() {
         </div>
 
         <div className="space-y-4">
-          <p className="text-sm text-zinc-400">T1 Starting Weights</p>
+          <p className="text-sm text-zinc-400">T1 — We suggest 85% of your 5RM</p>
           {[
             { key: 'squat', label: 'Squat' },
             { key: 'bench', label: 'Bench Press' },
@@ -107,8 +107,36 @@ export function Setup() {
         </div>
 
         <p className="text-sm text-zinc-500">
-          T2 weights will be set to ~60% of these values. You can adjust
-          everything later in settings.
+          T2 weights will be set to ~60% of T1.
+        </p>
+
+        <div className="space-y-4">
+          <p className="text-sm text-zinc-400">T3 — Starting weights</p>
+          {[
+            { key: 'latPulldown', label: 'Lat Pulldown' },
+            { key: 'dbRow', label: 'Dumbbell Row' },
+          ].map(({ key, label }) => (
+            <div key={key}>
+              <label className="mb-2 block text-sm font-medium">{label}</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={weights[key as keyof typeof weights]}
+                  onChange={(e) =>
+                    updateWeight(key as keyof typeof weights, e.target.value)
+                  }
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-3 text-lg focus:border-blue-500 focus:outline-none"
+                  min={0}
+                  step={unit === 'kg' ? 2.5 : 5}
+                />
+                <span className="w-10 text-zinc-400">{unit}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-sm text-zinc-500">
+          You can adjust everything later in settings.
         </p>
 
         <div className="mt-auto">

@@ -19,6 +19,7 @@ interface UseWorkoutSessionReturn {
   completeSet: (setIndex: number, reps: number) => void
   failSet: (setIndex: number) => void
   failRemainingCurrentExerciseSets: () => void
+  updateCurrentExerciseWeight: (newWeight: number) => void
   nextExercise: () => void
   prevExercise: () => void
   finishWorkout: () => Workout | null
@@ -151,6 +152,18 @@ export function useWorkoutSession(): UseWorkoutSessionReturn {
     })
   }, [currentExerciseIndex])
 
+  const updateCurrentExerciseWeight = useCallback((newWeight: number) => {
+    setWorkout((prev) => {
+      if (!prev) return null
+      const exercises = [...prev.exercises]
+      exercises[currentExerciseIndex] = {
+        ...exercises[currentExerciseIndex],
+        weightLbs: newWeight,
+      }
+      return { ...prev, exercises }
+    })
+  }, [currentExerciseIndex])
+
   const nextExercise = useCallback(() => {
     setCurrentExerciseIndex((prev) =>
       prev < (workout?.exercises.length ?? 1) - 1 ? prev + 1 : prev
@@ -175,6 +188,7 @@ export function useWorkoutSession(): UseWorkoutSessionReturn {
     completeSet,
     failSet,
     failRemainingCurrentExerciseSets,
+    updateCurrentExerciseWeight,
     nextExercise,
     prevExercise,
     finishWorkout,

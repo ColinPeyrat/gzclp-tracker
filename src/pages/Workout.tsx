@@ -22,7 +22,7 @@ export function Workout() {
   const navigate = useNavigate()
   const { state: programState, loaded: programLoaded, load: loadProgram, save: saveProgram } = useProgramStore()
   const { settings, loaded: settingsLoaded, load: loadSettings } = useSettingsStore()
-  const { session, startWorkout, completeSet, failRemainingCurrentExerciseSets, nextExercise, prevExercise, finishWorkout } = useWorkoutSession()
+  const { session, startWorkout, completeSet, failRemainingCurrentExerciseSets, updateCurrentExerciseWeight, nextExercise, prevExercise, finishWorkout } = useWorkoutSession()
   const [showFailModal, setShowFailModal] = useState(false)
   const restTimer = useRestTimer()
 
@@ -183,6 +183,7 @@ export function Workout() {
           availablePlates={settings.availablePlates}
           unit={settings.weightUnit}
           onCompleteSet={handleCompleteSet}
+          onWeightChange={updateCurrentExerciseWeight}
         />
       </main>
 

@@ -9,6 +9,7 @@ interface ExerciseCardProps {
   availablePlates: number[]
   unit: WeightUnit
   onCompleteSet: (setIndex: number, reps: number) => void
+  onWeightChange?: (newWeight: number) => void
 }
 
 const tierColors: Record<Tier, string> = {
@@ -23,6 +24,7 @@ export function ExerciseCard({
   availablePlates,
   unit,
   onCompleteSet,
+  onWeightChange,
 }: ExerciseCardProps) {
   const exerciseName = getExerciseName(exercise.liftId, exercise.tier)
   const completedSets = exercise.sets.filter((s) => s.completed).length
@@ -47,6 +49,7 @@ export function ExerciseCard({
           barWeight={barWeight}
           availablePlates={availablePlates}
           unit={unit}
+          onWeightChange={onWeightChange}
         />
       )}
 

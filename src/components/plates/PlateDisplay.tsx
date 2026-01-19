@@ -6,6 +6,7 @@ interface PlateDisplayProps {
   barWeight: number
   availablePlates: number[]
   unit: WeightUnit
+  onWeightChange?: (newWeight: number) => void
 }
 
 const plateColors: Record<number, string> = {
@@ -22,13 +23,41 @@ const plateColors: Record<number, string> = {
   1.25: 'bg-zinc-400 text-zinc-900',
 }
 
-export function PlateDisplay({ targetWeight, barWeight, availablePlates, unit }: PlateDisplayProps) {
+export function PlateDisplay({ targetWeight, barWeight, availablePlates, unit, onWeightChange }: PlateDisplayProps) {
   const result = calculatePlates(targetWeight, barWeight, availablePlates)
 
-  if (!result.achievable) {
+  if (!result.achievable && result.suggestedWeight) {
+    const suggestedResult = calculatePlates(result.suggestedWeight, barWeight, availablePlates)
     return (
-      <div className="rounded-lg bg-yellow-900/30 p-3 text-center text-sm text-yellow-400">
-        Can't make {targetWeight} {unit} with available plates
+      <div className="rounded-lg bg-yellow-900/30 p-3 text-sm">
+        <div className="mb-2 text-center text-yellow-400">
+          Can't make {targetWeight} {unit} with available plates
+        </div>
+        <div className="mb-2 text-center text-zinc-300">
+          Closest: {result.suggestedWeight} {unit}
+        </div>
+        {suggestedResult.perSide.length > 0 && (
+          <div className="mb-2 flex items-center justify-center gap-1">
+            {suggestedResult.perSide.map((plate, i) => (
+              <div
+                key={i}
+                className={`flex h-8 min-w-8 items-center justify-center rounded px-2 text-sm font-medium ${
+                  plateColors[plate] ?? 'bg-zinc-600'
+                }`}
+              >
+                {plate}
+              </div>
+            ))}
+          </div>
+        )}
+        {onWeightChange && (
+          <button
+            onClick={() => onWeightChange(result.suggestedWeight!)}
+            className="w-full rounded bg-yellow-600 py-2 text-sm font-medium text-white hover:bg-yellow-500"
+          >
+            Use {result.suggestedWeight} {unit}
+          </button>
+        )}
       </div>
     )
   }

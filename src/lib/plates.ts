@@ -2,6 +2,7 @@ export interface PlateResult {
   perSide: number[]
   totalWeight: number
   achievable: boolean
+  suggestedWeight?: number
 }
 
 export function calculatePlates(
@@ -12,7 +13,7 @@ export function calculatePlates(
   const weightPerSide = (targetWeight - barWeight) / 2
 
   if (weightPerSide < 0) {
-    return { perSide: [], totalWeight: barWeight, achievable: false }
+    return { perSide: [], totalWeight: barWeight, achievable: false, suggestedWeight: barWeight }
   }
 
   if (weightPerSide === 0) {
@@ -21,6 +22,7 @@ export function calculatePlates(
 
   // Sort plates from largest to smallest
   const sortedPlates = [...availablePlates].sort((a, b) => b - a)
+  const smallestPlate = sortedPlates[sortedPlates.length - 1]
 
   const perSide: number[] = []
   let remaining = weightPerSide
@@ -35,6 +37,13 @@ export function calculatePlates(
   const achievable = remaining === 0
   const actualPerSide = perSide.reduce((sum, p) => sum + p, 0)
   const totalWeight = barWeight + actualPerSide * 2
+
+  if (!achievable) {
+    // Find closest achievable weight above target by adding smallest plate
+    const suggestedPerSide = [...perSide, smallestPlate]
+    const suggestedWeight = barWeight + suggestedPerSide.reduce((sum, p) => sum + p, 0) * 2
+    return { perSide, totalWeight, achievable, suggestedWeight }
+  }
 
   return { perSide, totalWeight, achievable }
 }
