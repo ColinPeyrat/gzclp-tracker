@@ -1,4 +1,5 @@
 import { calculatePlates, formatPlates } from '../../lib/plates'
+import { PlateChips } from './PlateChips'
 import type { WeightUnit } from '../../lib/types'
 
 interface PlateDisplayProps {
@@ -8,20 +9,6 @@ interface PlateDisplayProps {
   unit: WeightUnit
   isDumbbell?: boolean
   onWeightChange?: (newWeight: number) => void
-}
-
-const plateColors: Record<number, string> = {
-  // lbs plates
-  45: 'bg-blue-600',
-  35: 'bg-yellow-500',
-  25: 'bg-green-600',
-  10: 'bg-zinc-100 text-zinc-900',
-  5: 'bg-red-600',
-  2.5: 'bg-zinc-400 text-zinc-900',
-  // kg plates
-  20: 'bg-blue-600',
-  15: 'bg-yellow-500',
-  1.25: 'bg-zinc-400 text-zinc-900',
 }
 
 export function PlateDisplay({ targetWeight, barWeight, plateInventory, unit, isDumbbell, onWeightChange }: PlateDisplayProps) {
@@ -39,17 +26,8 @@ export function PlateDisplay({ targetWeight, barWeight, plateInventory, unit, is
           Closest: {result.suggestedWeight} {unit}
         </div>
         {suggestedResult.perSide.length > 0 && (
-          <div className="mb-2 flex items-center justify-center gap-1">
-            {suggestedResult.perSide.map((plate, i) => (
-              <div
-                key={i}
-                className={`flex h-8 min-w-8 items-center justify-center rounded px-2 text-sm font-medium ${
-                  plateColors[plate] ?? 'bg-zinc-600'
-                }`}
-              >
-                {plate}
-              </div>
-            ))}
+          <div className="mb-2 flex justify-center">
+            <PlateChips plates={suggestedResult.perSide} />
           </div>
         )}
         {onWeightChange && (
@@ -78,17 +56,8 @@ export function PlateDisplay({ targetWeight, barWeight, plateInventory, unit, is
   return (
     <div className="rounded-lg bg-zinc-800 p-3">
       <div className="mb-2 text-center text-xs text-zinc-500">{sideLabel}</div>
-      <div className="flex items-center justify-center gap-1">
-        {result.perSide.map((plate, i) => (
-          <div
-            key={i}
-            className={`flex h-8 min-w-8 items-center justify-center rounded px-2 text-sm font-medium ${
-              plateColors[plate] ?? 'bg-zinc-600'
-            }`}
-          >
-            {plate}
-          </div>
-        ))}
+      <div className="flex justify-center">
+        <PlateChips plates={result.perSide} />
       </div>
       <div className="mt-2 text-center text-xs text-zinc-500">
         {formatPlates(result.perSide)}

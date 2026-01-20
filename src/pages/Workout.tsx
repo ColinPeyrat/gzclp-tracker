@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Check, Dumbbell } from 'lucide-react'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useWorkoutSession } from '../hooks/useWorkoutSession'
@@ -8,6 +8,7 @@ import { useRestTimer } from '../hooks/useRestTimer'
 import { useBeforeUnload } from '../hooks/useBeforeUnload'
 import { ExerciseCard } from '../components/workout/ExerciseCard'
 import { RestTimer } from '../components/workout/RestTimer'
+import { WarmupModal } from '../components/workout/WarmupModal'
 import { Modal } from '../components/ui/Modal'
 import { db } from '../lib/db'
 import {
@@ -19,7 +20,7 @@ import { LIFTS, WORKOUTS } from '../lib/types'
 import { getIncrement } from '../lib/units'
 import { getSmallestPlate } from '../lib/plates'
 import { vibrate } from '../lib/haptics'
-import { getCustomExercise } from '../lib/exercises'
+import { getCustomExercise, getExerciseName } from '../lib/exercises'
 
 export function Workout() {
   const navigate = useNavigate()
@@ -27,6 +28,7 @@ export function Workout() {
   const { settings, loaded: settingsLoaded, load: loadSettings } = useSettingsStore()
   const { session, startWorkout, completeSet, failRemainingCurrentExerciseSets, updateCurrentExerciseWeight, nextExercise, prevExercise, finishWorkout } = useWorkoutSession()
   const [showFailModal, setShowFailModal] = useState(false)
+  const [showWarmupModal, setShowWarmupModal] = useState(true)
   const restTimer = useRestTimer()
 
   // Block navigation if workout has started
@@ -201,15 +203,26 @@ export function Workout() {
             </div>
           </div>
 
-          {allExercisesComplete && (
-            <button
-              onClick={handleFinishWorkout}
-              className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 font-medium hover:bg-green-500"
-            >
-              <Check className="h-4 w-4" />
-              Finish
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {session.currentExercise.tier === 'T1' && (
+              <button
+                onClick={() => setShowWarmupModal(true)}
+                className="p-2 text-zinc-400 hover:text-white"
+                title="View warmup sets"
+              >
+                <Dumbbell className="h-5 w-5" />
+              </button>
+            )}
+            {allExercisesComplete && (
+              <button
+                onClick={handleFinishWorkout}
+                className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 font-medium hover:bg-green-500"
+              >
+                <Check className="h-4 w-4" />
+                Finish
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -317,6 +330,17 @@ export function Workout() {
             </button>
           </div>
         </Modal>
+      )}
+
+      {showWarmupModal && session.currentExercise.tier === 'T1' && session.currentExerciseIndex === 0 && (
+        <WarmupModal
+          exerciseName={getExerciseName(session.currentExercise.liftId, session.currentExercise.tier, settings.customExercises)}
+          workWeight={session.currentExercise.weightLbs}
+          barWeight={settings.barWeightLbs}
+          plateInventory={settings.plateInventory}
+          unit={settings.weightUnit}
+          onComplete={() => setShowWarmupModal(false)}
+        />
       )}
     </div>
   )
