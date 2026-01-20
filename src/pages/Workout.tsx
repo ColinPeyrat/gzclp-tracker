@@ -28,8 +28,23 @@ export function Workout() {
   const { settings, loaded: settingsLoaded, load: loadSettings } = useSettingsStore()
   const { session, startWorkout, completeSet, failRemainingCurrentExerciseSets, updateCurrentExerciseWeight, nextExercise, prevExercise, finishWorkout } = useWorkoutSession()
   const [showFailModal, setShowFailModal] = useState(false)
-  const [showWarmupModal, setShowWarmupModal] = useState(true)
+  const [showWarmupModal, setShowWarmupModal] = useState(false)
+  const [warmupChecked, setWarmupChecked] = useState(false)
   const restTimer = useRestTimer()
+
+  // Auto-show warmup modal for T1 only (unless it uses T3 progression)
+  useEffect(() => {
+    if (session && !warmupChecked && session.currentExerciseIndex === 0) {
+      const t1Exercise = session.workout.exercises.find((e) => e.tier === 'T1')
+      if (t1Exercise && session.currentExercise.tier === 'T1') {
+        const t1Custom = getCustomExercise(t1Exercise.liftId, settings.customExercises)
+        const usesT3Progression = t1Custom?.forceT3Progression
+        // Show warmup modal by default only if T1 doesn't use T3 progression
+        setShowWarmupModal(!usesT3Progression)
+      }
+      setWarmupChecked(true)
+    }
+  }, [session, warmupChecked, settings.customExercises])
 
   // Block navigation if workout has started
   const hasStarted = session?.workout.exercises.some((ex) =>
@@ -204,15 +219,13 @@ export function Workout() {
           </div>
 
           <div className="flex items-center gap-2">
-            {session.currentExercise.tier === 'T1' && (
-              <button
-                onClick={() => setShowWarmupModal(true)}
-                className="p-2 text-zinc-400 hover:text-white"
-                title="View warmup sets"
-              >
-                <Dumbbell className="h-5 w-5" />
-              </button>
-            )}
+            <button
+              onClick={() => setShowWarmupModal(true)}
+              className="p-2 text-zinc-400 hover:text-white"
+              title="View warmup sets"
+            >
+              <Dumbbell className="h-5 w-5" />
+            </button>
             {allExercisesComplete && (
               <button
                 onClick={handleFinishWorkout}
@@ -332,7 +345,7 @@ export function Workout() {
         </Modal>
       )}
 
-      {showWarmupModal && session.currentExercise.tier === 'T1' && session.currentExerciseIndex === 0 && (
+      {showWarmupModal && (
         <WarmupModal
           exerciseName={getExerciseName(session.currentExercise.liftId, session.currentExercise.tier, settings.customExercises)}
           workWeight={session.currentExercise.weightLbs}
