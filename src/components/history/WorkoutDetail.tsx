@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, X, TrendingUp, TrendingDown } from 'lucide-react'
+import { ArrowLeft, Check, X, Minus, TrendingUp, TrendingDown } from 'lucide-react'
 import type { Workout, WeightUnit, Tier, ExerciseLog, LiftName, CustomExercise } from '../../lib/types'
 import { LIFTS } from '../../lib/types'
 import { getTotalReps, getTargetTotalReps, didHitRepTarget, getStageConfig } from '../../lib/progression'
@@ -150,26 +150,32 @@ export function WorkoutDetail({ workout, unit, plateInventory, customExercises, 
             <div className="space-y-1">
               {exercise.sets.map((set, j) => {
                 const isFailed = set.completed && set.reps === 0
+                const isPartial = set.completed && set.reps !== undefined && set.reps > 0 && set.reps < exercise.targetReps
+                const isSuccess = set.completed && set.reps !== undefined && set.reps >= exercise.targetReps
                 return (
                   <div
                     key={j}
                     className={`flex items-center justify-between rounded px-3 py-2 text-sm ${
                       isFailed
                         ? 'bg-red-900/20'
-                        : set.completed
-                          ? 'bg-zinc-700'
-                          : 'bg-zinc-900'
+                        : isPartial
+                          ? 'bg-amber-900/20'
+                          : set.completed
+                            ? 'bg-zinc-700'
+                            : 'bg-zinc-900'
                     }`}
                   >
                     <span className="text-zinc-400">Set {set.setNumber}</span>
                     <div className="flex items-center gap-2">
-                      <span className={isFailed ? 'text-red-400' : ''}>
+                      <span className={isFailed ? 'text-red-400' : isPartial ? 'text-amber-400' : ''}>
                         {isFailed ? 'Failed' : set.reps}
                         {set.isAmrap && !isFailed && ' (AMRAP)'}
                       </span>
                       {isFailed ? (
                         <X className="h-4 w-4 text-red-400" />
-                      ) : set.completed ? (
+                      ) : isPartial ? (
+                        <Minus className="h-4 w-4 text-amber-400" />
+                      ) : isSuccess ? (
                         <Check className="h-4 w-4 text-green-400" />
                       ) : (
                         <X className="h-4 w-4 text-red-400" />
