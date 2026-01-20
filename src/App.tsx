@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom'
 import { Home } from './pages/Home'
 import { Setup } from './pages/Setup'
@@ -7,6 +8,11 @@ import { Settings } from './pages/Settings'
 import { OfflineBanner } from './components/ui/OfflineBanner'
 
 function Layout() {
+  useEffect(() => {
+    // Request persistent storage to prevent browser from evicting IndexedDB data
+    navigator.storage?.persist?.()
+  }, [])
+
   return (
     <>
       <OfflineBanner />
