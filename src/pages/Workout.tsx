@@ -228,6 +228,7 @@ export function Workout() {
       {restTimer.isRunning && (
         <RestTimer
           seconds={restTimer.seconds}
+          totalSeconds={restTimer.totalSeconds}
           isRunning={restTimer.isRunning}
           onAddTime={restTimer.addTime}
           onSkip={restTimer.skip}

@@ -101,6 +101,19 @@ export function useWorkoutSession(): UseWorkoutSessionReturn {
     }
   }, [workout, currentExerciseIndex])
 
+  // Helper to update current exercise immutably
+  const updateCurrentExercise = useCallback(
+    (updater: (exercise: ExerciseLog) => ExerciseLog) => {
+      setWorkout((prev) => {
+        if (!prev) return null
+        const exercises = [...prev.exercises]
+        exercises[currentExerciseIndex] = updater(exercises[currentExerciseIndex])
+        return { ...prev, exercises }
+      })
+    },
+    [currentExerciseIndex]
+  )
+
   const startWorkout = useCallback((programState: ProgramState) => {
     const exercises = createExerciseLogs(programState)
     setWorkout({
@@ -113,57 +126,45 @@ export function useWorkoutSession(): UseWorkoutSessionReturn {
     setCurrentExerciseIndex(0)
   }, [])
 
-  const completeSet = useCallback((setIndex: number, reps: number) => {
-    setWorkout((prev) => {
-      if (!prev) return null
-      const exercises = [...prev.exercises]
-      const exercise = { ...exercises[currentExerciseIndex] }
-      const sets = [...exercise.sets]
-      sets[setIndex] = { ...sets[setIndex], reps, completed: true }
-      exercise.sets = sets
-      exercises[currentExerciseIndex] = exercise
-      return { ...prev, exercises }
-    })
-  }, [currentExerciseIndex])
+  const completeSet = useCallback(
+    (setIndex: number, reps: number) => {
+      updateCurrentExercise((exercise) => ({
+        ...exercise,
+        sets: exercise.sets.map((set, i) =>
+          i === setIndex ? { ...set, reps, completed: true } : set
+        ),
+      }))
+    },
+    [updateCurrentExercise]
+  )
 
-  const failSet = useCallback((setIndex: number) => {
-    setWorkout((prev) => {
-      if (!prev) return null
-      const exercises = [...prev.exercises]
-      const exercise = { ...exercises[currentExerciseIndex] }
-      const sets = [...exercise.sets]
-      sets[setIndex] = { ...sets[setIndex], reps: 0, completed: true }
-      exercise.sets = sets
-      exercises[currentExerciseIndex] = exercise
-      return { ...prev, exercises }
-    })
-  }, [currentExerciseIndex])
+  const failSet = useCallback(
+    (setIndex: number) => {
+      updateCurrentExercise((exercise) => ({
+        ...exercise,
+        sets: exercise.sets.map((set, i) =>
+          i === setIndex ? { ...set, reps: 0, completed: true } : set
+        ),
+      }))
+    },
+    [updateCurrentExercise]
+  )
 
   const failRemainingCurrentExerciseSets = useCallback(() => {
-    setWorkout((prev) => {
-      if (!prev) return null
-      const exercises = [...prev.exercises]
-      const exercise = { ...exercises[currentExerciseIndex] }
-      const sets = exercise.sets.map((set) =>
+    updateCurrentExercise((exercise) => ({
+      ...exercise,
+      sets: exercise.sets.map((set) =>
         set.completed ? set : { ...set, reps: 0, completed: true }
-      )
-      exercise.sets = sets
-      exercises[currentExerciseIndex] = exercise
-      return { ...prev, exercises }
-    })
-  }, [currentExerciseIndex])
+      ),
+    }))
+  }, [updateCurrentExercise])
 
-  const updateCurrentExerciseWeight = useCallback((newWeight: number) => {
-    setWorkout((prev) => {
-      if (!prev) return null
-      const exercises = [...prev.exercises]
-      exercises[currentExerciseIndex] = {
-        ...exercises[currentExerciseIndex],
-        weightLbs: newWeight,
-      }
-      return { ...prev, exercises }
-    })
-  }, [currentExerciseIndex])
+  const updateCurrentExerciseWeight = useCallback(
+    (newWeight: number) => {
+      updateCurrentExercise((exercise) => ({ ...exercise, weightLbs: newWeight }))
+    },
+    [updateCurrentExercise]
+  )
 
   const nextExercise = useCallback(() => {
     setCurrentExerciseIndex((prev) =>

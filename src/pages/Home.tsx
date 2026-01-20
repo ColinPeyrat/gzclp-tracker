@@ -3,10 +3,38 @@ import { Link } from 'react-router-dom'
 import { Dumbbell, Play, Bug, Settings } from 'lucide-react'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
-import { WORKOUTS, LIFTS, T3_EXERCISES, WORKOUT_ORDER, type WorkoutType } from '../lib/types'
+import { WORKOUTS, LIFTS, T3_EXERCISES, WORKOUT_ORDER, type WorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit } from '../lib/types'
 import { getStageConfig, estimate5RM, applyT1Reset } from '../lib/progression'
 import { Modal } from '../components/ui/Modal'
 import { BottomNav } from '../components/ui/BottomNav'
+
+interface Pending5RMInfo {
+  liftId: LiftName
+  liftState: LiftState
+  liftName: string
+  bestSetReps: number
+  bestSetWeight: number
+  estimated5RM: number
+}
+
+function getPending5RMInfo(state: ProgramState | null, unit: WeightUnit): Pending5RMInfo | null {
+  if (!state) return null
+  const liftId = WORKOUTS[state.nextWorkoutType].t1
+  const liftState = state.t1[liftId]
+  if (!liftState.pending5RMTest) return null
+
+  const bestSetWeight = liftState.bestSetWeight ?? liftState.weightLbs
+  const bestSetReps = liftState.bestSetReps ?? 0
+
+  return {
+    liftId,
+    liftState,
+    liftName: LIFTS[liftId].name,
+    bestSetReps,
+    bestSetWeight,
+    estimated5RM: estimate5RM(bestSetWeight, bestSetReps, unit),
+  }
+}
 
 export function Home() {
   const { state, loaded: programLoaded, load: loadProgram, save: saveProgram } = useProgramStore()
@@ -19,23 +47,7 @@ export function Home() {
     if (!settingsLoaded) loadSettings()
   }, [programLoaded, settingsLoaded, loadProgram, loadSettings])
 
-  // Check if the T1 lift for the NEXT workout has a pending 5RM test
-  const nextWorkoutT1 = state ? WORKOUTS[state.nextWorkoutType].t1 : null
-  const nextT1State = state && nextWorkoutT1 ? state.t1[nextWorkoutT1] : null
-  const currentPending = nextT1State?.pending5RMTest
-    ? {
-        liftId: nextWorkoutT1!,
-        liftState: nextT1State,
-        liftName: LIFTS[nextWorkoutT1!].name,
-        bestSetReps: nextT1State.bestSetReps ?? 0,
-        bestSetWeight: nextT1State.bestSetWeight ?? nextT1State.weightLbs,
-        estimated5RM: estimate5RM(
-          nextT1State.bestSetWeight ?? nextT1State.weightLbs,
-          nextT1State.bestSetReps ?? 0,
-          settings.weightUnit
-        ),
-      }
-    : null
+  const currentPending = getPending5RMInfo(state, settings.weightUnit)
 
   const handleApply5RM = async (new5RM: number) => {
     if (!state || !currentPending) return

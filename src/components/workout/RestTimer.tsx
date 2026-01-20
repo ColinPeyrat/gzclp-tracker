@@ -3,15 +3,16 @@ import { formatTime } from '../../hooks/useRestTimer'
 
 interface RestTimerProps {
   seconds: number
+  totalSeconds: number
   isRunning: boolean
   onAddTime: (seconds: number) => void
   onSkip: () => void
 }
 
-export function RestTimer({ seconds, isRunning, onAddTime, onSkip }: RestTimerProps) {
+export function RestTimer({ seconds, totalSeconds, isRunning, onAddTime, onSkip }: RestTimerProps) {
   if (!isRunning && seconds === 0) return null
 
-  const progress = isRunning ? (seconds / 180) * 100 : 0 // Assume max 3 min for visual
+  const progress = isRunning ? (seconds / totalSeconds) * 100 : 0
 
   return (
     <div className="fixed left-0 right-0 border-t border-zinc-700 bg-zinc-900 p-4 bottom-(--nav-height)">

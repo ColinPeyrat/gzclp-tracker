@@ -3,6 +3,7 @@ import { playTimerEnd } from '../lib/audio'
 
 interface UseRestTimerReturn {
   seconds: number
+  totalSeconds: number
   isRunning: boolean
   start: (duration: number) => void
   stop: () => void
@@ -12,6 +13,7 @@ interface UseRestTimerReturn {
 
 export function useRestTimer(onComplete?: () => void): UseRestTimerReturn {
   const [seconds, setSeconds] = useState(0)
+  const [totalSeconds, setTotalSeconds] = useState(0)
   const [isRunning, setIsRunning] = useState(false)
   const onCompleteRef = useRef(onComplete)
 
@@ -42,6 +44,7 @@ export function useRestTimer(onComplete?: () => void): UseRestTimerReturn {
 
   const start = useCallback((duration: number) => {
     setSeconds(duration)
+    setTotalSeconds(duration)
     setIsRunning(true)
   }, [])
 
@@ -58,7 +61,7 @@ export function useRestTimer(onComplete?: () => void): UseRestTimerReturn {
     setIsRunning(false)
   }, [])
 
-  return { seconds, isRunning, start, stop, addTime, skip }
+  return { seconds, totalSeconds, isRunning, start, stop, addTime, skip }
 }
 
 export function formatTime(seconds: number): string {
