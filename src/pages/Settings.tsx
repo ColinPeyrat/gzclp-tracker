@@ -19,13 +19,14 @@ const REPLACEABLE_EXERCISES = [
 
 export function Settings() {
   const { settings, loaded, load, update } = useSettingsStore()
-  const { state: programState, load: loadProgram } = useProgramStore()
+  const { state: programState, load: loadProgram, save: saveProgram } = useProgramStore()
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [showAddExerciseModal, setShowAddExerciseModal] = useState(false)
   const [newExerciseName, setNewExerciseName] = useState('')
   const [newExerciseReplaces, setNewExerciseReplaces] = useState('')
   const [newExerciseForceT3, setNewExerciseForceT3] = useState(false)
   const [newExerciseIsDumbbell, setNewExerciseIsDumbbell] = useState(false)
+  const [newExerciseStartingWeight, setNewExerciseStartingWeight] = useState('')
 
   useEffect(() => {
     if (!loaded) load()
@@ -104,26 +105,60 @@ export function Settings() {
     window.location.href = '/setup'
   }
 
-  const handleAddCustomExercise = () => {
+  const handleAddCustomExercise = async () => {
     if (!newExerciseName.trim() || !newExerciseReplaces) return
 
     const id = newExerciseName.toLowerCase().replace(/\s+/g, '-')
+    const startingWeight = newExerciseStartingWeight ? parseFloat(newExerciseStartingWeight) : undefined
     const newExercise: CustomExercise = {
       id,
       name: newExerciseName.trim(),
       replacesId: newExerciseReplaces,
       forceT3Progression: newExerciseForceT3 || undefined,
       isDumbbell: newExerciseIsDumbbell || undefined,
+      startingWeight: startingWeight && startingWeight > 0 ? startingWeight : undefined,
     }
 
     const existing = settings.customExercises ?? []
     const filtered = existing.filter((e) => e.replacesId !== newExerciseReplaces)
     update({ customExercises: [...filtered, newExercise] })
 
+    // Update program state with starting weight if provided
+    if (startingWeight && startingWeight > 0 && programState) {
+      const replacesId = newExerciseReplaces
+      const isMainLift = replacesId in LIFTS
+
+      if (isMainLift) {
+        // T1/T2 lift - update both t1 and t2 states
+        const liftId = replacesId as keyof typeof LIFTS
+        await saveProgram({
+          ...programState,
+          t1: {
+            ...programState.t1,
+            [liftId]: { ...programState.t1[liftId], weightLbs: startingWeight },
+          },
+          t2: {
+            ...programState.t2,
+            [liftId]: { ...programState.t2[liftId], weightLbs: Math.round(startingWeight * 0.6) },
+          },
+        })
+      } else {
+        // T3 exercise - update t3 state
+        await saveProgram({
+          ...programState,
+          t3: {
+            ...programState.t3,
+            [replacesId]: { weightLbs: startingWeight },
+          },
+        })
+      }
+    }
+
     setNewExerciseName('')
     setNewExerciseReplaces('')
     setNewExerciseForceT3(false)
     setNewExerciseIsDumbbell(false)
+    setNewExerciseStartingWeight('')
     setShowAddExerciseModal(false)
   }
 
@@ -438,6 +473,24 @@ export function Settings() {
                   )
                 })}
               </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm text-zinc-400">
+                Starting Weight <span className="text-zinc-500">(optional)</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={newExerciseStartingWeight}
+                  onChange={(e) => setNewExerciseStartingWeight(e.target.value)}
+                  placeholder="Leave empty to use current"
+                  className="flex-1 rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 focus:border-blue-500 focus:outline-none"
+                  step={unit === 'kg' ? 2.5 : 5}
+                  min={0}
+                />
+                <span className="text-zinc-400">{unit}</span>
+              </div>
             </div>
 
             <div className="flex items-start gap-3">

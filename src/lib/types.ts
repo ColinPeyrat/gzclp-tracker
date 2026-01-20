@@ -56,6 +56,7 @@ export interface CustomExercise {
   replacesId: string              // 'lat-pulldown', 'ohp', etc.
   forceT3Progression?: boolean    // Skip stages, use 3×15+ AMRAP progression
   isDumbbell?: boolean            // Uses dumbbell plates (shows single dumbbell weight)
+  startingWeight?: number         // Optional starting weight in user's unit
 }
 
 export interface UserSettings {
