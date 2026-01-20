@@ -8,6 +8,7 @@ import { useRestTimer } from '../hooks/useRestTimer'
 import { useBeforeUnload } from '../hooks/useBeforeUnload'
 import { ExerciseCard } from '../components/workout/ExerciseCard'
 import { RestTimer } from '../components/workout/RestTimer'
+import { Modal } from '../components/ui/Modal'
 import { db } from '../lib/db'
 import {
   calculateT1Progression,
@@ -234,53 +235,49 @@ export function Workout() {
       )}
 
       {blocker.state === 'blocked' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-zinc-800 p-6">
-            <h2 className="mb-2 text-lg font-bold">Leave Workout?</h2>
-            <p className="mb-6 text-sm text-zinc-400">
-              Your progress will be lost. Are you sure you want to leave?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => blocker.proceed?.()}
-                className="flex-1 rounded-lg bg-red-600 py-2 font-medium hover:bg-red-500"
-              >
-                Leave
-              </button>
-              <button
-                onClick={() => blocker.reset?.()}
-                className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
-              >
-                Stay
-              </button>
-            </div>
+        <Modal>
+          <h2 className="mb-2 text-lg font-bold">Leave Workout?</h2>
+          <p className="mb-6 text-sm text-zinc-400">
+            Your progress will be lost. Are you sure you want to leave?
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => blocker.proceed?.()}
+              className="flex-1 rounded-lg bg-red-600 py-2 font-medium hover:bg-red-500"
+            >
+              Leave
+            </button>
+            <button
+              onClick={() => blocker.reset?.()}
+              className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
+            >
+              Stay
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {showFailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-zinc-800 p-6">
-            <h2 className="mb-2 text-lg font-bold">Incomplete Sets</h2>
-            <p className="mb-6 text-sm text-zinc-400">
-              You have {session.currentExercise.sets.filter((s) => !s.completed).length} incomplete sets. Mark them as failed and move on?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={handleConfirmFail}
-                className="flex-1 rounded-lg bg-red-600 py-2 font-medium hover:bg-red-500"
-              >
-                Mark Failed
-              </button>
-              <button
-                onClick={() => setShowFailModal(false)}
-                className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
-              >
-                Go Back
-              </button>
-            </div>
+        <Modal onClose={() => setShowFailModal(false)}>
+          <h2 className="mb-2 text-lg font-bold">Incomplete Sets</h2>
+          <p className="mb-6 text-sm text-zinc-400">
+            You have {session.currentExercise.sets.filter((s) => !s.completed).length} incomplete sets. Mark them as failed and move on?
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={handleConfirmFail}
+              className="flex-1 rounded-lg bg-red-600 py-2 font-medium hover:bg-red-500"
+            >
+              Mark Failed
+            </button>
+            <button
+              onClick={() => setShowFailModal(false)}
+              className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
+            >
+              Go Back
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   )

@@ -1,26 +1,14 @@
 import { ArrowLeft, Check, X, TrendingUp, TrendingDown } from 'lucide-react'
 import type { Workout, WeightUnit, Tier, ExerciseLog, LiftName } from '../../lib/types'
-import { LIFTS, T3_EXERCISES } from '../../lib/types'
+import { LIFTS } from '../../lib/types'
 import { getTotalReps, getTargetTotalReps, didHitRepTarget, getStageConfig } from '../../lib/progression'
 import { getIncrement, UNIT_CONFIG } from '../../lib/units'
+import { getExerciseName, TIER_COLORS, getStageFromConfig } from '../../lib/exercises'
 
 interface WorkoutDetailProps {
   workout: Workout
   unit: WeightUnit
   onBack: () => void
-}
-
-const tierColors: Record<Tier, string> = {
-  T1: 'text-blue-400',
-  T2: 'text-green-400',
-  T3: 'text-yellow-400',
-}
-
-function getExerciseName(liftId: string, tier: Tier): string {
-  if (tier === 'T3') {
-    return T3_EXERCISES[liftId]?.name ?? liftId
-  }
-  return LIFTS[liftId as keyof typeof LIFTS]?.name ?? liftId
 }
 
 function getNextStageLabel(tier: Tier, currentStage: 1 | 2 | 3): string | null {
@@ -31,25 +19,6 @@ function getNextStageLabel(tier: Tier, currentStage: 1 | 2 | 3): string | null {
   const nextStage = (currentStage + 1) as 1 | 2 | 3
   const config = getStageConfig(tier, nextStage)
   return `${config.sets}×${config.reps}`
-}
-
-function getCurrentStageFromExercise(exercise: ExerciseLog): 1 | 2 | 3 {
-  // Infer current stage from sets/reps
-  const { targetSets, targetReps } = exercise
-
-  if (exercise.tier === 'T1') {
-    if (targetSets === 5 && targetReps === 3) return 1
-    if (targetSets === 6 && targetReps === 2) return 2
-    if (targetSets === 10 && targetReps === 1) return 3
-  }
-
-  if (exercise.tier === 'T2') {
-    if (targetReps === 10) return 1
-    if (targetReps === 8) return 2
-    if (targetReps === 6) return 3
-  }
-
-  return 1
 }
 
 interface ExerciseResultProps {
@@ -87,7 +56,7 @@ function ExerciseResult({ exercise, tier, unit }: ExerciseResultProps) {
     )
   }
 
-  const currentStage = getCurrentStageFromExercise(exercise)
+  const currentStage = getStageFromConfig(exercise)
   const nextStageLabel = getNextStageLabel(tier, currentStage)
 
   // Calculate new weight for success case
@@ -151,7 +120,7 @@ export function WorkoutDetail({ workout, unit, onBack }: WorkoutDetailProps) {
           <div key={i} className="rounded-lg bg-zinc-800 p-4">
             <div className="mb-1 flex items-center justify-between">
               <div>
-                <span className={`text-xs font-medium ${tierColors[exercise.tier]}`}>
+                <span className={`text-xs font-medium ${TIER_COLORS[exercise.tier]}`}>
                   {exercise.tier}
                 </span>
                 <h3 className="font-medium">

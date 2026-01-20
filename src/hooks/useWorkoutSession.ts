@@ -1,9 +1,10 @@
 import { useState, useCallback, useMemo } from 'react'
 import { nanoid } from 'nanoid'
-import type { Workout, ExerciseLog, Tier } from '../lib/types'
-import { WORKOUTS, LIFTS, T3_EXERCISES } from '../lib/types'
+import type { Workout, ExerciseLog } from '../lib/types'
+import { WORKOUTS } from '../lib/types'
 import { getStageConfig } from '../lib/progression'
 import type { ProgramState } from '../lib/types'
+export { getExerciseName } from '../lib/exercises'
 
 interface WorkoutSession {
   workout: Workout
@@ -193,11 +194,4 @@ export function useWorkoutSession(): UseWorkoutSessionReturn {
     prevExercise,
     finishWorkout,
   }
-}
-
-export function getExerciseName(liftId: string, tier: Tier): string {
-  if (tier === 'T3') {
-    return T3_EXERCISES[liftId]?.name ?? liftId
-  }
-  return LIFTS[liftId as keyof typeof LIFTS]?.name ?? liftId
 }

@@ -1,7 +1,7 @@
-import type { ExerciseLog, Tier, WeightUnit } from '../../lib/types'
+import type { ExerciseLog, WeightUnit } from '../../lib/types'
 import { SetLogger } from './SetLogger'
 import { PlateDisplay } from '../plates/PlateDisplay'
-import { getExerciseName } from '../../hooks/useWorkoutSession'
+import { getExerciseName, TIER_COLORS } from '../../lib/exercises'
 
 interface ExerciseCardProps {
   exercise: ExerciseLog
@@ -10,12 +10,6 @@ interface ExerciseCardProps {
   unit: WeightUnit
   onCompleteSet: (setIndex: number, reps: number) => void
   onWeightChange?: (newWeight: number) => void
-}
-
-const tierColors: Record<Tier, string> = {
-  T1: 'text-blue-400',
-  T2: 'text-green-400',
-  T3: 'text-yellow-400',
 }
 
 export function ExerciseCard({
@@ -33,7 +27,7 @@ export function ExerciseCard({
   return (
     <div className="space-y-4">
       <div className="text-center">
-        <span className={`text-sm font-medium ${tierColors[exercise.tier]}`}>
+        <span className={`text-sm font-medium ${TIER_COLORS[exercise.tier]}`}>
           {exercise.tier}
         </span>
         <h2 className="text-2xl font-bold">{exerciseName}</h2>

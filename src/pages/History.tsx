@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { Dumbbell, History as HistoryIcon, Settings, Calendar } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 import { useWorkoutHistory } from '../hooks/useWorkoutHistory'
 import { useSettingsStore } from '../stores/settingsStore'
 import { WorkoutCard } from '../components/history/WorkoutCard'
 import { WorkoutDetail } from '../components/history/WorkoutDetail'
+import { BottomNav } from '../components/ui/BottomNav'
 import type { Workout } from '../lib/types'
 
 export function History() {
@@ -59,28 +59,7 @@ export function History() {
         )}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-zinc-900 px-4 h-(--nav-height) flex items-center">
-        <div className="flex w-full justify-around">
-          <Link
-            to="/"
-            className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white"
-          >
-            <Dumbbell className="h-6 w-6" />
-            <span className="text-xs">Home</span>
-          </Link>
-          <Link to="/history" className="flex flex-col items-center gap-1 text-blue-400">
-            <HistoryIcon className="h-6 w-6" />
-            <span className="text-xs">History</span>
-          </Link>
-          <Link
-            to="/settings"
-            className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white"
-          >
-            <Settings className="h-6 w-6" />
-            <span className="text-xs">Settings</span>
-          </Link>
-        </div>
-      </nav>
+      <BottomNav active="history" />
     </div>
   )
 }

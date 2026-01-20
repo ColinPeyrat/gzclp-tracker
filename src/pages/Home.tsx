@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Dumbbell, History, Settings, Play, Bug } from 'lucide-react'
+import { Dumbbell, Play, Bug, Settings } from 'lucide-react'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { WORKOUTS, LIFTS, T3_EXERCISES, WORKOUT_ORDER, type WorkoutType } from '../lib/types'
 import { getStageConfig, estimate5RM, applyT1Reset } from '../lib/progression'
+import { Modal } from '../components/ui/Modal'
+import { BottomNav } from '../components/ui/BottomNav'
 
 export function Home() {
   const { state, loaded: programLoaded, load: loadProgram, save: saveProgram } = useProgramStore()
@@ -156,120 +158,95 @@ export function Home() {
       </main>
 
       {currentPending && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-zinc-800 p-6">
-            <h2 className="mb-2 text-lg font-bold">Reset {currentPending.liftName}</h2>
-            <p className="mb-4 text-sm text-zinc-400">
-              {currentPending.bestSetReps > 0
-                ? `Enter your new 5RM or use the estimate based on your best set (${currentPending.bestSetReps} reps @ ${currentPending.bestSetWeight} ${settings.weightUnit}).`
-                : 'Enter your tested 5RM to start a new cycle.'}
-            </p>
+        <Modal>
+          <h2 className="mb-2 text-lg font-bold">Reset {currentPending.liftName}</h2>
+          <p className="mb-4 text-sm text-zinc-400">
+            {currentPending.bestSetReps > 0
+              ? `Enter your new 5RM or use the estimate based on your best set (${currentPending.bestSetReps} reps @ ${currentPending.bestSetWeight} ${settings.weightUnit}).`
+              : 'Enter your tested 5RM to start a new cycle.'}
+          </p>
 
-            <div className="mb-4 space-y-3">
-              {currentPending.bestSetReps > 0 && (
-                <>
-                  <button
-                    onClick={() => handleApply5RM(currentPending.estimated5RM)}
-                    className="w-full rounded-lg bg-blue-600 py-3 font-medium hover:bg-blue-500"
-                  >
-                    Use Estimate: {currentPending.estimated5RM} {settings.weightUnit}
-                  </button>
-
-                  <div className="flex items-center gap-2 text-sm text-zinc-400">
-                    <div className="h-px flex-1 bg-zinc-700" />
-                    <span>or enter manually</span>
-                    <div className="h-px flex-1 bg-zinc-700" />
-                  </div>
-                </>
-              )}
-
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  value={manual5RM}
-                  onChange={(e) => setManual5RM(e.target.value)}
-                  placeholder={`5RM in ${settings.weightUnit}`}
-                  className="flex-1 rounded-lg bg-zinc-700 px-4 py-3 text-white placeholder:text-zinc-500"
-                />
+          <div className="mb-4 space-y-3">
+            {currentPending.bestSetReps > 0 && (
+              <>
                 <button
-                  onClick={() => {
-                    const value = parseFloat(manual5RM)
-                    if (!isNaN(value) && value > 0) {
-                      handleApply5RM(value)
-                    }
-                  }}
-                  disabled={!manual5RM || isNaN(parseFloat(manual5RM))}
-                  className="rounded-lg bg-zinc-600 px-4 py-3 font-medium hover:bg-zinc-500 disabled:opacity-50"
+                  onClick={() => handleApply5RM(currentPending.estimated5RM)}
+                  className="w-full rounded-lg bg-blue-600 py-3 font-medium hover:bg-blue-500"
                 >
-                  Use This
+                  Use Estimate: {currentPending.estimated5RM} {settings.weightUnit}
                 </button>
-              </div>
-            </div>
 
-            <p className="text-xs text-zinc-500">
-              Your new working weight will be 85% of the 5RM you enter.
-            </p>
+                <div className="flex items-center gap-2 text-sm text-zinc-400">
+                  <div className="h-px flex-1 bg-zinc-700" />
+                  <span>or enter manually</span>
+                  <div className="h-px flex-1 bg-zinc-700" />
+                </div>
+              </>
+            )}
+
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={manual5RM}
+                onChange={(e) => setManual5RM(e.target.value)}
+                placeholder={`5RM in ${settings.weightUnit}`}
+                className="flex-1 rounded-lg bg-zinc-700 px-4 py-3 text-white placeholder:text-zinc-500"
+              />
+              <button
+                onClick={() => {
+                  const value = parseFloat(manual5RM)
+                  if (!isNaN(value) && value > 0) {
+                    handleApply5RM(value)
+                  }
+                }}
+                disabled={!manual5RM || isNaN(parseFloat(manual5RM))}
+                className="rounded-lg bg-zinc-600 px-4 py-3 font-medium hover:bg-zinc-500 disabled:opacity-50"
+              >
+                Use This
+              </button>
+            </div>
           </div>
-        </div>
+
+          <p className="text-xs text-zinc-500">
+            Your new working weight will be 85% of the 5RM you enter.
+          </p>
+        </Modal>
       )}
 
       {showDebugModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-sm rounded-lg bg-zinc-800 p-6">
-            <h2 className="mb-4 text-lg font-bold text-yellow-500">Debug: Select Workout</h2>
-            <div className="space-y-2">
-              {WORKOUT_ORDER.map((workoutType) => {
-                const w = WORKOUTS[workoutType]
-                return (
-                  <button
-                    key={workoutType}
-                    onClick={() => handleSetNextWorkout(workoutType)}
-                    className={`w-full rounded-lg p-3 text-left ${
-                      state?.nextWorkoutType === workoutType
-                        ? 'bg-blue-600'
-                        : 'bg-zinc-700 hover:bg-zinc-600'
-                    }`}
-                  >
-                    <span className="font-medium">{workoutType}</span>
-                    <span className="ml-2 text-sm text-zinc-400">
-                      T1: {LIFTS[w.t1].name}, T2: {LIFTS[w.t2].name}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-            <button
-              onClick={() => setShowDebugModal(false)}
-              className="mt-4 w-full rounded-lg bg-zinc-700 py-2 text-sm hover:bg-zinc-600"
-            >
-              Cancel
-            </button>
+        <Modal onClose={() => setShowDebugModal(false)}>
+          <h2 className="mb-4 text-lg font-bold text-yellow-500">Debug: Select Workout</h2>
+          <div className="space-y-2">
+            {WORKOUT_ORDER.map((workoutType) => {
+              const w = WORKOUTS[workoutType]
+              return (
+                <button
+                  key={workoutType}
+                  onClick={() => handleSetNextWorkout(workoutType)}
+                  className={`w-full rounded-lg p-3 text-left ${
+                    state?.nextWorkoutType === workoutType
+                      ? 'bg-blue-600'
+                      : 'bg-zinc-700 hover:bg-zinc-600'
+                  }`}
+                >
+                  <span className="font-medium">{workoutType}</span>
+                  <span className="ml-2 text-sm text-zinc-400">
+                    T1: {LIFTS[w.t1].name}, T2: {LIFTS[w.t2].name}
+                  </span>
+                </button>
+              )
+            })}
           </div>
-        </div>
+          <button
+            onClick={() => setShowDebugModal(false)}
+            className="mt-4 w-full rounded-lg bg-zinc-700 py-2 text-sm hover:bg-zinc-600"
+          >
+            Cancel
+          </button>
+        </Modal>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-zinc-900 px-4 h-(--nav-height) flex items-center">
-        <div className="flex w-full justify-around">
-          <Link to="/" className="flex flex-col items-center gap-1 text-blue-400">
-            <Dumbbell className="h-6 w-6" />
-            <span className="text-xs">Home</span>
-          </Link>
-          <Link
-            to="/history"
-            className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white"
-          >
-            <History className="h-6 w-6" />
-            <span className="text-xs">History</span>
-          </Link>
-          <Link
-            to="/settings"
-            className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white"
-          >
-            <Settings className="h-6 w-6" />
-            <span className="text-xs">Settings</span>
-          </Link>
-        </div>
-      </nav>
+      <BottomNav active="home" />
     </div>
   )
 }
