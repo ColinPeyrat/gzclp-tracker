@@ -1,5 +1,7 @@
-import { ArrowLeft, Check, X, Minus, TrendingUp, TrendingDown } from 'lucide-react'
+import { useState } from 'react'
+import { ArrowLeft, Check, X, Minus, TrendingUp, TrendingDown, BarChart2 } from 'lucide-react'
 import type { Workout, WeightUnit, Tier, ExerciseLog, LiftName, CustomExercise } from '../../lib/types'
+import { WorkoutStatsModal } from './WorkoutStatsModal'
 import { LIFTS } from '../../lib/types'
 import { getTotalReps, getTargetTotalReps, didHitRepTarget, getStageConfig } from '../../lib/progression'
 import { getIncrement, UNIT_CONFIG } from '../../lib/units'
@@ -96,6 +98,8 @@ function ExerciseResult({ exercise, tier, unit, plateInventory, customExercises 
 }
 
 export function WorkoutDetail({ workout, unit, plateInventory, customExercises, onBack }: WorkoutDetailProps) {
+  const [showStats, setShowStats] = useState(false)
+
   const date = new Date(workout.date)
   const formattedDate = date.toLocaleDateString(undefined, {
     weekday: 'long',
@@ -115,14 +119,29 @@ export function WorkoutDetail({ workout, unit, plateInventory, customExercises, 
           <button onClick={onBack} className="p-1 text-zinc-400 hover:text-white">
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div>
+          <div className="flex-1">
             <h1 className="font-bold">{workout.type}</h1>
             <p className="text-xs text-zinc-400">
               {formattedDate} at {formattedTime}
             </p>
           </div>
+          <button
+            onClick={() => setShowStats(true)}
+            className="rounded p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+          >
+            <BarChart2 className="h-5 w-5" />
+          </button>
         </div>
       </header>
+
+      {showStats && (
+        <WorkoutStatsModal
+          workout={workout}
+          unit={unit}
+          customExercises={customExercises}
+          onClose={() => setShowStats(false)}
+        />
+      )}
 
       <main className="flex-1 space-y-4 p-4">
         {workout.exercises.map((exercise, i) => (
