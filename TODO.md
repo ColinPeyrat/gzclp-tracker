@@ -80,7 +80,11 @@
 
 ## Future (v2)
 
+### Data Protection
+- [ ] Auto-backup reminders (prompt to export after every N workouts)
 - [ ] Cloud sync with user accounts
+
+### Features
 - [ ] Progress charts
 - [ ] 1RM tracking
 - [ ] Custom T3 exercises
