@@ -89,3 +89,10 @@ export function formatPlates(plates: number[]): string {
 
   return parts.join(' + ')
 }
+
+export function getSmallestPlate(plateInventory: Record<string, number>): number {
+  const availablePlates = Object.entries(plateInventory)
+    .filter(([_, qty]) => qty > 0)
+    .map(([weight, _]) => parseFloat(weight))
+  return availablePlates.length > 0 ? Math.min(...availablePlates) : 2.5
+}

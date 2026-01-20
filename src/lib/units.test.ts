@@ -15,7 +15,6 @@ describe('UNIT_CONFIG', () => {
     expect(UNIT_CONFIG.kg.incrementT1Lower).toBe(5)
     expect(UNIT_CONFIG.kg.incrementT2Upper).toBe(1.25)
     expect(UNIT_CONFIG.kg.incrementT2Lower).toBe(2.5)
-    expect(UNIT_CONFIG.kg.incrementT3).toBe(2.5)
   })
 
   it('has correct lbs config', () => {
@@ -24,7 +23,6 @@ describe('UNIT_CONFIG', () => {
     expect(UNIT_CONFIG.lbs.incrementT1Lower).toBe(10)
     expect(UNIT_CONFIG.lbs.incrementT2Upper).toBe(2.5)
     expect(UNIT_CONFIG.lbs.incrementT2Lower).toBe(5)
-    expect(UNIT_CONFIG.lbs.incrementT3).toBe(5)
   })
 })
 
@@ -107,12 +105,14 @@ describe('getDefaultSettings', () => {
   it('returns correct kg defaults', () => {
     const settings = getDefaultSettings('kg')
     expect(settings.barWeightLbs).toBe(20)
+    expect(settings.dumbbellHandleWeightLbs).toBe(2.5)
     expect(settings.plateInventory['20']).toBe(2)
   })
 
   it('returns correct lbs defaults', () => {
     const settings = getDefaultSettings('lbs')
     expect(settings.barWeightLbs).toBe(45)
+    expect(settings.dumbbellHandleWeightLbs).toBe(5)
     expect(settings.plateInventory['45']).toBe(2)
   })
 })

@@ -21,6 +21,8 @@ export function History() {
       <WorkoutDetail
         workout={selectedWorkout}
         unit={settings.weightUnit}
+        plateInventory={settings.plateInventory}
+        customExercises={settings.customExercises}
         onBack={() => setSelectedWorkout(null)}
       />
     )
@@ -52,6 +54,7 @@ export function History() {
                 key={workout.id}
                 workout={workout}
                 unit={settings.weightUnit}
+                customExercises={settings.customExercises}
                 onClick={() => setSelectedWorkout(workout)}
               />
             ))}

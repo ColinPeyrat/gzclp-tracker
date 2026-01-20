@@ -1,7 +1,34 @@
-import type { Tier, LiftName, ExerciseLog } from './types'
+import type { Tier, LiftName, ExerciseLog, CustomExercise } from './types'
 import { LIFTS, T3_EXERCISES } from './types'
 
-export function getExerciseName(liftId: string, tier: Tier): string {
+const BUILTIN_DUMBBELL_EXERCISES = ['dumbbell-row']
+
+export function getCustomExercise(
+  originalId: string,
+  customExercises?: CustomExercise[]
+): CustomExercise | undefined {
+  return customExercises?.find((ce) => ce.replacesId === originalId)
+}
+
+export function isDumbbellExercise(
+  liftId: string,
+  customExercises?: CustomExercise[]
+): boolean {
+  const custom = getCustomExercise(liftId, customExercises)
+  if (custom) {
+    return custom.isDumbbell ?? false
+  }
+  return BUILTIN_DUMBBELL_EXERCISES.includes(liftId)
+}
+
+export function getExerciseName(
+  liftId: string,
+  tier: Tier,
+  customExercises?: CustomExercise[]
+): string {
+  const custom = getCustomExercise(liftId, customExercises)
+  if (custom) return custom.name
+
   if (tier === 'T3') {
     return T3_EXERCISES[liftId]?.name ?? liftId
   }

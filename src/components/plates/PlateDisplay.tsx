@@ -6,6 +6,7 @@ interface PlateDisplayProps {
   barWeight: number
   plateInventory: Record<string, number>
   unit: WeightUnit
+  isDumbbell?: boolean
   onWeightChange?: (newWeight: number) => void
 }
 
@@ -23,8 +24,9 @@ const plateColors: Record<number, string> = {
   1.25: 'bg-zinc-400 text-zinc-900',
 }
 
-export function PlateDisplay({ targetWeight, barWeight, plateInventory, unit, onWeightChange }: PlateDisplayProps) {
+export function PlateDisplay({ targetWeight, barWeight, plateInventory, unit, isDumbbell, onWeightChange }: PlateDisplayProps) {
   const result = calculatePlates(targetWeight, barWeight, plateInventory)
+  const sideLabel = 'Each side'
 
   if (!result.achievable && result.suggestedWeight) {
     const suggestedResult = calculatePlates(result.suggestedWeight, barWeight, plateInventory)
@@ -63,6 +65,9 @@ export function PlateDisplay({ targetWeight, barWeight, plateInventory, unit, on
   }
 
   if (result.perSide.length === 0) {
+    if (isDumbbell) {
+      return null
+    }
     return (
       <div className="rounded-lg bg-zinc-800 p-3 text-center text-sm text-zinc-400">
         Empty bar ({barWeight} {unit})
@@ -72,7 +77,7 @@ export function PlateDisplay({ targetWeight, barWeight, plateInventory, unit, on
 
   return (
     <div className="rounded-lg bg-zinc-800 p-3">
-      <div className="mb-2 text-center text-xs text-zinc-500">Each side</div>
+      <div className="mb-2 text-center text-xs text-zinc-500">{sideLabel}</div>
       <div className="flex items-center justify-center gap-1">
         {result.perSide.map((plate, i) => (
           <div

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calculatePlates, formatPlates } from './plates'
+import { calculatePlates, formatPlates, getSmallestPlate } from './plates'
 
 describe('calculatePlates', () => {
   const standardKgInventory: Record<string, number> = {
@@ -167,5 +167,37 @@ describe('formatPlates', () => {
 
   it('formats complex plate setup', () => {
     expect(formatPlates([20, 20, 10, 10, 5, 2.5])).toBe('2×20 + 2×10 + 5 + 2.5')
+  })
+})
+
+describe('getSmallestPlate', () => {
+  it('returns the smallest plate from inventory', () => {
+    const inventory = { '45': 2, '25': 2, '10': 2, '5': 2, '2.5': 2 }
+    expect(getSmallestPlate(inventory)).toBe(2.5)
+  })
+
+  it('returns smallest plate when inventory has micro plates', () => {
+    const inventory = { '20': 2, '10': 2, '5': 2, '2.5': 2, '1.25': 2, '0.5': 2 }
+    expect(getSmallestPlate(inventory)).toBe(0.5)
+  })
+
+  it('ignores plates with zero quantity', () => {
+    const inventory = { '45': 2, '25': 2, '10': 2, '5': 0, '2.5': 0 }
+    expect(getSmallestPlate(inventory)).toBe(10)
+  })
+
+  it('returns 2.5 as default when inventory is empty', () => {
+    const inventory = {}
+    expect(getSmallestPlate(inventory)).toBe(2.5)
+  })
+
+  it('returns 2.5 when all plates have zero quantity', () => {
+    const inventory = { '45': 0, '25': 0, '10': 0 }
+    expect(getSmallestPlate(inventory)).toBe(2.5)
+  })
+
+  it('handles single plate inventory', () => {
+    const inventory = { '5': 4 }
+    expect(getSmallestPlate(inventory)).toBe(5)
   })
 })

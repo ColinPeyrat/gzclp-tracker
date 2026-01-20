@@ -1,13 +1,16 @@
 import { ArrowLeft, Check, X, TrendingUp, TrendingDown } from 'lucide-react'
-import type { Workout, WeightUnit, Tier, ExerciseLog, LiftName } from '../../lib/types'
+import type { Workout, WeightUnit, Tier, ExerciseLog, LiftName, CustomExercise } from '../../lib/types'
 import { LIFTS } from '../../lib/types'
 import { getTotalReps, getTargetTotalReps, didHitRepTarget, getStageConfig } from '../../lib/progression'
 import { getIncrement, UNIT_CONFIG } from '../../lib/units'
-import { getExerciseName, TIER_COLORS, getStageFromConfig } from '../../lib/exercises'
+import { getSmallestPlate } from '../../lib/plates'
+import { getExerciseName, getCustomExercise, TIER_COLORS, getStageFromConfig } from '../../lib/exercises'
 
 interface WorkoutDetailProps {
   workout: Workout
   unit: WeightUnit
+  plateInventory: Record<string, number>
+  customExercises?: CustomExercise[]
   onBack: () => void
 }
 
@@ -25,19 +28,25 @@ interface ExerciseResultProps {
   exercise: ExerciseLog
   tier: Tier
   unit: WeightUnit
+  plateInventory: Record<string, number>
+  customExercises?: CustomExercise[]
 }
 
-function ExerciseResult({ exercise, tier, unit }: ExerciseResultProps) {
+function ExerciseResult({ exercise, tier, unit, plateInventory, customExercises }: ExerciseResultProps) {
   const totalReps = getTotalReps(exercise)
   const targetTotal = getTargetTotalReps(exercise)
   const success = didHitRepTarget(exercise)
 
-  // T3 has different success criteria (AMRAP >= 25 for weight increase)
-  if (tier === 'T3') {
+  // Check if this exercise uses T3 progression (either T3 tier or forceT3Progression)
+  const customExercise = getCustomExercise(exercise.liftId, customExercises)
+  const usesT3Progression = tier === 'T3' || customExercise?.forceT3Progression
+
+  // T3 progression: AMRAP >= 25 for weight increase
+  if (usesT3Progression) {
     const amrapSet = exercise.sets.find((s) => s.isAmrap)
     const amrapReps = amrapSet?.reps ?? 0
     const shouldIncrease = amrapReps >= 25
-    const t3Increment = UNIT_CONFIG[unit].incrementT3
+    const t3Increment = getSmallestPlate(plateInventory)
     const newWeight = exercise.weightLbs + t3Increment
 
     return (
@@ -86,7 +95,7 @@ function ExerciseResult({ exercise, tier, unit }: ExerciseResultProps) {
   )
 }
 
-export function WorkoutDetail({ workout, unit, onBack }: WorkoutDetailProps) {
+export function WorkoutDetail({ workout, unit, plateInventory, customExercises, onBack }: WorkoutDetailProps) {
   const date = new Date(workout.date)
   const formattedDate = date.toLocaleDateString(undefined, {
     weekday: 'long',
@@ -124,7 +133,7 @@ export function WorkoutDetail({ workout, unit, onBack }: WorkoutDetailProps) {
                   {exercise.tier}
                 </span>
                 <h3 className="font-medium">
-                  {getExerciseName(exercise.liftId, exercise.tier)}
+                  {getExerciseName(exercise.liftId, exercise.tier, customExercises)}
                 </h3>
               </div>
               <div className="text-right">
@@ -171,7 +180,7 @@ export function WorkoutDetail({ workout, unit, onBack }: WorkoutDetailProps) {
               })}
             </div>
 
-            <ExerciseResult exercise={exercise} tier={exercise.tier} unit={unit} />
+            <ExerciseResult exercise={exercise} tier={exercise.tier} unit={unit} plateInventory={plateInventory} customExercises={customExercises} />
           </div>
         ))}
 

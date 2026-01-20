@@ -17,6 +17,7 @@ export { db }
 
 export const DEFAULT_SETTINGS: UserSettings = {
   barWeightLbs: 45,
+  dumbbellHandleWeightLbs: 5,
   plateInventory: {
     '45': 2,
     '35': 2,

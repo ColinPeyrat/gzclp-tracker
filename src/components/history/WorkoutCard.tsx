@@ -1,12 +1,14 @@
 import { ChevronRight } from 'lucide-react'
-import type { Workout, WeightUnit, ExerciseLog } from '../../lib/types'
-import { LIFTS, WORKOUTS } from '../../lib/types'
+import type { Workout, WeightUnit, ExerciseLog, CustomExercise } from '../../lib/types'
+import { WORKOUTS } from '../../lib/types'
 import { formatWorkoutDate } from '../../hooks/useWorkoutHistory'
 import { didHitRepTarget } from '../../lib/progression'
+import { getExerciseName } from '../../lib/exercises'
 
 interface WorkoutCardProps {
   workout: Workout
   unit: WeightUnit
+  customExercises?: CustomExercise[]
   onClick: () => void
 }
 
@@ -36,9 +38,9 @@ function StatusIndicator({ status, label }: { status: LiftStatus; label: string 
   )
 }
 
-export function WorkoutCard({ workout, unit, onClick }: WorkoutCardProps) {
+export function WorkoutCard({ workout, unit, customExercises, onClick }: WorkoutCardProps) {
   const workoutDef = WORKOUTS[workout.type]
-  const t1Name = LIFTS[workoutDef.t1].name
+  const t1Name = getExerciseName(workoutDef.t1, 'T1', customExercises)
   const t1Exercise = workout.exercises.find((e) => e.tier === 'T1')
   const t2Exercise = workout.exercises.find((e) => e.tier === 'T2')
   const t3Exercise = workout.exercises.find((e) => e.tier === 'T3')

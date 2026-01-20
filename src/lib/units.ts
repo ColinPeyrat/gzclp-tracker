@@ -4,22 +4,22 @@ export const UNIT_CONFIG = {
   lbs: {
     label: 'lbs',
     barWeight: 45,
+    dumbbellHandleWeight: 5,
     plates: [45, 35, 25, 10, 5, 2.5],
     incrementT1Upper: 5,
     incrementT1Lower: 10,
     incrementT2Upper: 2.5,
     incrementT2Lower: 5,
-    incrementT3: 5,
   },
   kg: {
     label: 'kg',
     barWeight: 20,
+    dumbbellHandleWeight: 2.5,
     plates: [20, 15, 10, 5, 2.5, 1.25, 0.5],
     incrementT1Upper: 2.5,
     incrementT1Lower: 5,
     incrementT2Upper: 1.25,
     incrementT2Lower: 2.5,
-    incrementT3: 2.5,
   },
 } as const
 
@@ -48,6 +48,7 @@ export function getDefaultSettings(unit: WeightUnit) {
   const config = UNIT_CONFIG[unit]
   return {
     barWeightLbs: config.barWeight,
+    dumbbellHandleWeightLbs: config.dumbbellHandleWeight,
     plateInventory: getDefaultPlateInventory(unit),
   }
 }

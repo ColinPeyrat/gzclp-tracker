@@ -26,7 +26,7 @@ A PWA for tracking the GZCLP weightlifting program.
 - Failure: Keep weight, move to next stage (e.g., 5×3 → 6×2)
 - T1 Stage 3 fail: Test new 5RM, reset to 85% at 5×3
 - T2 Stage 3 fail: Reset to 3×10 at last stage 1 weight + 15 lbs
-- T3: Increase weight when AMRAP hits 25 reps
+- T3: Increase weight by smallest available plate when AMRAP hits 25 reps
 
 **AMRAP purpose:** The last set being AMRAP allows you to make up for missed reps in earlier sets. What matters is hitting the total rep target.
 

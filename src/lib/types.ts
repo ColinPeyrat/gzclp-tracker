@@ -50,8 +50,17 @@ export interface Workout {
   notes?: string
 }
 
+export interface CustomExercise {
+  id: string                      // 'pullups' (auto-generated slug)
+  name: string                    // 'Pullups'
+  replacesId: string              // 'lat-pulldown', 'ohp', etc.
+  forceT3Progression?: boolean    // Skip stages, use 3×15+ AMRAP progression
+  isDumbbell?: boolean            // Uses dumbbell plates (shows single dumbbell weight)
+}
+
 export interface UserSettings {
   barWeightLbs: number
+  dumbbellHandleWeightLbs: number // Weight of empty dumbbell handle (default 5 lbs / 2.5 kg)
   plateInventory: Record<string, number> // plate weight -> quantity (total, both sides)
   restTimers: {
     t1Seconds: number
@@ -59,6 +68,7 @@ export interface UserSettings {
     t3Seconds: number
   }
   weightUnit: WeightUnit
+  customExercises?: CustomExercise[]
 }
 
 export interface ProgramState {

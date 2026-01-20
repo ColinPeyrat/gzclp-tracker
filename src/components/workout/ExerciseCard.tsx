@@ -1,13 +1,15 @@
-import type { ExerciseLog, WeightUnit } from '../../lib/types'
+import type { ExerciseLog, WeightUnit, CustomExercise } from '../../lib/types'
 import { SetLogger } from './SetLogger'
 import { PlateDisplay } from '../plates/PlateDisplay'
-import { getExerciseName, TIER_COLORS } from '../../lib/exercises'
+import { getExerciseName, TIER_COLORS, isDumbbellExercise } from '../../lib/exercises'
 
 interface ExerciseCardProps {
   exercise: ExerciseLog
   barWeight: number
+  dumbbellHandleWeight: number
   plateInventory: Record<string, number>
   unit: WeightUnit
+  customExercises?: CustomExercise[]
   onCompleteSet: (setIndex: number, reps: number) => void
   onWeightChange?: (newWeight: number) => void
 }
@@ -15,12 +17,17 @@ interface ExerciseCardProps {
 export function ExerciseCard({
   exercise,
   barWeight,
+  dumbbellHandleWeight,
   plateInventory,
   unit,
+  customExercises,
   onCompleteSet,
   onWeightChange,
 }: ExerciseCardProps) {
-  const exerciseName = getExerciseName(exercise.liftId, exercise.tier)
+  const exerciseName = getExerciseName(exercise.liftId, exercise.tier, customExercises)
+  const isDumbbell = isDumbbellExercise(exercise.liftId, customExercises)
+  const showPlates = exercise.tier !== 'T3' || isDumbbell
+  const effectiveBarWeight = isDumbbell ? dumbbellHandleWeight : barWeight
   const completedSets = exercise.sets.filter((s) => s.completed).length
   const nextSetIndex = exercise.sets.findIndex((s) => !s.completed)
 
@@ -37,12 +44,13 @@ export function ExerciseCard({
         </p>
       </div>
 
-      {exercise.tier !== 'T3' && (
+      {showPlates && (
         <PlateDisplay
           targetWeight={exercise.weightLbs}
-          barWeight={barWeight}
+          barWeight={effectiveBarWeight}
           plateInventory={plateInventory}
           unit={unit}
+          isDumbbell={isDumbbell}
           onWeightChange={onWeightChange}
         />
       )}

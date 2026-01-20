@@ -1,15 +1,31 @@
 import { useState, useEffect } from 'react'
-import { Download, Upload, Trash2 } from 'lucide-react'
+import { Download, Upload, Trash2, Plus, X } from 'lucide-react'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useProgramStore } from '../stores/programStore'
 import { db } from '../lib/db'
 import { UNIT_CONFIG, getDefaultPlateInventory } from '../lib/units'
 import { BottomNav } from '../components/ui/BottomNav'
+import { Modal } from '../components/ui/Modal'
+import { LIFTS, T3_EXERCISES, type CustomExercise } from '../lib/types'
+
+const REPLACEABLE_EXERCISES = [
+  { id: 'squat', name: 'Squat', tier: 'T1/T2' },
+  { id: 'bench', name: 'Bench Press', tier: 'T1/T2' },
+  { id: 'deadlift', name: 'Deadlift', tier: 'T1/T2' },
+  { id: 'ohp', name: 'Overhead Press', tier: 'T1/T2' },
+  { id: 'lat-pulldown', name: 'Lat Pulldown', tier: 'T3' },
+  { id: 'dumbbell-row', name: 'Dumbbell Row', tier: 'T3' },
+] as const
 
 export function Settings() {
   const { settings, loaded, load, update } = useSettingsStore()
   const { state: programState, load: loadProgram } = useProgramStore()
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [showAddExerciseModal, setShowAddExerciseModal] = useState(false)
+  const [newExerciseName, setNewExerciseName] = useState('')
+  const [newExerciseReplaces, setNewExerciseReplaces] = useState('')
+  const [newExerciseForceT3, setNewExerciseForceT3] = useState(false)
+  const [newExerciseIsDumbbell, setNewExerciseIsDumbbell] = useState(false)
 
   useEffect(() => {
     if (!loaded) load()
@@ -20,6 +36,13 @@ export function Settings() {
     const num = parseFloat(value)
     if (!isNaN(num) && num > 0) {
       update({ barWeightLbs: num })
+    }
+  }
+
+  const handleDumbbellHandleWeightChange = (value: string) => {
+    const num = parseFloat(value)
+    if (!isNaN(num) && num >= 0) {
+      update({ dumbbellHandleWeightLbs: num })
     }
   }
 
@@ -81,6 +104,42 @@ export function Settings() {
     window.location.href = '/setup'
   }
 
+  const handleAddCustomExercise = () => {
+    if (!newExerciseName.trim() || !newExerciseReplaces) return
+
+    const id = newExerciseName.toLowerCase().replace(/\s+/g, '-')
+    const newExercise: CustomExercise = {
+      id,
+      name: newExerciseName.trim(),
+      replacesId: newExerciseReplaces,
+      forceT3Progression: newExerciseForceT3 || undefined,
+      isDumbbell: newExerciseIsDumbbell || undefined,
+    }
+
+    const existing = settings.customExercises ?? []
+    const filtered = existing.filter((e) => e.replacesId !== newExerciseReplaces)
+    update({ customExercises: [...filtered, newExercise] })
+
+    setNewExerciseName('')
+    setNewExerciseReplaces('')
+    setNewExerciseForceT3(false)
+    setNewExerciseIsDumbbell(false)
+    setShowAddExerciseModal(false)
+  }
+
+  const handleRemoveCustomExercise = (replacesId: string) => {
+    const existing = settings.customExercises ?? []
+    update({ customExercises: existing.filter((e) => e.replacesId !== replacesId) })
+  }
+
+  const getReplacedExerciseName = (replacesId: string) => {
+    const lift = LIFTS[replacesId as keyof typeof LIFTS]
+    if (lift) return lift.name
+    const t3 = T3_EXERCISES[replacesId]
+    if (t3) return t3.name
+    return replacesId
+  }
+
   if (!loaded) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -111,6 +170,20 @@ export function Settings() {
                   onChange={(e) => handleBarWeightChange(e.target.value)}
                   className="w-24 rounded border border-zinc-600 bg-zinc-900 px-3 py-2 text-right focus:border-blue-500 focus:outline-none"
                   step={unit === 'kg' ? 2.5 : 5}
+                />
+                <span className="text-zinc-400">{unit}</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm">Dumbbell Handle Weight</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={settings.dumbbellHandleWeightLbs}
+                  onChange={(e) => handleDumbbellHandleWeightChange(e.target.value)}
+                  className="w-24 rounded border border-zinc-600 bg-zinc-900 px-3 py-2 text-right focus:border-blue-500 focus:outline-none"
+                  step={unit === 'kg' ? 0.5 : 1}
                 />
                 <span className="text-zinc-400">{unit}</span>
               </div>
@@ -205,6 +278,58 @@ export function Settings() {
           </div>
         </section>
 
+        {/* Custom Exercises */}
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-zinc-400">Custom Exercises</h2>
+          <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
+            {settings.customExercises && settings.customExercises.length > 0 ? (
+              <div className="space-y-2">
+                {settings.customExercises.map((exercise) => (
+                  <div
+                    key={exercise.replacesId}
+                    className="flex items-center justify-between rounded-lg bg-zinc-700 px-4 py-3"
+                  >
+                    <div>
+                      <div className="font-medium">{exercise.name}</div>
+                      <div className="text-sm text-zinc-400">
+                        Replaces {getReplacedExerciseName(exercise.replacesId)}
+                        {exercise.forceT3Progression && (
+                          <span className="ml-2 rounded bg-yellow-900/50 px-1.5 py-0.5 text-xs text-yellow-400">
+                            T3 progression
+                          </span>
+                        )}
+                        {exercise.isDumbbell && (
+                          <span className="ml-2 rounded bg-blue-900/50 px-1.5 py-0.5 text-xs text-blue-400">
+                            Dumbbell
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveCustomExercise(exercise.replacesId)}
+                      className="p-1 text-zinc-400 hover:text-red-400"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-400">
+                No custom exercises yet. Add one to replace a default exercise.
+              </p>
+            )}
+
+            <button
+              onClick={() => setShowAddExerciseModal(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-700 px-4 py-3 text-zinc-300 hover:bg-zinc-600"
+            >
+              <Plus className="h-5 w-5" />
+              Add Custom Exercise
+            </button>
+          </div>
+        </section>
+
         {/* Data */}
         <section>
           <h2 className="mb-3 text-sm font-medium text-zinc-400">Data</h2>
@@ -277,6 +402,95 @@ export function Settings() {
       </main>
 
       <BottomNav active="settings" />
+
+      {showAddExerciseModal && (
+        <Modal onClose={() => setShowAddExerciseModal(false)}>
+          <h2 className="mb-4 text-lg font-bold">Add Custom Exercise</h2>
+
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm text-zinc-400">Exercise Name</label>
+              <input
+                type="text"
+                value={newExerciseName}
+                onChange={(e) => setNewExerciseName(e.target.value)}
+                placeholder="e.g., Pullups"
+                className="w-full rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm text-zinc-400">Replaces</label>
+              <select
+                value={newExerciseReplaces}
+                onChange={(e) => setNewExerciseReplaces(e.target.value)}
+                className="w-full rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 focus:border-blue-500 focus:outline-none"
+              >
+                <option value="">Select an exercise...</option>
+                {REPLACEABLE_EXERCISES.map((ex) => {
+                  const isReplaced = settings.customExercises?.some(
+                    (ce) => ce.replacesId === ex.id
+                  )
+                  return (
+                    <option key={ex.id} value={ex.id} disabled={isReplaced}>
+                      {ex.name} ({ex.tier}){isReplaced ? ' - already replaced' : ''}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="forceT3"
+                checked={newExerciseForceT3}
+                onChange={(e) => setNewExerciseForceT3(e.target.checked)}
+                className="mt-1 h-5 w-5 rounded border-zinc-600 bg-zinc-700 text-blue-600 focus:ring-blue-500"
+              />
+              <label htmlFor="forceT3" className="text-sm">
+                <span className="font-medium">Force T3 progression</span>
+                <span className="block text-zinc-400">
+                  Use 3×15+ with AMRAP progression instead of normal tier stages. Useful for
+                  injury rehab or bodyweight exercises.
+                </span>
+              </label>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="isDumbbell"
+                checked={newExerciseIsDumbbell}
+                onChange={(e) => setNewExerciseIsDumbbell(e.target.checked)}
+                className="mt-1 h-5 w-5 rounded border-zinc-600 bg-zinc-700 text-blue-600 focus:ring-blue-500"
+              />
+              <label htmlFor="isDumbbell" className="text-sm">
+                <span className="font-medium">Dumbbell exercise</span>
+                <span className="block text-zinc-400">
+                  Show plate suggestions for building the dumbbell weight.
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div className="mt-6 flex gap-3">
+            <button
+              onClick={handleAddCustomExercise}
+              disabled={!newExerciseName.trim() || !newExerciseReplaces}
+              className="flex-1 rounded-lg bg-blue-600 py-2 font-medium hover:bg-blue-500 disabled:opacity-50"
+            >
+              Add Exercise
+            </button>
+            <button
+              onClick={() => setShowAddExerciseModal(false)}
+              className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
+            >
+              Cancel
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

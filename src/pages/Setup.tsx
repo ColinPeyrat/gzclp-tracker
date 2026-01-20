@@ -26,6 +26,7 @@ export function Setup() {
     await updateSettings({
       weightUnit: unit,
       barWeightLbs: config.barWeight,
+      dumbbellHandleWeightLbs: config.dumbbellHandleWeight,
       plateInventory: getDefaultPlateInventory(unit),
     })
 

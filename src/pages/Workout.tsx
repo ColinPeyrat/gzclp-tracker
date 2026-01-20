@@ -16,8 +16,10 @@ import {
   calculateT3Progression,
 } from '../lib/progression'
 import { LIFTS, WORKOUTS } from '../lib/types'
-import { getIncrement, UNIT_CONFIG } from '../lib/units'
+import { getIncrement } from '../lib/units'
+import { getSmallestPlate } from '../lib/plates'
 import { vibrate } from '../lib/haptics'
+import { getCustomExercise } from '../lib/exercises'
 
 export function Workout() {
   const navigate = useNavigate()
@@ -40,9 +42,9 @@ export function Workout() {
 
   useEffect(() => {
     if (programLoaded && programState && !session) {
-      startWorkout(programState)
+      startWorkout(programState, settings.customExercises)
     }
-  }, [programLoaded, programState, session, startWorkout])
+  }, [programLoaded, programState, session, startWorkout, settings.customExercises])
 
   const handleCompleteSet = (setIndex: number, reps: number) => {
     completeSet(setIndex, reps)
@@ -97,9 +99,26 @@ export function Workout() {
     if (t1Exercise) {
       const liftId = workoutDef.t1
       const currentState = programState.t1[liftId]
-      const increment = getIncrement('T1', LIFTS[liftId].isLower, unit)
-      const result = calculateT1Progression(currentState, t1Exercise, increment, unit)
-      newProgramState.t1 = { ...newProgramState.t1, [liftId]: result.newState }
+      const t1Custom = getCustomExercise(liftId, settings.customExercises)
+
+      if (t1Custom?.forceT3Progression) {
+        // Use T3-style progression
+        const amrapSet = t1Exercise.sets.find((s) => s.isAmrap)
+        if (amrapSet) {
+          const t3Increment = getSmallestPlate(settings.plateInventory)
+          const result = calculateT3Progression(currentState.weightLbs, amrapSet.reps, t3Increment)
+          if (result.increased) {
+            newProgramState.t1 = {
+              ...newProgramState.t1,
+              [liftId]: { ...currentState, weightLbs: result.newWeight },
+            }
+          }
+        }
+      } else {
+        const increment = getIncrement('T1', LIFTS[liftId].isLower, unit)
+        const result = calculateT1Progression(currentState, t1Exercise, increment, unit)
+        newProgramState.t1 = { ...newProgramState.t1, [liftId]: result.newState }
+      }
     }
 
     // T2 progression
@@ -107,9 +126,26 @@ export function Workout() {
     if (t2Exercise) {
       const liftId = workoutDef.t2
       const currentState = programState.t2[liftId]
-      const increment = getIncrement('T2', LIFTS[liftId].isLower, unit)
-      const result = calculateT2Progression(currentState, t2Exercise, increment, unit)
-      newProgramState.t2 = { ...newProgramState.t2, [liftId]: result.newState }
+      const t2Custom = getCustomExercise(liftId, settings.customExercises)
+
+      if (t2Custom?.forceT3Progression) {
+        // Use T3-style progression
+        const amrapSet = t2Exercise.sets.find((s) => s.isAmrap)
+        if (amrapSet) {
+          const t3Increment = getSmallestPlate(settings.plateInventory)
+          const result = calculateT3Progression(currentState.weightLbs, amrapSet.reps, t3Increment)
+          if (result.increased) {
+            newProgramState.t2 = {
+              ...newProgramState.t2,
+              [liftId]: { ...currentState, weightLbs: result.newWeight },
+            }
+          }
+        }
+      } else {
+        const increment = getIncrement('T2', LIFTS[liftId].isLower, unit)
+        const result = calculateT2Progression(currentState, t2Exercise, increment, unit)
+        newProgramState.t2 = { ...newProgramState.t2, [liftId]: result.newState }
+      }
     }
 
     // T3 progression
@@ -119,7 +155,7 @@ export function Workout() {
       if (amrapSet) {
         const t3Id = workoutDef.t3
         const currentWeight = programState.t3[t3Id]?.weightLbs ?? 50
-        const t3Increment = UNIT_CONFIG[unit].incrementT3
+        const t3Increment = getSmallestPlate(settings.plateInventory)
         const result = calculateT3Progression(currentWeight, amrapSet.reps, t3Increment)
         if (result.increased) {
           newProgramState.t3 = { ...newProgramState.t3, [t3Id]: { weightLbs: result.newWeight } }
@@ -181,8 +217,10 @@ export function Workout() {
         <ExerciseCard
           exercise={session.currentExercise}
           barWeight={settings.barWeightLbs}
+          dumbbellHandleWeight={settings.dumbbellHandleWeightLbs}
           plateInventory={settings.plateInventory}
           unit={settings.weightUnit}
+          customExercises={settings.customExercises}
           onCompleteSet={handleCompleteSet}
           onWeightChange={updateCurrentExerciseWeight}
         />
