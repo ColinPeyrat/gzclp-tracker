@@ -57,9 +57,9 @@ export function calculatePlates(
 
   if (!result.achievable) {
     // Find minimum achievable weight above target
-    // Use smallest plate pair as increment to not miss achievable weights
+    // Use small increment to not miss any achievable weights
     const smallestPlate = availablePlates[availablePlates.length - 1]
-    const increment = smallestPlate * 2
+    const increment = Math.min(smallestPlate, 0.5)
 
     for (let tryWeight = targetWeight + increment; tryWeight <= targetWeight + 50; tryWeight += increment) {
       // Round to avoid floating point issues
