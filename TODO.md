@@ -50,6 +50,7 @@
 ### History Page
 - [x] List past workouts (with date, workout type, weight)
 - [x] Workout detail view (all exercises, sets, reps)
+- [x] Workout statistics modal (total volume, reps, sets, heaviest lift)
 - [ ] Filter/search (future)
 
 ---
@@ -62,6 +63,7 @@
 - [x] Rest timer durations
 - [x] Data export/import
 - [x] Reset program
+- [x] Custom exercises (replace any lift with custom name, optional T3 progression)
 
 ### Polish
 - [x] Loading states
@@ -70,6 +72,10 @@
 - [x] Haptic feedback on mobile
 - [x] Sound for timer
 - [x] Confirmation before leaving active workout
+
+### Workout
+- [x] Warmup sets modal (simplified big plates, additive loading)
+- [x] Long press to edit set reps
 
 ### PWA
 - [x] App icons (SVG-based)
@@ -85,10 +91,6 @@
 - [ ] Cloud sync with user accounts
 
 ### Features
-- [ ] Progress charts
+- [ ] T1 progression tracking (chart/graph for squat, bench, deadlift, OHP over time)
 - [ ] 1RM tracking
-- [ ] Custom T3 exercises
-- [ ] Workout notes
-- [ ] Body weight tracking
-- [ ] Dark/light theme toggle
-- [ ] Apple Watch companion
+- [ ] Workout notes (add notes during/after workout)
