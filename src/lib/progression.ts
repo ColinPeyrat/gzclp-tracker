@@ -59,7 +59,7 @@ export function calculateT1Progression(
   const { stage, weightLbs } = currentState
 
   if (success) {
-    const newWeight = weightLbs + increment
+    const newWeight = exercise.weightLbs + increment
     return {
       newState: { ...currentState, weightLbs: newWeight },
       message: `+${increment} ${unit} → ${newWeight} ${unit}`,
@@ -103,11 +103,11 @@ export function calculateT2Progression(
   const { stage, weightLbs, lastStage1WeightLbs } = currentState
 
   if (success) {
-    const newWeight = weightLbs + increment
+    const newWeight = exercise.weightLbs + increment
     const newState: LiftState = {
       ...currentState,
       weightLbs: newWeight,
-      lastStage1WeightLbs: stage === 1 ? weightLbs : lastStage1WeightLbs,
+      lastStage1WeightLbs: stage === 1 ? exercise.weightLbs : lastStage1WeightLbs,
     }
     return {
       newState,
