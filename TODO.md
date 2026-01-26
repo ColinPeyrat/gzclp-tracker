@@ -95,6 +95,16 @@
 ### Cleanup
 - [ ] Remove legacy db migration code in `db.ts` (weightLbs→weight, barWeightLbs→barWeight, customExercises, t3Library, t3Assignments)
 
+### Code Quality (DRY/KISS)
+- [x] Extract `applyWorkoutProgression()` - unified workout completion logic
+- [x] Split `getSettings()` into focused migration helpers
+- [x] Extract `getEffectiveStageConfig()` - forceT3Progression pattern
+- [x] Extract `getT3IdsForWorkout()` - building T3 arrays
+- [x] Extract `createSetLogs()` - consistent set array creation
+- [x] Remove duplicate `getExerciseName` from Settings.tsx
+- [ ] Group Settings.tsx modal state into objects (17 state variables)
+- [ ] Extract SetLogger className logic (5-level nested ternary)
+
 ---
 
 ## Future (v3)
