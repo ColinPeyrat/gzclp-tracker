@@ -4,6 +4,7 @@ import { Home } from './pages/Home'
 import { Setup } from './pages/Setup'
 import { Workout } from './pages/Workout'
 import { History } from './pages/History'
+import { Progress } from './pages/Progress'
 import { Settings } from './pages/Settings'
 import { OfflineBanner } from './components/ui/OfflineBanner'
 import { migrateWorkouts } from './lib/db'
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
       { path: '/setup', element: <Setup /> },
       { path: '/workout', element: <Workout /> },
       { path: '/history', element: <History /> },
+      { path: '/progress', element: <Progress /> },
       { path: '/settings', element: <Settings /> },
     ],
   },

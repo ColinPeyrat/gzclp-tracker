@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
-import { Dumbbell, History, Settings } from 'lucide-react'
+import { Dumbbell, History, TrendingUp, Settings } from 'lucide-react'
 
-type Route = 'home' | 'history' | 'settings'
+type Route = 'home' | 'history' | 'progress' | 'settings'
 
 interface BottomNavProps {
   active: Route
@@ -10,6 +10,7 @@ interface BottomNavProps {
 const navItems: { route: Route; path: string; icon: typeof Dumbbell; label: string }[] = [
   { route: 'home', path: '/', icon: Dumbbell, label: 'Home' },
   { route: 'history', path: '/history', icon: History, label: 'History' },
+  { route: 'progress', path: '/progress', icon: TrendingUp, label: 'Progress' },
   { route: 'settings', path: '/settings', icon: Settings, label: 'Settings' },
 ]
 
