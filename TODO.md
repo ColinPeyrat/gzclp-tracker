@@ -87,11 +87,10 @@
 ## Future (v2)
 
 ### Features
-- [ ] T1 progression tracking (chart/graph for squat, bench, deadlift, OHP over time)
+- [ ] Progression tab (main lifts chart over time + optimistic projections)
 - [ ] 1RM tracking
-- [ ] Add T3 exercises to the routine
-- [ ] Add T3 exercises on the fly during a workout
-- [ ] Progression tab (main lifts progress chart + optimistic performance projections)
+- [x] Add T3 exercises to the routine (T3 library management in Settings)
+- [x] Add T3 exercises on the fly during a workout
 
 ---
 
