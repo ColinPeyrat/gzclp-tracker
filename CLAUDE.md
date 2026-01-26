@@ -2,6 +2,15 @@
 
 A PWA for tracking the GZCLP weightlifting program.
 
+## Claude Rules
+
+### Git
+- Do NOT add any Claude/AI attribution footer to git commits (no "Generated with Claude Code", no "Co-Authored-By: Claude")
+- Avoid verbose LLM-style comments that just describe what code does. Keep comments minimal and only for non-obvious logic.
+
+### Available tools
+- jq (JSON processor)
+
 ## Quick Reference
 
 ### GZCLP Program Structure

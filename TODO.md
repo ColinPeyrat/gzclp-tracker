@@ -86,11 +86,17 @@
 
 ## Future (v2)
 
-### Data Protection
-- [ ] Auto-backup reminders (prompt to export after every N workouts)
-- [ ] Cloud sync with user accounts
-
 ### Features
 - [ ] T1 progression tracking (chart/graph for squat, bench, deadlift, OHP over time)
 - [ ] 1RM tracking
-- [ ] Workout notes (add notes during/after workout)
+- [ ] Add T3 exercises to the routine
+- [ ] Add T3 exercises on the fly during a workout
+- [ ] Progression tab (main lifts progress chart + optimistic performance projections)
+
+---
+
+## Future (v3)
+
+### Cloud Sync
+- [ ] SSO login (Google)
+- [ ] Sync data to cloud database
