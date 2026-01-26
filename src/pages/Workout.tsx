@@ -142,11 +142,11 @@ export function Workout() {
         const amrapSet = t1Exercise.sets.find((s) => s.isAmrap)
         if (amrapSet) {
           const t3Increment = getSmallestPlate(settings.plateInventory)
-          const result = calculateT3Progression(currentState.weightLbs, amrapSet.reps, t3Increment)
+          const result = calculateT3Progression(currentState.weight, amrapSet.reps, t3Increment)
           if (result.increased) {
             newProgramState.t1 = {
               ...newProgramState.t1,
-              [liftId]: { ...currentState, weightLbs: result.newWeight },
+              [liftId]: { ...currentState, weight: result.newWeight },
             }
           }
         }
@@ -169,11 +169,11 @@ export function Workout() {
         const amrapSet = t2Exercise.sets.find((s) => s.isAmrap)
         if (amrapSet) {
           const t3Increment = getSmallestPlate(settings.plateInventory)
-          const result = calculateT3Progression(currentState.weightLbs, amrapSet.reps, t3Increment)
+          const result = calculateT3Progression(currentState.weight, amrapSet.reps, t3Increment)
           if (result.increased) {
             newProgramState.t2 = {
               ...newProgramState.t2,
-              [liftId]: { ...currentState, weightLbs: result.newWeight },
+              [liftId]: { ...currentState, weight: result.newWeight },
             }
           }
         }
@@ -190,11 +190,11 @@ export function Workout() {
       const amrapSet = t3Exercise.sets.find((s) => s.isAmrap)
       if (amrapSet) {
         const t3Id = t3Exercise.liftId
-        const currentWeight = programState.t3[t3Id]?.weightLbs ?? t3Exercise.weightLbs
+        const currentWeight = programState.t3[t3Id]?.weight ?? t3Exercise.weight
         const t3Increment = getSmallestPlate(settings.plateInventory)
         const result = calculateT3Progression(currentWeight, amrapSet.reps, t3Increment)
         if (result.increased) {
-          newProgramState.t3 = { ...newProgramState.t3, [t3Id]: { weightLbs: result.newWeight } }
+          newProgramState.t3 = { ...newProgramState.t3, [t3Id]: { weight: result.newWeight } }
         }
       }
     }
@@ -270,8 +270,8 @@ export function Workout() {
       <main className="flex-1 p-4">
         <ExerciseCard
           exercise={session.currentExercise}
-          barWeight={settings.barWeightLbs}
-          dumbbellHandleWeight={settings.dumbbellHandleWeightLbs}
+          barWeight={settings.barWeight}
+          dumbbellHandleWeight={settings.dumbbellHandleWeight}
           plateInventory={settings.plateInventory}
           unit={settings.weightUnit}
           liftSubstitutions={settings.liftSubstitutions}
@@ -377,8 +377,8 @@ export function Workout() {
       {showWarmupModal && (
         <WarmupModal
           exerciseName={getExerciseName(session.currentExercise.liftId, session.currentExercise.tier, settings.liftSubstitutions, settings.exerciseLibrary)}
-          workWeight={session.currentExercise.weightLbs}
-          barWeight={settings.barWeightLbs}
+          workWeight={session.currentExercise.weight}
+          barWeight={settings.barWeight}
           plateInventory={settings.plateInventory}
           unit={settings.weightUnit}
           onComplete={() => setShowWarmupModal(false)}
@@ -392,7 +392,7 @@ export function Workout() {
           {!newT3Id ? (
             <div className="space-y-2">
               {availableT3s.map((t3) => {
-                const savedWeight = programState?.t3[t3.id]?.weightLbs
+                const savedWeight = programState?.t3[t3.id]?.weight
                 return (
                   <button
                     key={t3.id}

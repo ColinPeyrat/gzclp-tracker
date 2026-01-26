@@ -83,16 +83,16 @@ src/
 interface LiftState {
   liftId: LiftName
   tier: Tier
-  weightLbs: number
+  weight: number          // Unit-agnostic (stores user's chosen unit)
   stage: 1 | 2 | 3
-  lastStage1WeightLbs?: number // For T2 reset calculation
+  lastStage1Weight?: number // For T2 reset calculation
 }
 
 // Program state is the main persisted state
 interface ProgramState {
   t1: Record<LiftName, LiftState>
   t2: Record<LiftName, LiftState>
-  t3: Record<string, { weightLbs: number }>
+  t3: Record<string, { weight: number }>
   nextWorkoutType: WorkoutType
   workoutCount: number
 }

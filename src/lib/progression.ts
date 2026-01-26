@@ -56,12 +56,12 @@ export function calculateT1Progression(
   unit: WeightUnit
 ): ProgressionResult {
   const success = didHitRepTarget(exercise)
-  const { stage, weightLbs } = currentState
+  const { stage, weight } = currentState
 
   if (success) {
-    const newWeight = exercise.weightLbs + increment
+    const newWeight = exercise.weight + increment
     return {
-      newState: { ...currentState, weightLbs: newWeight },
+      newState: { ...currentState, weight: newWeight },
       message: `+${increment} ${unit} → ${newWeight} ${unit}`,
     }
   }
@@ -69,14 +69,14 @@ export function calculateT1Progression(
   if (stage === 1) {
     return {
       newState: { ...currentState, stage: 2 },
-      message: `Moving to 6×2 at ${weightLbs} ${unit}`,
+      message: `Moving to 6×2 at ${weight} ${unit}`,
     }
   }
 
   if (stage === 2) {
     return {
       newState: { ...currentState, stage: 3 },
-      message: `Moving to 10×1 at ${weightLbs} ${unit}`,
+      message: `Moving to 10×1 at ${weight} ${unit}`,
     }
   }
 
@@ -87,7 +87,7 @@ export function calculateT1Progression(
       ...currentState,
       pending5RMTest: true,
       bestSetReps: bestReps,
-      bestSetWeight: weightLbs,
+      bestSetWeight: weight,
     },
     message: `New cycle: test 5RM first`,
   }
@@ -100,14 +100,14 @@ export function calculateT2Progression(
   unit: WeightUnit
 ): ProgressionResult {
   const success = didHitRepTarget(exercise)
-  const { stage, weightLbs, lastStage1WeightLbs } = currentState
+  const { stage, weight, lastStage1Weight } = currentState
 
   if (success) {
-    const newWeight = exercise.weightLbs + increment
+    const newWeight = exercise.weight + increment
     const newState: LiftState = {
       ...currentState,
-      weightLbs: newWeight,
-      lastStage1WeightLbs: stage === 1 ? exercise.weightLbs : lastStage1WeightLbs,
+      weight: newWeight,
+      lastStage1Weight: stage === 1 ? exercise.weight : lastStage1Weight,
     }
     return {
       newState,
@@ -118,27 +118,27 @@ export function calculateT2Progression(
   if (stage === 1) {
     return {
       newState: { ...currentState, stage: 2 },
-      message: `Moving to 3×8 at ${weightLbs} ${unit}`,
+      message: `Moving to 3×8 at ${weight} ${unit}`,
     }
   }
 
   if (stage === 2) {
     return {
       newState: { ...currentState, stage: 3 },
-      message: `Moving to 3×6 at ${weightLbs} ${unit}`,
+      message: `Moving to 3×6 at ${weight} ${unit}`,
     }
   }
 
   // Stage 3 - reset to stage 1 with +20 lbs / +10 kg from last stage 1 weight
-  const baseWeight = lastStage1WeightLbs ?? weightLbs
+  const baseWeight = lastStage1Weight ?? weight
   const resetIncrement = unit === 'kg' ? 10 : 20
   const resetWeight = baseWeight + resetIncrement
   return {
     newState: {
       ...currentState,
       stage: 1,
-      weightLbs: resetWeight,
-      lastStage1WeightLbs: undefined,
+      weight: resetWeight,
+      lastStage1Weight: undefined,
     },
     message: `Reset to 3×10 at ${resetWeight} ${unit}`,
   }
@@ -162,12 +162,12 @@ export function calculateT3Progression(
 export function createInitialLiftState(
   liftId: LiftName,
   tier: 'T1' | 'T2',
-  weight: number
+  startingWeight: number
 ): LiftState {
   return {
     liftId,
     tier,
-    weightLbs: weight,
+    weight: startingWeight,
     stage: 1,
   }
 }
@@ -188,7 +188,7 @@ export function applyT1Reset(currentState: LiftState, new5RM: number, unit: Weig
   return {
     ...currentState,
     stage: 1,
-    weightLbs: resetWeight,
+    weight: resetWeight,
     pending5RMTest: undefined,
     bestSetReps: undefined,
     bestSetWeight: undefined,

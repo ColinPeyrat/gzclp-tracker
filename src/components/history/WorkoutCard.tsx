@@ -52,7 +52,7 @@ export function WorkoutCard({ workout, unit, liftSubstitutions, exerciseLibrary,
             </span>
           </div>
           <div className="mt-1 text-sm text-zinc-400">
-            {t1Name} @ {t1Exercise?.weightLbs ?? '?'} {unit}
+            {t1Name} @ {t1Exercise?.weight ?? '?'} {unit}
           </div>
           <div className="mt-2 flex items-center gap-3">
             <StatusIndicator status={t1Status} label="T1" />

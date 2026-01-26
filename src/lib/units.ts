@@ -47,8 +47,8 @@ export function getDefaultPlateInventory(unit: WeightUnit): Record<string, numbe
 export function getDefaultSettings(unit: WeightUnit) {
   const config = UNIT_CONFIG[unit]
   return {
-    barWeightLbs: config.barWeight,
-    dumbbellHandleWeightLbs: config.dumbbellHandleWeight,
+    barWeight: config.barWeight,
+    dumbbellHandleWeight: config.dumbbellHandleWeight,
     plateInventory: getDefaultPlateInventory(unit),
   }
 }

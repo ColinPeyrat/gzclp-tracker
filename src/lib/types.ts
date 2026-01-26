@@ -37,9 +37,9 @@ export interface AdditionalT3Assignment {
 export interface LiftState {
   liftId: LiftName
   tier: Tier
-  weightLbs: number
+  weight: number
   stage: 1 | 2 | 3
-  lastStage1WeightLbs?: number // For T2 reset calculation
+  lastStage1Weight?: number // For T2 reset calculation
   pending5RMTest?: boolean // T1 only: true when awaiting 5RM input after stage 3 fail
   bestSetReps?: number // Best set reps from failed stage 3 for 5RM estimation
   bestSetWeight?: number // Weight of best set
@@ -55,7 +55,7 @@ export interface SetLog {
 export interface ExerciseLog {
   liftId: string
   tier: Tier
-  weightLbs: number
+  weight: number
   targetSets: number
   targetReps: number
   sets: SetLog[]
@@ -71,8 +71,8 @@ export interface Workout {
 }
 
 export interface UserSettings {
-  barWeightLbs: number
-  dumbbellHandleWeightLbs: number // Weight of empty dumbbell handle (default 5 lbs / 2.5 kg)
+  barWeight: number
+  dumbbellHandleWeight: number // Weight of empty dumbbell handle (default 5 lbs / 2.5 kg)
   plateInventory: Record<string, number> // plate weight -> quantity (total, both sides)
   restTimers: {
     t1Seconds: number
@@ -88,7 +88,7 @@ export interface UserSettings {
 export interface ProgramState {
   t1: Record<LiftName, LiftState>
   t2: Record<LiftName, LiftState>
-  t3: Record<string, { weightLbs: number }>
+  t3: Record<string, { weight: number }>
   nextWorkoutType: WorkoutType
   workoutCount: number
 }

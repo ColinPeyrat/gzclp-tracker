@@ -29,7 +29,7 @@ function getPending5RMInfo(
   const liftState = state.t1[liftId]
   if (!liftState.pending5RMTest) return null
 
-  const bestSetWeight = liftState.bestSetWeight ?? liftState.weightLbs
+  const bestSetWeight = liftState.bestSetWeight ?? liftState.weight
   const bestSetReps = liftState.bestSetReps ?? 0
 
   return {
@@ -142,7 +142,7 @@ export function Home() {
                 {getExerciseName(workout.t1, 'T1', settings.liftSubstitutions, settings.exerciseLibrary)}
               </span>
               <span className="text-zinc-400">
-                {t1Config.sets}×{t1Config.reps}+ @ {t1State.weightLbs} {settings.weightUnit}
+                {t1Config.sets}×{t1Config.reps}+ @ {t1State.weight} {settings.weightUnit}
               </span>
             </div>
           </div>
@@ -154,7 +154,7 @@ export function Home() {
                 {getExerciseName(workout.t2, 'T2', settings.liftSubstitutions, settings.exerciseLibrary)}
               </span>
               <span className="text-zinc-400">
-                {t2Config.sets}×{t2Config.reps}{t2Sub?.forceT3Progression ? '+' : ''} @ {t2State.weightLbs} {settings.weightUnit}
+                {t2Config.sets}×{t2Config.reps}{t2Sub?.forceT3Progression ? '+' : ''} @ {t2State.weight} {settings.weightUnit}
               </span>
             </div>
           </div>
@@ -176,7 +176,7 @@ export function Home() {
                     {getExerciseName(t3Id, 'T3', settings.liftSubstitutions, settings.exerciseLibrary)}
                   </span>
                   <span className="text-zinc-400">
-                    3×15+ @ {state.t3[t3Id]?.weightLbs ?? 50} {settings.weightUnit}
+                    3×15+ @ {state.t3[t3Id]?.weight ?? 50} {settings.weightUnit}
                   </span>
                 </div>
               </div>

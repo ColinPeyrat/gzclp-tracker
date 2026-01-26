@@ -48,14 +48,14 @@ export function Settings() {
   const handleBarWeightChange = (value: string) => {
     const num = parseFloat(value)
     if (!isNaN(num) && num > 0) {
-      update({ barWeightLbs: num })
+      update({ barWeight: num })
     }
   }
 
   const handleDumbbellHandleWeightChange = (value: string) => {
     const num = parseFloat(value)
     if (!isNaN(num) && num >= 0) {
-      update({ dumbbellHandleWeightLbs: num })
+      update({ dumbbellHandleWeight: num })
     }
   }
 
@@ -143,7 +143,7 @@ export function Settings() {
         ...programState,
         t3: {
           ...programState.t3,
-          [id]: { weightLbs: startingWeight },
+          [id]: { weight: startingWeight },
         },
       })
     }
@@ -198,11 +198,11 @@ export function Settings() {
           ...programState,
           t1: {
             ...programState.t1,
-            [liftId]: { ...programState.t1[liftId], weightLbs: startingWeight },
+            [liftId]: { ...programState.t1[liftId], weight: startingWeight },
           },
           t2: {
             ...programState.t2,
-            [liftId]: { ...programState.t2[liftId], weightLbs: Math.round(startingWeight * 0.6) },
+            [liftId]: { ...programState.t2[liftId], weight: Math.round(startingWeight * 0.6) },
           },
         })
       } else {
@@ -211,7 +211,7 @@ export function Settings() {
           ...programState,
           t3: {
             ...programState.t3,
-            [selectedOriginalLift]: { weightLbs: startingWeight },
+            [selectedOriginalLift]: { weight: startingWeight },
           },
         })
       }
@@ -340,7 +340,7 @@ export function Settings() {
               <div className="flex items-center gap-2">
                 <input
                   type="number"
-                  value={settings.barWeightLbs}
+                  value={settings.barWeight}
                   onChange={(e) => handleBarWeightChange(e.target.value)}
                   className="w-24 rounded border border-zinc-600 bg-zinc-900 px-3 py-2 text-right focus:border-blue-500 focus:outline-none"
                   step={unit === 'kg' ? 2.5 : 5}
@@ -354,7 +354,7 @@ export function Settings() {
               <div className="flex items-center gap-2">
                 <input
                   type="number"
-                  value={settings.dumbbellHandleWeightLbs}
+                  value={settings.dumbbellHandleWeight}
                   onChange={(e) => handleDumbbellHandleWeightChange(e.target.value)}
                   className="w-24 rounded border border-zinc-600 bg-zinc-900 px-3 py-2 text-right focus:border-blue-500 focus:outline-none"
                   step={unit === 'kg' ? 0.5 : 1}

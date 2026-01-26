@@ -25,7 +25,7 @@ interface UseWorkoutSessionReturn {
   nextExercise: () => void
   prevExercise: () => void
   finishWorkout: () => Workout | null
-  addT3Exercise: (t3Id: string, weightLbs: number) => void
+  addT3Exercise: (t3Id: string, weight: number) => void
 }
 
 function createExerciseLogs(
@@ -45,7 +45,7 @@ function createExerciseLogs(
     exercises.push({
       liftId: workoutDef.t1,
       tier: 'T1',
-      weightLbs: t1State.weightLbs,
+      weight: t1State.weight,
       targetSets: t3Config.sets,
       targetReps: t3Config.reps,
       sets: Array.from({ length: t3Config.sets }, (_, i) => ({
@@ -60,7 +60,7 @@ function createExerciseLogs(
     exercises.push({
       liftId: workoutDef.t1,
       tier: 'T1',
-      weightLbs: t1State.weightLbs,
+      weight: t1State.weight,
       targetSets: t1Config.sets,
       targetReps: t1Config.reps,
       sets: Array.from({ length: t1Config.sets }, (_, i) => ({
@@ -81,7 +81,7 @@ function createExerciseLogs(
     exercises.push({
       liftId: workoutDef.t2,
       tier: 'T2',
-      weightLbs: t2State.weightLbs,
+      weight: t2State.weight,
       targetSets: t3Config.sets,
       targetReps: t3Config.reps,
       sets: Array.from({ length: t3Config.sets }, (_, i) => ({
@@ -96,7 +96,7 @@ function createExerciseLogs(
     exercises.push({
       liftId: workoutDef.t2,
       tier: 'T2',
-      weightLbs: t2State.weightLbs,
+      weight: t2State.weight,
       targetSets: t2Config.sets,
       targetReps: t2Config.reps,
       sets: Array.from({ length: t2Config.sets }, (_, i) => ({
@@ -121,11 +121,11 @@ function createExerciseLogs(
   }
 
   for (const t3Id of t3Ids) {
-    const t3Weight = programState.t3[t3Id]?.weightLbs ?? 50
+    const t3Weight = programState.t3[t3Id]?.weight ?? 50
     exercises.push({
       liftId: t3Id,
       tier: 'T3',
-      weightLbs: t3Weight,
+      weight: t3Weight,
       targetSets: t3Config.sets,
       targetReps: t3Config.reps,
       sets: Array.from({ length: t3Config.sets }, (_, i) => ({
@@ -185,14 +185,14 @@ export function useWorkoutSession(): UseWorkoutSessionReturn {
     []
   )
 
-  const addT3Exercise = useCallback((t3Id: string, weightLbs: number) => {
+  const addT3Exercise = useCallback((t3Id: string, weight: number) => {
     setWorkout((prev) => {
       if (!prev) return null
       const t3Config = getStageConfig('T3', 1)
       const newExercise: ExerciseLog = {
         liftId: t3Id,
         tier: 'T3',
-        weightLbs,
+        weight,
         targetSets: t3Config.sets,
         targetReps: t3Config.reps,
         sets: Array.from({ length: t3Config.sets }, (_, i) => ({
@@ -241,7 +241,7 @@ export function useWorkoutSession(): UseWorkoutSessionReturn {
 
   const updateCurrentExerciseWeight = useCallback(
     (newWeight: number) => {
-      updateCurrentExercise((exercise) => ({ ...exercise, weightLbs: newWeight }))
+      updateCurrentExercise((exercise) => ({ ...exercise, weight: newWeight }))
     },
     [updateCurrentExercise]
   )

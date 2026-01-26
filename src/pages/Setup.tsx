@@ -25,8 +25,8 @@ export function Setup() {
     const config = UNIT_CONFIG[unit]
     await updateSettings({
       weightUnit: unit,
-      barWeightLbs: config.barWeight,
-      dumbbellHandleWeightLbs: config.dumbbellHandleWeight,
+      barWeight: config.barWeight,
+      dumbbellHandleWeight: config.dumbbellHandleWeight,
       plateInventory: getDefaultPlateInventory(unit),
     })
 

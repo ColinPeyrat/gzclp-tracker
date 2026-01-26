@@ -50,7 +50,7 @@ function ExerciseResult({ exercise, tier, unit, plateInventory, liftSubstitution
     const amrapReps = amrapSet?.reps ?? 0
     const shouldIncrease = amrapReps >= 25
     const t3Increment = getSmallestPlate(plateInventory)
-    const newWeight = exercise.weightLbs + t3Increment
+    const newWeight = exercise.weight + t3Increment
 
     return (
       <div className={`mt-3 rounded px-3 py-2 text-sm ${shouldIncrease ? 'bg-green-900/30 text-green-400' : 'bg-zinc-700 text-zinc-300'}`}>
@@ -76,7 +76,7 @@ function ExerciseResult({ exercise, tier, unit, plateInventory, liftSubstitution
   const lift = LIFTS[liftId]
   const tierForIncrement = tier as 'T1' | 'T2'
   const increment = lift ? getIncrement(tierForIncrement, lift.isLower, unit) : UNIT_CONFIG[unit].incrementT1Upper
-  const newWeight = exercise.weightLbs + increment
+  const newWeight = exercise.weight + increment
 
   return (
     <div className={`mt-3 rounded px-3 py-2 text-sm ${success ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
@@ -159,7 +159,7 @@ export function WorkoutDetail({ workout, unit, plateInventory, liftSubstitutions
               </div>
               <div className="text-right">
                 <span className="text-zinc-400">
-                  {exercise.weightLbs} {unit}
+                  {exercise.weight} {unit}
                 </span>
                 <div className="text-xs text-zinc-500">
                   {exercise.targetSets}×{exercise.targetReps}

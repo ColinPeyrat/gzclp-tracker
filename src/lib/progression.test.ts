@@ -25,7 +25,7 @@ function makeExercise(
   return {
     liftId: 'squat',
     tier: 'T1',
-    weightLbs: 100,
+    weight: 100,
     targetSets: 5,
     targetReps: 3,
     ...overrides,
@@ -36,7 +36,7 @@ function makeLiftState(overrides: Partial<LiftState> = {}): LiftState {
   return {
     liftId: 'squat',
     tier: 'T1',
-    weightLbs: 100,
+    weight: 100,
     stage: 1,
     ...overrides,
   }
@@ -131,42 +131,42 @@ describe('getAmrapReps', () => {
 describe('calculateT1Progression', () => {
   describe('on success', () => {
     it('increases weight by increment', () => {
-      const state = makeLiftState({ weightLbs: 100, stage: 1 })
+      const state = makeLiftState({ weight: 100, stage: 1 })
       const exercise = makeExercise({
-        weightLbs: 100,
+        weight: 100,
         sets: [makeSet(3), makeSet(3), makeSet(3), makeSet(3), makeSet(3)],
       })
       const result = calculateT1Progression(state, exercise, 5, 'kg')
-      expect(result.newState.weightLbs).toBe(105)
+      expect(result.newState.weight).toBe(105)
       expect(result.newState.stage).toBe(1)
     })
 
     it('uses exercise weight not state weight for progression', () => {
-      const state = makeLiftState({ weightLbs: 100, stage: 1 })
+      const state = makeLiftState({ weight: 100, stage: 1 })
       const exercise = makeExercise({
-        weightLbs: 105, // User used adjusted weight
+        weight: 105, // User used adjusted weight
         sets: [makeSet(3), makeSet(3), makeSet(3), makeSet(3), makeSet(3)],
       })
       const result = calculateT1Progression(state, exercise, 5, 'kg')
-      expect(result.newState.weightLbs).toBe(110) // 105 + 5, not 100 + 5
+      expect(result.newState.weight).toBe(110) // 105 + 5, not 100 + 5
     })
   })
 
   describe('on failure at stage 1', () => {
     it('moves to stage 2', () => {
-      const state = makeLiftState({ weightLbs: 100, stage: 1 })
+      const state = makeLiftState({ weight: 100, stage: 1 })
       const exercise = makeExercise({
         sets: [makeSet(3), makeSet(3), makeSet(2), makeSet(2), makeSet(2)],
       })
       const result = calculateT1Progression(state, exercise, 5, 'kg')
       expect(result.newState.stage).toBe(2)
-      expect(result.newState.weightLbs).toBe(100)
+      expect(result.newState.weight).toBe(100)
     })
   })
 
   describe('on failure at stage 2', () => {
     it('moves to stage 3', () => {
-      const state = makeLiftState({ weightLbs: 100, stage: 2 })
+      const state = makeLiftState({ weight: 100, stage: 2 })
       const exercise = makeExercise({
         targetSets: 6,
         targetReps: 2,
@@ -174,13 +174,13 @@ describe('calculateT1Progression', () => {
       })
       const result = calculateT1Progression(state, exercise, 5, 'kg')
       expect(result.newState.stage).toBe(3)
-      expect(result.newState.weightLbs).toBe(100)
+      expect(result.newState.weight).toBe(100)
     })
   })
 
   describe('on failure at stage 3', () => {
     it('sets pending5RMTest flag', () => {
-      const state = makeLiftState({ weightLbs: 100, stage: 3 })
+      const state = makeLiftState({ weight: 100, stage: 3 })
       const exercise = makeExercise({
         targetSets: 10,
         targetReps: 1,
@@ -191,7 +191,7 @@ describe('calculateT1Progression', () => {
     })
 
     it('stores best set info for estimation', () => {
-      const state = makeLiftState({ weightLbs: 100, stage: 3 })
+      const state = makeLiftState({ weight: 100, stage: 3 })
       const exercise = makeExercise({
         targetSets: 10,
         targetReps: 1,
@@ -210,66 +210,66 @@ describe('calculateT1Progression', () => {
 describe('calculateT2Progression', () => {
   describe('on success', () => {
     it('increases weight by increment', () => {
-      const state = makeLiftState({ tier: 'T2', weightLbs: 50, stage: 1 })
+      const state = makeLiftState({ tier: 'T2', weight: 50, stage: 1 })
       const exercise = makeExercise({
         tier: 'T2',
-        weightLbs: 50,
+        weight: 50,
         targetSets: 3,
         targetReps: 10,
         sets: [makeSet(10), makeSet(10), makeSet(10)],
       })
       const result = calculateT2Progression(state, exercise, 2.5, 'kg')
-      expect(result.newState.weightLbs).toBe(52.5)
+      expect(result.newState.weight).toBe(52.5)
     })
 
     it('uses exercise weight not state weight for progression', () => {
-      const state = makeLiftState({ tier: 'T2', weightLbs: 50, stage: 1 })
+      const state = makeLiftState({ tier: 'T2', weight: 50, stage: 1 })
       const exercise = makeExercise({
         tier: 'T2',
-        weightLbs: 52.5, // Adjusted weight
+        weight: 52.5, // Adjusted weight
         targetSets: 3,
         targetReps: 10,
         sets: [makeSet(10), makeSet(10), makeSet(10)],
       })
       const result = calculateT2Progression(state, exercise, 2.5, 'kg')
-      expect(result.newState.weightLbs).toBe(55) // 52.5 + 2.5, not 50 + 2.5
+      expect(result.newState.weight).toBe(55) // 52.5 + 2.5, not 50 + 2.5
     })
 
-    it('stores lastStage1WeightLbs when at stage 1', () => {
-      const state = makeLiftState({ tier: 'T2', weightLbs: 50, stage: 1 })
+    it('stores lastStage1Weight when at stage 1', () => {
+      const state = makeLiftState({ tier: 'T2', weight: 50, stage: 1 })
       const exercise = makeExercise({
         tier: 'T2',
-        weightLbs: 50,
+        weight: 50,
         targetSets: 3,
         targetReps: 10,
         sets: [makeSet(10), makeSet(10), makeSet(10)],
       })
       const result = calculateT2Progression(state, exercise, 2.5, 'kg')
-      expect(result.newState.lastStage1WeightLbs).toBe(50)
+      expect(result.newState.lastStage1Weight).toBe(50)
     })
 
-    it('preserves lastStage1WeightLbs at stage 2', () => {
+    it('preserves lastStage1Weight at stage 2', () => {
       const state = makeLiftState({
         tier: 'T2',
-        weightLbs: 55,
+        weight: 55,
         stage: 2,
-        lastStage1WeightLbs: 50,
+        lastStage1Weight: 50,
       })
       const exercise = makeExercise({
         tier: 'T2',
-        weightLbs: 55,
+        weight: 55,
         targetSets: 3,
         targetReps: 8,
         sets: [makeSet(8), makeSet(8), makeSet(8)],
       })
       const result = calculateT2Progression(state, exercise, 2.5, 'kg')
-      expect(result.newState.lastStage1WeightLbs).toBe(50)
+      expect(result.newState.lastStage1Weight).toBe(50)
     })
   })
 
   describe('on failure at stage 1', () => {
     it('moves to stage 2', () => {
-      const state = makeLiftState({ tier: 'T2', weightLbs: 50, stage: 1 })
+      const state = makeLiftState({ tier: 'T2', weight: 50, stage: 1 })
       const exercise = makeExercise({
         tier: 'T2',
         targetSets: 3,
@@ -283,7 +283,7 @@ describe('calculateT2Progression', () => {
 
   describe('on failure at stage 2', () => {
     it('moves to stage 3', () => {
-      const state = makeLiftState({ tier: 'T2', weightLbs: 50, stage: 2 })
+      const state = makeLiftState({ tier: 'T2', weight: 50, stage: 2 })
       const exercise = makeExercise({
         tier: 'T2',
         targetSets: 3,
@@ -299,9 +299,9 @@ describe('calculateT2Progression', () => {
     it('resets to stage 1 with increased weight in kg', () => {
       const state = makeLiftState({
         tier: 'T2',
-        weightLbs: 60,
+        weight: 60,
         stage: 3,
-        lastStage1WeightLbs: 50,
+        lastStage1Weight: 50,
       })
       const exercise = makeExercise({
         tier: 'T2',
@@ -311,16 +311,16 @@ describe('calculateT2Progression', () => {
       })
       const result = calculateT2Progression(state, exercise, 2.5, 'kg')
       expect(result.newState.stage).toBe(1)
-      expect(result.newState.weightLbs).toBe(60) // 50 + 10
-      expect(result.newState.lastStage1WeightLbs).toBeUndefined()
+      expect(result.newState.weight).toBe(60) // 50 + 10
+      expect(result.newState.lastStage1Weight).toBeUndefined()
     })
 
     it('resets to stage 1 with increased weight in lbs', () => {
       const state = makeLiftState({
         tier: 'T2',
-        weightLbs: 120,
+        weight: 120,
         stage: 3,
-        lastStage1WeightLbs: 100,
+        lastStage1Weight: 100,
       })
       const exercise = makeExercise({
         tier: 'T2',
@@ -330,13 +330,13 @@ describe('calculateT2Progression', () => {
       })
       const result = calculateT2Progression(state, exercise, 5, 'lbs')
       expect(result.newState.stage).toBe(1)
-      expect(result.newState.weightLbs).toBe(120) // 100 + 20
+      expect(result.newState.weight).toBe(120) // 100 + 20
     })
 
-    it('falls back to current weight if no lastStage1WeightLbs', () => {
+    it('falls back to current weight if no lastStage1Weight', () => {
       const state = makeLiftState({
         tier: 'T2',
-        weightLbs: 60,
+        weight: 60,
         stage: 3,
       })
       const exercise = makeExercise({
@@ -346,7 +346,7 @@ describe('calculateT2Progression', () => {
         sets: [makeSet(6), makeSet(4), makeSet(3)],
       })
       const result = calculateT2Progression(state, exercise, 2.5, 'kg')
-      expect(result.newState.weightLbs).toBe(70) // 60 + 10
+      expect(result.newState.weight).toBe(70) // 60 + 10
     })
   })
 })
@@ -383,7 +383,7 @@ describe('createInitialLiftState', () => {
     expect(state).toEqual({
       liftId: 'bench',
       tier: 'T1',
-      weightLbs: 60,
+      weight: 60,
       stage: 1,
     })
   })
@@ -422,7 +422,7 @@ describe('applyT1Reset', () => {
     })
     const result = applyT1Reset(state, 100, 'kg')
     expect(result.stage).toBe(1)
-    expect(result.weightLbs).toBe(85) // 100 * 0.85 = 85
+    expect(result.weight).toBe(85) // 100 * 0.85 = 85
     expect(result.pending5RMTest).toBeUndefined()
     expect(result.bestSetReps).toBeUndefined()
     expect(result.bestSetWeight).toBeUndefined()
@@ -432,13 +432,13 @@ describe('applyT1Reset', () => {
     const state = makeLiftState()
     const result = applyT1Reset(state, 97, 'kg')
     // 97 * 0.85 = 82.45 -> rounds to 82.5
-    expect(result.weightLbs).toBe(82.5)
+    expect(result.weight).toBe(82.5)
   })
 
   it('rounds to nearest 5 lbs', () => {
     const state = makeLiftState()
     const result = applyT1Reset(state, 200, 'lbs')
     // 200 * 0.85 = 170
-    expect(result.weightLbs).toBe(170)
+    expect(result.weight).toBe(170)
   })
 })

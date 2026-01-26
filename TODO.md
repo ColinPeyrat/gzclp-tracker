@@ -92,6 +92,9 @@
 - [x] Add T3 exercises to the routine (T3 library management in Settings)
 - [x] Add T3 exercises on the fly during a workout
 
+### Cleanup
+- [ ] Remove legacy db migration code in `db.ts` (weightLbs→weight, barWeightLbs→barWeight, customExercises, t3Library, t3Assignments)
+
 ---
 
 ## Future (v3)

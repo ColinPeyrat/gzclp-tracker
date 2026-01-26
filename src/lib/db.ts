@@ -28,8 +28,8 @@ export const DEFAULT_LIFT_SUBSTITUTIONS: LiftSubstitution[] = []
 export const DEFAULT_ADDITIONAL_T3S: AdditionalT3Assignment[] = []
 
 export const DEFAULT_SETTINGS: UserSettings = {
-  barWeightLbs: 45,
-  dumbbellHandleWeightLbs: 5,
+  barWeight: 45,
+  dumbbellHandleWeight: 5,
   plateInventory: {
     '45': 2,
     '35': 2,
@@ -78,6 +78,9 @@ interface LegacySettings extends Omit<UserSettings, 'exerciseLibrary' | 'liftSub
   exerciseLibrary?: ExerciseDefinition[]
   liftSubstitutions?: LiftSubstitution[]
   additionalT3s?: AdditionalT3Assignment[]
+  // Legacy field names (pre-rename)
+  barWeightLbs?: number
+  dumbbellHandleWeightLbs?: number
 }
 
 const DEFAULT_T3_IDS: Record<string, string> = {
@@ -92,9 +95,17 @@ export async function getSettings(): Promise<UserSettings> {
   if (!stored) return DEFAULT_SETTINGS
 
   let needsUpdate = false
+
+  // Migrate legacy field names (barWeightLbs -> barWeight, etc.)
+  const barWeight = stored.barWeight ?? stored.barWeightLbs ?? DEFAULT_SETTINGS.barWeight
+  const dumbbellHandleWeight = stored.dumbbellHandleWeight ?? stored.dumbbellHandleWeightLbs ?? DEFAULT_SETTINGS.dumbbellHandleWeight
+  if (stored.barWeightLbs !== undefined || stored.dumbbellHandleWeightLbs !== undefined) {
+    needsUpdate = true
+  }
+
   const migrated: UserSettings & { id: string } = {
-    barWeightLbs: stored.barWeightLbs,
-    dumbbellHandleWeightLbs: stored.dumbbellHandleWeightLbs,
+    barWeight,
+    dumbbellHandleWeight,
     plateInventory: stored.plateInventory,
     restTimers: stored.restTimers,
     weightUnit: stored.weightUnit,
@@ -189,7 +200,12 @@ export async function getSettings(): Promise<UserSettings> {
     delete (toSave as Record<string, unknown>).customExercises
     delete (toSave as Record<string, unknown>).t3Library
     delete (toSave as Record<string, unknown>).t3Assignments
+    delete (toSave as Record<string, unknown>).barWeightLbs
+    delete (toSave as Record<string, unknown>).dumbbellHandleWeightLbs
     await db.settings.put(toSave)
+
+    // Also migrate workout data if settings needed migration
+    await migrateWorkouts()
   }
 
   return migrated
@@ -199,13 +215,140 @@ export async function saveSettings(settings: UserSettings): Promise<void> {
   await db.settings.put({ ...settings, id: 'user' })
 }
 
+// Legacy interfaces for program state migration
+interface LegacyLiftState {
+  liftId: string
+  tier: string
+  weight?: number
+  weightLbs?: number
+  stage: 1 | 2 | 3
+  lastStage1Weight?: number
+  lastStage1WeightLbs?: number
+  pending5RMTest?: boolean
+  bestSetReps?: number
+  bestSetWeight?: number
+}
+
+interface LegacyProgramState {
+  t1: Record<string, LegacyLiftState>
+  t2: Record<string, LegacyLiftState>
+  t3: Record<string, { weight?: number; weightLbs?: number }>
+  nextWorkoutType: 'A1' | 'A2' | 'B1' | 'B2'
+  workoutCount: number
+}
+
+function migrateLiftState(lift: LegacyLiftState): LegacyLiftState {
+  const migrated = { ...lift }
+  if (migrated.weightLbs !== undefined && migrated.weight === undefined) {
+    migrated.weight = migrated.weightLbs
+    delete migrated.weightLbs
+  }
+  if (migrated.lastStage1WeightLbs !== undefined && migrated.lastStage1Weight === undefined) {
+    migrated.lastStage1Weight = migrated.lastStage1WeightLbs
+    delete migrated.lastStage1WeightLbs
+  }
+  return migrated
+}
+
 export async function getProgramState(): Promise<ProgramState | undefined> {
-  const stored = await db.programState.get('current')
+  const stored = await db.programState.get('current') as (LegacyProgramState & { id: string }) | undefined
   if (!stored) return undefined
-  const { id: _, ...state } = stored
-  return state
+
+  let needsUpdate = false
+
+  // Migrate T1/T2 lift states
+  const t1: Record<string, LegacyLiftState> = {}
+  for (const [key, lift] of Object.entries(stored.t1)) {
+    if (lift.weightLbs !== undefined || lift.lastStage1WeightLbs !== undefined) {
+      needsUpdate = true
+    }
+    t1[key] = migrateLiftState(lift)
+  }
+
+  const t2: Record<string, LegacyLiftState> = {}
+  for (const [key, lift] of Object.entries(stored.t2)) {
+    if (lift.weightLbs !== undefined || lift.lastStage1WeightLbs !== undefined) {
+      needsUpdate = true
+    }
+    t2[key] = migrateLiftState(lift)
+  }
+
+  // Migrate T3 weights
+  const t3: Record<string, { weight: number }> = {}
+  for (const [key, t3State] of Object.entries(stored.t3)) {
+    if (t3State.weightLbs !== undefined && t3State.weight === undefined) {
+      needsUpdate = true
+      t3[key] = { weight: t3State.weightLbs }
+    } else {
+      t3[key] = { weight: t3State.weight ?? 0 }
+    }
+  }
+
+  const migrated: ProgramState = {
+    t1: t1 as ProgramState['t1'],
+    t2: t2 as ProgramState['t2'],
+    t3,
+    nextWorkoutType: stored.nextWorkoutType,
+    workoutCount: stored.workoutCount,
+  }
+
+  if (needsUpdate) {
+    await db.programState.put({ ...migrated, id: 'current' })
+    // Also migrate workout data when program state is migrated
+    await migrateWorkouts()
+  }
+
+  return migrated
 }
 
 export async function saveProgramState(state: ProgramState): Promise<void> {
   await db.programState.put({ ...state, id: 'current' })
+}
+
+// Migrate legacy workout data (weightLbs -> weight in ExerciseLog)
+interface LegacyExerciseLog {
+  liftId: string
+  tier: 'T1' | 'T2' | 'T3'
+  weight?: number
+  weightLbs?: number
+  targetSets: number
+  targetReps: number
+  sets: Array<{ setNumber: number; reps: number; completed: boolean; isAmrap: boolean }>
+}
+
+interface LegacyWorkout {
+  id: string
+  date: string
+  type: 'A1' | 'A2' | 'B1' | 'B2'
+  exercises: LegacyExerciseLog[]
+  completed: boolean
+  notes?: string
+}
+
+export async function migrateWorkouts(): Promise<void> {
+  const workouts = await db.workouts.toArray() as unknown as LegacyWorkout[]
+  const toUpdate: Workout[] = []
+
+  for (const workout of workouts) {
+    let needsMigration = false
+    const migratedExercises = workout.exercises.map((ex) => {
+      if (ex.weightLbs !== undefined && ex.weight === undefined) {
+        needsMigration = true
+        const { weightLbs, ...rest } = ex
+        return { ...rest, weight: weightLbs }
+      }
+      return ex
+    })
+
+    if (needsMigration) {
+      toUpdate.push({
+        ...workout,
+        exercises: migratedExercises as Workout['exercises'],
+      })
+    }
+  }
+
+  if (toUpdate.length > 0) {
+    await db.workouts.bulkPut(toUpdate)
+  }
 }

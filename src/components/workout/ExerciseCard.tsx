@@ -42,13 +42,13 @@ export function ExerciseCard({
         <h2 className="text-2xl font-bold">{exerciseName}</h2>
         <p className="text-lg text-zinc-400">
           {exercise.targetSets}×{exercise.targetReps}
-          {exercise.sets.some((s) => s.isAmrap) ? '+' : ''} @ {exercise.weightLbs} {unit}
+          {exercise.sets.some((s) => s.isAmrap) ? '+' : ''} @ {exercise.weight} {unit}
         </p>
       </div>
 
       {showPlates && (
         <PlateDisplay
-          targetWeight={exercise.weightLbs}
+          targetWeight={exercise.weight}
           barWeight={effectiveBarWeight}
           plateInventory={plateInventory}
           unit={unit}

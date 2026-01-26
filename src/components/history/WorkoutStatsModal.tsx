@@ -45,12 +45,12 @@ export function WorkoutStatsModal({ workout, unit, liftSubstitutions, exerciseLi
       if (set.completed && set.reps > 0) {
         completedSets++
         totalReps += set.reps
-        totalVolume += exercise.weightLbs * set.reps
+        totalVolume += exercise.weight * set.reps
       }
     }
 
-    if (exercise.weightLbs > heaviestLift.weight) {
-      heaviestLift = { name: exerciseName, weight: exercise.weightLbs }
+    if (exercise.weight > heaviestLift.weight) {
+      heaviestLift = { name: exerciseName, weight: exercise.weight }
     }
   }
 

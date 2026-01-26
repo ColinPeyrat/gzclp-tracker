@@ -37,8 +37,8 @@ function createInitialState(weights: StartingWeights): ProgramState {
       ohp: createInitialLiftState('ohp', 'T2', Math.round(weights.ohp * 0.6)),
     },
     t3: {
-      'lat-pulldown': { weightLbs: weights.latPulldown },
-      'dumbbell-row': { weightLbs: weights.dbRow },
+      'lat-pulldown': { weight: weights.latPulldown },
+      'dumbbell-row': { weight: weights.dbRow },
     },
     nextWorkoutType: 'A1',
     workoutCount: 0,

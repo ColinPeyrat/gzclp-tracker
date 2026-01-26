@@ -6,7 +6,7 @@ function makeExercise(overrides: Partial<ExerciseLog>): ExerciseLog {
   return {
     liftId: 'squat',
     tier: 'T1',
-    weightLbs: 100,
+    weight: 100,
     targetSets: 5,
     targetReps: 3,
     sets: [],

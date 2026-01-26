@@ -104,15 +104,15 @@ describe('getDefaultPlateInventory', () => {
 describe('getDefaultSettings', () => {
   it('returns correct kg defaults', () => {
     const settings = getDefaultSettings('kg')
-    expect(settings.barWeightLbs).toBe(20)
-    expect(settings.dumbbellHandleWeightLbs).toBe(2.5)
+    expect(settings.barWeight).toBe(20)
+    expect(settings.dumbbellHandleWeight).toBe(2.5)
     expect(settings.plateInventory['20']).toBe(2)
   })
 
   it('returns correct lbs defaults', () => {
     const settings = getDefaultSettings('lbs')
-    expect(settings.barWeightLbs).toBe(45)
-    expect(settings.dumbbellHandleWeightLbs).toBe(5)
+    expect(settings.barWeight).toBe(45)
+    expect(settings.dumbbellHandleWeight).toBe(5)
     expect(settings.plateInventory['45']).toBe(2)
   })
 })
