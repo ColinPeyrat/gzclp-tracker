@@ -1,9 +1,9 @@
 import { useState, useCallback, useMemo } from 'react'
 import { nanoid } from 'nanoid'
-import type { Workout, ExerciseLog, CustomExercise } from '../lib/types'
+import type { Workout, ExerciseLog, UserSettings } from '../lib/types'
 import { WORKOUTS } from '../lib/types'
 import { getStageConfig } from '../lib/progression'
-import { getCustomExercise } from '../lib/exercises'
+import { getLiftSubstitution } from '../lib/exercises'
 import type { ProgramState } from '../lib/types'
 export { getExerciseName } from '../lib/exercises'
 
@@ -17,7 +17,7 @@ interface WorkoutSession {
 
 interface UseWorkoutSessionReturn {
   session: WorkoutSession | null
-  startWorkout: (programState: ProgramState, customExercises?: CustomExercise[]) => void
+  startWorkout: (programState: ProgramState, settings: UserSettings) => void
   completeSet: (setIndex: number, reps: number) => void
   failSet: (setIndex: number) => void
   failRemainingCurrentExerciseSets: () => void
@@ -25,19 +25,21 @@ interface UseWorkoutSessionReturn {
   nextExercise: () => void
   prevExercise: () => void
   finishWorkout: () => Workout | null
+  addT3Exercise: (t3Id: string, weightLbs: number) => void
 }
 
 function createExerciseLogs(
   programState: ProgramState,
-  customExercises?: CustomExercise[]
+  settings: UserSettings
 ): ExerciseLog[] {
   const workoutDef = WORKOUTS[programState.nextWorkoutType]
+  const liftSubstitutions = settings.liftSubstitutions
   const exercises: ExerciseLog[] = []
 
   // T1
-  const t1Custom = getCustomExercise(workoutDef.t1, customExercises)
+  const t1Substitution = getLiftSubstitution(workoutDef.t1, liftSubstitutions)
   const t1State = programState.t1[workoutDef.t1]
-  if (t1Custom?.forceT3Progression) {
+  if (t1Substitution?.forceT3Progression) {
     // Use T3-style progression (3×15+)
     const t3Config = getStageConfig('T3', 1)
     exercises.push({
@@ -71,9 +73,9 @@ function createExerciseLogs(
   }
 
   // T2
-  const t2Custom = getCustomExercise(workoutDef.t2, customExercises)
+  const t2Substitution = getLiftSubstitution(workoutDef.t2, liftSubstitutions)
   const t2State = programState.t2[workoutDef.t2]
-  if (t2Custom?.forceT3Progression) {
+  if (t2Substitution?.forceT3Progression) {
     // Use T3-style progression (3×15+)
     const t3Config = getStageConfig('T3', 1)
     exercises.push({
@@ -106,22 +108,34 @@ function createExerciseLogs(
     })
   }
 
-  // T3
-  const t3Weight = programState.t3[workoutDef.t3]?.weightLbs ?? 50
+  // T3s - default T3 from WORKOUTS + any additional T3s
   const t3Config = getStageConfig('T3', 1)
-  exercises.push({
-    liftId: workoutDef.t3,
-    tier: 'T3',
-    weightLbs: t3Weight,
-    targetSets: t3Config.sets,
-    targetReps: t3Config.reps,
-    sets: Array.from({ length: t3Config.sets }, (_, i) => ({
-      setNumber: i + 1,
-      reps: 0,
-      completed: false,
-      isAmrap: i === t3Config.sets - 1,
-    })),
-  })
+  const t3Ids: string[] = [workoutDef.t3] // Start with default T3
+
+  // Add any additional T3s for this workout
+  const additionalAssignment = settings.additionalT3s?.find(
+    (a) => a.workoutType === programState.nextWorkoutType
+  )
+  if (additionalAssignment) {
+    t3Ids.push(...additionalAssignment.exerciseIds)
+  }
+
+  for (const t3Id of t3Ids) {
+    const t3Weight = programState.t3[t3Id]?.weightLbs ?? 50
+    exercises.push({
+      liftId: t3Id,
+      tier: 'T3',
+      weightLbs: t3Weight,
+      targetSets: t3Config.sets,
+      targetReps: t3Config.reps,
+      sets: Array.from({ length: t3Config.sets }, (_, i) => ({
+        setNumber: i + 1,
+        reps: 0,
+        completed: false,
+        isAmrap: i === t3Config.sets - 1,
+      })),
+    })
+  }
 
   return exercises
 }
@@ -157,8 +171,8 @@ export function useWorkoutSession(): UseWorkoutSessionReturn {
   )
 
   const startWorkout = useCallback(
-    (programState: ProgramState, customExercises?: CustomExercise[]) => {
-      const exercises = createExerciseLogs(programState, customExercises)
+    (programState: ProgramState, settings: UserSettings) => {
+      const exercises = createExerciseLogs(programState, settings)
       setWorkout({
         id: nanoid(),
         date: new Date().toISOString(),
@@ -170,6 +184,27 @@ export function useWorkoutSession(): UseWorkoutSessionReturn {
     },
     []
   )
+
+  const addT3Exercise = useCallback((t3Id: string, weightLbs: number) => {
+    setWorkout((prev) => {
+      if (!prev) return null
+      const t3Config = getStageConfig('T3', 1)
+      const newExercise: ExerciseLog = {
+        liftId: t3Id,
+        tier: 'T3',
+        weightLbs,
+        targetSets: t3Config.sets,
+        targetReps: t3Config.reps,
+        sets: Array.from({ length: t3Config.sets }, (_, i) => ({
+          setNumber: i + 1,
+          reps: 0,
+          completed: false,
+          isAmrap: i === t3Config.sets - 1,
+        })),
+      }
+      return { ...prev, exercises: [...prev.exercises, newExercise] }
+    })
+  }, [])
 
   const completeSet = useCallback(
     (setIndex: number, reps: number) => {
@@ -239,5 +274,6 @@ export function useWorkoutSession(): UseWorkoutSessionReturn {
     nextExercise,
     prevExercise,
     finishWorkout,
+    addT3Exercise,
   }
 }

@@ -1,18 +1,19 @@
 import { useState } from 'react'
 import { ArrowLeft, Check, X, Minus, TrendingUp, TrendingDown, BarChart2 } from 'lucide-react'
-import type { Workout, WeightUnit, Tier, ExerciseLog, LiftName, CustomExercise } from '../../lib/types'
+import type { Workout, WeightUnit, Tier, ExerciseLog, LiftName, LiftSubstitution, ExerciseDefinition } from '../../lib/types'
 import { WorkoutStatsModal } from './WorkoutStatsModal'
 import { LIFTS } from '../../lib/types'
 import { getTotalReps, getTargetTotalReps, didHitRepTarget, getStageConfig } from '../../lib/progression'
 import { getIncrement, UNIT_CONFIG } from '../../lib/units'
 import { getSmallestPlate } from '../../lib/plates'
-import { getExerciseName, getCustomExercise, TIER_COLORS, getStageFromConfig } from '../../lib/exercises'
+import { getExerciseName, getLiftSubstitution, TIER_COLORS, getStageFromConfig } from '../../lib/exercises'
 
 interface WorkoutDetailProps {
   workout: Workout
   unit: WeightUnit
   plateInventory: Record<string, number>
-  customExercises?: CustomExercise[]
+  liftSubstitutions?: LiftSubstitution[]
+  exerciseLibrary?: ExerciseDefinition[]
   onBack: () => void
 }
 
@@ -31,17 +32,17 @@ interface ExerciseResultProps {
   tier: Tier
   unit: WeightUnit
   plateInventory: Record<string, number>
-  customExercises?: CustomExercise[]
+  liftSubstitutions?: LiftSubstitution[]
 }
 
-function ExerciseResult({ exercise, tier, unit, plateInventory, customExercises }: ExerciseResultProps) {
+function ExerciseResult({ exercise, tier, unit, plateInventory, liftSubstitutions }: ExerciseResultProps) {
   const totalReps = getTotalReps(exercise)
   const targetTotal = getTargetTotalReps(exercise)
   const success = didHitRepTarget(exercise)
 
   // Check if this exercise uses T3 progression (either T3 tier or forceT3Progression)
-  const customExercise = getCustomExercise(exercise.liftId, customExercises)
-  const usesT3Progression = tier === 'T3' || customExercise?.forceT3Progression
+  const liftSubstitution = getLiftSubstitution(exercise.liftId, liftSubstitutions)
+  const usesT3Progression = tier === 'T3' || liftSubstitution?.forceT3Progression
 
   // T3 progression: AMRAP >= 25 for weight increase
   if (usesT3Progression) {
@@ -97,7 +98,7 @@ function ExerciseResult({ exercise, tier, unit, plateInventory, customExercises 
   )
 }
 
-export function WorkoutDetail({ workout, unit, plateInventory, customExercises, onBack }: WorkoutDetailProps) {
+export function WorkoutDetail({ workout, unit, plateInventory, liftSubstitutions, exerciseLibrary, onBack }: WorkoutDetailProps) {
   const [showStats, setShowStats] = useState(false)
 
   const date = new Date(workout.date)
@@ -138,7 +139,8 @@ export function WorkoutDetail({ workout, unit, plateInventory, customExercises, 
         <WorkoutStatsModal
           workout={workout}
           unit={unit}
-          customExercises={customExercises}
+          liftSubstitutions={liftSubstitutions}
+          exerciseLibrary={exerciseLibrary}
           onClose={() => setShowStats(false)}
         />
       )}
@@ -152,7 +154,7 @@ export function WorkoutDetail({ workout, unit, plateInventory, customExercises, 
                   {exercise.tier}
                 </span>
                 <h3 className="font-medium">
-                  {getExerciseName(exercise.liftId, exercise.tier, customExercises)}
+                  {getExerciseName(exercise.liftId, exercise.tier, liftSubstitutions, exerciseLibrary)}
                 </h3>
               </div>
               <div className="text-right">
@@ -205,7 +207,7 @@ export function WorkoutDetail({ workout, unit, plateInventory, customExercises, 
               })}
             </div>
 
-            <ExerciseResult exercise={exercise} tier={exercise.tier} unit={unit} plateInventory={plateInventory} customExercises={customExercises} />
+            <ExerciseResult exercise={exercise} tier={exercise.tier} unit={unit} plateInventory={plateInventory} liftSubstitutions={liftSubstitutions} />
           </div>
         ))}
 

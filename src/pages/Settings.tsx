@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react'
 import { Download, Upload, Trash2, Plus, X } from 'lucide-react'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useProgramStore } from '../stores/programStore'
-import { db } from '../lib/db'
+import { db, DEFAULT_EXERCISE_LIBRARY } from '../lib/db'
 import { UNIT_CONFIG, getDefaultPlateInventory } from '../lib/units'
 import { BottomNav } from '../components/ui/BottomNav'
 import { Modal } from '../components/ui/Modal'
-import { LIFTS, T3_EXERCISES, type CustomExercise } from '../lib/types'
+import { LIFTS, T3_EXERCISES, WORKOUTS, WORKOUT_ORDER, type ExerciseDefinition, type LiftSubstitution, type WorkoutType } from '../lib/types'
 
-const REPLACEABLE_EXERCISES = [
+const REPLACEABLE_LIFTS = [
   { id: 'squat', name: 'Squat', tier: 'T1/T2' },
   { id: 'bench', name: 'Bench Press', tier: 'T1/T2' },
   { id: 'deadlift', name: 'Deadlift', tier: 'T1/T2' },
@@ -21,12 +21,24 @@ export function Settings() {
   const { settings, loaded, load, update } = useSettingsStore()
   const { state: programState, load: loadProgram, save: saveProgram } = useProgramStore()
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+
+  // Exercise Library state
   const [showAddExerciseModal, setShowAddExerciseModal] = useState(false)
   const [newExerciseName, setNewExerciseName] = useState('')
-  const [newExerciseReplaces, setNewExerciseReplaces] = useState('')
-  const [newExerciseForceT3, setNewExerciseForceT3] = useState(false)
   const [newExerciseIsDumbbell, setNewExerciseIsDumbbell] = useState(false)
   const [newExerciseStartingWeight, setNewExerciseStartingWeight] = useState('')
+
+  // Lift Substitution state
+  const [showAddSubstitutionModal, setShowAddSubstitutionModal] = useState(false)
+  const [substitutionStep, setSubstitutionStep] = useState<'select-original' | 'select-substitute'>('select-original')
+  const [selectedOriginalLift, setSelectedOriginalLift] = useState('')
+  const [selectedSubstituteId, setSelectedSubstituteId] = useState('')
+  const [substituteForceT3, setSubstituteForceT3] = useState(false)
+  const [substituteStartingWeight, setSubstituteStartingWeight] = useState('')
+
+  // Additional T3s state
+  const [showAssignT3Modal, setShowAssignT3Modal] = useState(false)
+  const [assignT3WorkoutType, setAssignT3WorkoutType] = useState<WorkoutType | null>(null)
 
   useEffect(() => {
     if (!loaded) load()
@@ -93,7 +105,7 @@ export function Settings() {
       }
 
       window.location.reload()
-    } catch (err) {
+    } catch {
       alert('Failed to import data. Invalid file format.')
     }
   }
@@ -105,32 +117,83 @@ export function Settings() {
     window.location.href = '/setup'
   }
 
-  const handleAddCustomExercise = async () => {
-    if (!newExerciseName.trim() || !newExerciseReplaces) return
+  // Exercise Library handlers
+  const handleAddExerciseToLibrary = async () => {
+    if (!newExerciseName.trim()) return
 
     const id = newExerciseName.toLowerCase().replace(/\s+/g, '-')
     const startingWeight = newExerciseStartingWeight ? parseFloat(newExerciseStartingWeight) : undefined
-    const newExercise: CustomExercise = {
+    const newExercise: ExerciseDefinition = {
       id,
       name: newExerciseName.trim(),
-      replacesId: newExerciseReplaces,
-      forceT3Progression: newExerciseForceT3 || undefined,
       isDumbbell: newExerciseIsDumbbell || undefined,
-      startingWeight: startingWeight && startingWeight > 0 ? startingWeight : undefined,
     }
 
-    const existing = settings.customExercises ?? []
-    const filtered = existing.filter((e) => e.replacesId !== newExerciseReplaces)
-    update({ customExercises: [...filtered, newExercise] })
+    const existing = settings.exerciseLibrary ?? DEFAULT_EXERCISE_LIBRARY
+    if (existing.some((e) => e.id === id)) {
+      alert('An exercise with this name already exists.')
+      return
+    }
+
+    update({ exerciseLibrary: [...existing, newExercise] })
+
+    // Initialize weight in program state if provided
+    if (startingWeight && startingWeight > 0 && programState) {
+      await saveProgram({
+        ...programState,
+        t3: {
+          ...programState.t3,
+          [id]: { weightLbs: startingWeight },
+        },
+      })
+    }
+
+    setNewExerciseName('')
+    setNewExerciseIsDumbbell(false)
+    setNewExerciseStartingWeight('')
+    setShowAddExerciseModal(false)
+  }
+
+  const handleRemoveExerciseFromLibrary = (exerciseId: string) => {
+    const existing = settings.exerciseLibrary ?? DEFAULT_EXERCISE_LIBRARY
+    update({ exerciseLibrary: existing.filter((e) => e.id !== exerciseId) })
+
+    // Also remove any substitutions using this exercise
+    const existingSubs = settings.liftSubstitutions ?? []
+    update({ liftSubstitutions: existingSubs.filter((s) => s.substituteId !== exerciseId) })
+
+    // Also remove from all additional T3 assignments
+    const existingAssignments = settings.additionalT3s ?? []
+    update({
+      additionalT3s: existingAssignments.map((a) => ({
+        ...a,
+        exerciseIds: a.exerciseIds.filter((id) => id !== exerciseId),
+      })).filter((a) => a.exerciseIds.length > 0),
+    })
+  }
+
+  // Lift Substitution handlers
+  const handleAddSubstitution = async () => {
+    if (!selectedOriginalLift || !selectedSubstituteId) return
+
+    const startingWeight = substituteStartingWeight ? parseFloat(substituteStartingWeight) : undefined
+    const newSub: LiftSubstitution = {
+      originalLiftId: selectedOriginalLift,
+      substituteId: selectedSubstituteId,
+      forceT3Progression: substituteForceT3 || undefined,
+    }
+
+    const existing = settings.liftSubstitutions ?? []
+    // Remove any existing substitution for this original lift
+    const filtered = existing.filter((s) => s.originalLiftId !== selectedOriginalLift)
+    update({ liftSubstitutions: [...filtered, newSub] })
 
     // Update program state with starting weight if provided
     if (startingWeight && startingWeight > 0 && programState) {
-      const replacesId = newExerciseReplaces
-      const isMainLift = replacesId in LIFTS
+      const isMainLift = selectedOriginalLift in LIFTS
 
       if (isMainLift) {
-        // T1/T2 lift - update both t1 and t2 states
-        const liftId = replacesId as keyof typeof LIFTS
+        const liftId = selectedOriginalLift as keyof typeof LIFTS
         await saveProgram({
           ...programState,
           t1: {
@@ -143,36 +206,95 @@ export function Settings() {
           },
         })
       } else {
-        // T3 exercise - update t3 state
+        // T3 exercise
         await saveProgram({
           ...programState,
           t3: {
             ...programState.t3,
-            [replacesId]: { weightLbs: startingWeight },
+            [selectedOriginalLift]: { weightLbs: startingWeight },
           },
         })
       }
     }
 
-    setNewExerciseName('')
-    setNewExerciseReplaces('')
-    setNewExerciseForceT3(false)
-    setNewExerciseIsDumbbell(false)
-    setNewExerciseStartingWeight('')
-    setShowAddExerciseModal(false)
+    resetSubstitutionModal()
   }
 
-  const handleRemoveCustomExercise = (replacesId: string) => {
-    const existing = settings.customExercises ?? []
-    update({ customExercises: existing.filter((e) => e.replacesId !== replacesId) })
+  const handleRemoveSubstitution = (originalLiftId: string) => {
+    const existing = settings.liftSubstitutions ?? []
+    update({ liftSubstitutions: existing.filter((s) => s.originalLiftId !== originalLiftId) })
   }
 
-  const getReplacedExerciseName = (replacesId: string) => {
-    const lift = LIFTS[replacesId as keyof typeof LIFTS]
-    if (lift) return lift.name
-    const t3 = T3_EXERCISES[replacesId]
+  const resetSubstitutionModal = () => {
+    setSelectedOriginalLift('')
+    setSelectedSubstituteId('')
+    setSubstituteForceT3(false)
+    setSubstituteStartingWeight('')
+    setSubstitutionStep('select-original')
+    setShowAddSubstitutionModal(false)
+  }
+
+  // Additional T3s handlers
+  const handleAssignAdditionalT3 = (exerciseId: string) => {
+    if (!assignT3WorkoutType) return
+
+    const existingAssignments = settings.additionalT3s ?? []
+    const assignment = existingAssignments.find((a) => a.workoutType === assignT3WorkoutType)
+
+    if (assignment) {
+      if (!assignment.exerciseIds.includes(exerciseId)) {
+        update({
+          additionalT3s: existingAssignments.map((a) =>
+            a.workoutType === assignT3WorkoutType
+              ? { ...a, exerciseIds: [...a.exerciseIds, exerciseId] }
+              : a
+          ),
+        })
+      }
+    } else {
+      update({
+        additionalT3s: [...existingAssignments, { workoutType: assignT3WorkoutType, exerciseIds: [exerciseId] }],
+      })
+    }
+
+    setShowAssignT3Modal(false)
+    setAssignT3WorkoutType(null)
+  }
+
+  const handleUnassignAdditionalT3 = (workoutType: WorkoutType, exerciseId: string) => {
+    const existingAssignments = settings.additionalT3s ?? []
+    update({
+      additionalT3s: existingAssignments
+        .map((a) =>
+          a.workoutType === workoutType
+            ? { ...a, exerciseIds: a.exerciseIds.filter((id) => id !== exerciseId) }
+            : a
+        )
+        .filter((a) => a.exerciseIds.length > 0),
+    })
+  }
+
+  // Helper functions
+  const getExerciseName = (exerciseId: string) => {
+    const exercise = settings.exerciseLibrary?.find((e) => e.id === exerciseId)
+    if (exercise) return exercise.name
+    const t3 = T3_EXERCISES[exerciseId]
     if (t3) return t3.name
-    return replacesId
+    const lift = LIFTS[exerciseId as keyof typeof LIFTS]
+    if (lift) return lift.name
+    return exerciseId
+  }
+
+  const getOriginalLiftName = (liftId: string) => {
+    const lift = LIFTS[liftId as keyof typeof LIFTS]
+    if (lift) return lift.name
+    const t3 = T3_EXERCISES[liftId]
+    if (t3) return t3.name
+    return liftId
+  }
+
+  const getExerciseDefinition = (exerciseId: string) => {
+    return settings.exerciseLibrary?.find((e) => e.id === exerciseId)
   }
 
   if (!loaded) {
@@ -184,6 +306,23 @@ export function Settings() {
   }
 
   const unit = settings.weightUnit
+  const exerciseLibrary = settings.exerciseLibrary ?? DEFAULT_EXERCISE_LIBRARY
+  const liftSubstitutions = settings.liftSubstitutions ?? []
+  const additionalT3s = settings.additionalT3s ?? []
+
+  // Get exercises available for substitution (not already substituted)
+  const substitutedLiftIds = new Set(liftSubstitutions.map((s) => s.originalLiftId))
+
+  // Get exercises available to assign as additional T3s for the selected workout
+  const getAvailableT3sForWorkout = (workoutType: WorkoutType) => {
+    const defaultT3 = WORKOUTS[workoutType].t3
+    const assignment = additionalT3s.find((a) => a.workoutType === workoutType)
+    const assignedIds = new Set(assignment?.exerciseIds ?? [])
+
+    return exerciseLibrary.filter(
+      (ex) => ex.id !== defaultT3 && !assignedIds.has(ex.id)
+    )
+  }
 
   return (
     <div className="flex min-h-screen flex-col pb-(--nav-height)">
@@ -291,9 +430,9 @@ export function Settings() {
           <h2 className="mb-3 text-sm font-medium text-zinc-400">Rest Timers</h2>
           <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
             {[
-              { key: 't1Seconds' as const, label: 'T1 (Heavy)', default: 180 },
-              { key: 't2Seconds' as const, label: 'T2 (Volume)', default: 120 },
-              { key: 't3Seconds' as const, label: 'T3 (Accessory)', default: 90 },
+              { key: 't1Seconds' as const, label: 'T1 (Heavy)' },
+              { key: 't2Seconds' as const, label: 'T2 (Volume)' },
+              { key: 't3Seconds' as const, label: 'T3 (Accessory)' },
             ].map(({ key, label }) => (
               <div key={key} className="flex items-center justify-between">
                 <span className="text-sm">{label}</span>
@@ -313,46 +452,36 @@ export function Settings() {
           </div>
         </section>
 
-        {/* Custom Exercises */}
+        {/* Exercise Library */}
         <section>
-          <h2 className="mb-3 text-sm font-medium text-zinc-400">Custom Exercises</h2>
+          <h2 className="mb-3 text-sm font-medium text-zinc-400">Exercise Library</h2>
           <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
-            {settings.customExercises && settings.customExercises.length > 0 ? (
+            {exerciseLibrary.length > 0 ? (
               <div className="space-y-2">
-                {settings.customExercises.map((exercise) => (
+                {exerciseLibrary.map((exercise) => (
                   <div
-                    key={exercise.replacesId}
+                    key={exercise.id}
                     className="flex items-center justify-between rounded-lg bg-zinc-700 px-4 py-3"
                   >
                     <div>
-                      <div className="font-medium">{exercise.name}</div>
-                      <div className="text-sm text-zinc-400">
-                        Replaces {getReplacedExerciseName(exercise.replacesId)}
-                        {exercise.forceT3Progression && (
-                          <span className="ml-2 rounded bg-yellow-900/50 px-1.5 py-0.5 text-xs text-yellow-400">
-                            T3 progression
-                          </span>
-                        )}
-                        {exercise.isDumbbell && (
-                          <span className="ml-2 rounded bg-blue-900/50 px-1.5 py-0.5 text-xs text-blue-400">
-                            Dumbbell
-                          </span>
-                        )}
-                      </div>
+                      <span className="font-medium">{exercise.name}</span>
+                      {exercise.isDumbbell && (
+                        <span className="ml-2 rounded bg-blue-900/50 px-1.5 py-0.5 text-xs text-blue-400">
+                          Dumbbell
+                        </span>
+                      )}
                     </div>
                     <button
-                      onClick={() => handleRemoveCustomExercise(exercise.replacesId)}
+                      onClick={() => handleRemoveExerciseFromLibrary(exercise.id)}
                       className="p-1 text-zinc-400 hover:text-red-400"
                     >
-                      <X className="h-5 w-5" />
+                      <X className="h-4 w-4" />
                     </button>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-zinc-400">
-                No custom exercises yet. Add one to replace a default exercise.
-              </p>
+              <p className="text-sm text-zinc-400">No exercises in library.</p>
             )}
 
             <button
@@ -360,8 +489,125 @@ export function Settings() {
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-700 px-4 py-3 text-zinc-300 hover:bg-zinc-600"
             >
               <Plus className="h-5 w-5" />
-              Add Custom Exercise
+              Add Exercise
             </button>
+          </div>
+        </section>
+
+        {/* Lift Substitutions */}
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-zinc-400">Lift Substitutions</h2>
+          <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
+            {liftSubstitutions.length > 0 ? (
+              <div className="space-y-2">
+                {liftSubstitutions.map((sub) => {
+                  const substituteExercise = getExerciseDefinition(sub.substituteId)
+                  return (
+                    <div
+                      key={sub.originalLiftId}
+                      className="flex items-center justify-between rounded-lg bg-zinc-700 px-4 py-3"
+                    >
+                      <div>
+                        <div className="font-medium">{getExerciseName(sub.substituteId)}</div>
+                        <div className="text-sm text-zinc-400">
+                          Replaces {getOriginalLiftName(sub.originalLiftId)}
+                          {sub.forceT3Progression && (
+                            <span className="ml-2 rounded bg-yellow-900/50 px-1.5 py-0.5 text-xs text-yellow-400">
+                              T3 progression
+                            </span>
+                          )}
+                          {substituteExercise?.isDumbbell && (
+                            <span className="ml-2 rounded bg-blue-900/50 px-1.5 py-0.5 text-xs text-blue-400">
+                              Dumbbell
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveSubstitution(sub.originalLiftId)}
+                        className="p-1 text-zinc-400 hover:text-red-400"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-400">
+                No substitutions. Add one to replace a default exercise with one from your library.
+              </p>
+            )}
+
+            <button
+              onClick={() => setShowAddSubstitutionModal(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-700 px-4 py-3 text-zinc-300 hover:bg-zinc-600"
+            >
+              <Plus className="h-5 w-5" />
+              Add Substitution
+            </button>
+
+            <p className="text-xs text-zinc-500">
+              Substitutes the lift everywhere it appears in the program.
+            </p>
+          </div>
+        </section>
+
+        {/* Additional T3s */}
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-zinc-400">Additional T3s</h2>
+          <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
+            <div className="space-y-3">
+              {WORKOUT_ORDER.map((workoutType) => {
+                const defaultT3Id = WORKOUTS[workoutType].t3
+                const defaultT3Name = T3_EXERCISES[defaultT3Id]?.name ?? defaultT3Id
+                const assignment = additionalT3s.find((a) => a.workoutType === workoutType)
+                const additionalIds = assignment?.exerciseIds ?? []
+
+                return (
+                  <div key={workoutType} className="rounded-lg bg-zinc-700 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="font-medium">{workoutType}</span>
+                      <button
+                        onClick={() => {
+                          setAssignT3WorkoutType(workoutType)
+                          setShowAssignT3Modal(true)
+                        }}
+                        className="rounded bg-zinc-600 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-500"
+                      >
+                        <Plus className="inline h-3 w-3" /> Add
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {/* Default T3 (grayed out) */}
+                      <span className="rounded bg-zinc-600 px-2 py-1 text-xs text-zinc-400">
+                        {defaultT3Name}
+                        <span className="ml-1 text-zinc-500">(default)</span>
+                      </span>
+                      {/* Additional T3s */}
+                      {additionalIds.map((exerciseId) => (
+                        <span
+                          key={exerciseId}
+                          className="flex items-center gap-1 rounded bg-yellow-900/50 px-2 py-1 text-xs text-yellow-400"
+                        >
+                          {getExerciseName(exerciseId)}
+                          <button
+                            onClick={() => handleUnassignAdditionalT3(workoutType, exerciseId)}
+                            className="hover:text-yellow-200"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <p className="text-xs text-zinc-500">
+              Default T3s always appear. To replace them, use Lift Substitutions.
+            </p>
           </div>
         </section>
 
@@ -438,9 +684,10 @@ export function Settings() {
 
       <BottomNav active="settings" />
 
+      {/* Add Exercise Modal */}
       {showAddExerciseModal && (
         <Modal onClose={() => setShowAddExerciseModal(false)}>
-          <h2 className="mb-4 text-lg font-bold">Add Custom Exercise</h2>
+          <h2 className="mb-4 text-lg font-bold">Add Exercise to Library</h2>
 
           <div className="space-y-4">
             <div>
@@ -449,30 +696,10 @@ export function Settings() {
                 type="text"
                 value={newExerciseName}
                 onChange={(e) => setNewExerciseName(e.target.value)}
-                placeholder="e.g., Pullups"
+                placeholder="e.g., Face Pulls"
                 className="w-full rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 focus:border-blue-500 focus:outline-none"
+                autoFocus
               />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm text-zinc-400">Replaces</label>
-              <select
-                value={newExerciseReplaces}
-                onChange={(e) => setNewExerciseReplaces(e.target.value)}
-                className="w-full rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 focus:border-blue-500 focus:outline-none"
-              >
-                <option value="">Select an exercise...</option>
-                {REPLACEABLE_EXERCISES.map((ex) => {
-                  const isReplaced = settings.customExercises?.some(
-                    (ce) => ce.replacesId === ex.id
-                  )
-                  return (
-                    <option key={ex.id} value={ex.id} disabled={isReplaced}>
-                      {ex.name} ({ex.tier}){isReplaced ? ' - already replaced' : ''}
-                    </option>
-                  )
-                })}
-              </select>
             </div>
 
             <div>
@@ -484,30 +711,13 @@ export function Settings() {
                   type="number"
                   value={newExerciseStartingWeight}
                   onChange={(e) => setNewExerciseStartingWeight(e.target.value)}
-                  placeholder="Leave empty to use current"
+                  placeholder="50"
                   className="flex-1 rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 focus:border-blue-500 focus:outline-none"
                   step={unit === 'kg' ? 2.5 : 5}
                   min={0}
                 />
                 <span className="text-zinc-400">{unit}</span>
               </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                id="forceT3"
-                checked={newExerciseForceT3}
-                onChange={(e) => setNewExerciseForceT3(e.target.checked)}
-                className="mt-1 h-5 w-5 rounded border-zinc-600 bg-zinc-700 text-blue-600 focus:ring-blue-500"
-              />
-              <label htmlFor="forceT3" className="text-sm">
-                <span className="font-medium">Force T3 progression</span>
-                <span className="block text-zinc-400">
-                  Use 3×15+ with AMRAP progression instead of normal tier stages. Useful for
-                  injury rehab or bodyweight exercises.
-                </span>
-              </label>
             </div>
 
             <div className="flex items-start gap-3">
@@ -529,8 +739,8 @@ export function Settings() {
 
           <div className="mt-6 flex gap-3">
             <button
-              onClick={handleAddCustomExercise}
-              disabled={!newExerciseName.trim() || !newExerciseReplaces}
+              onClick={handleAddExerciseToLibrary}
+              disabled={!newExerciseName.trim()}
               className="flex-1 rounded-lg bg-blue-600 py-2 font-medium hover:bg-blue-500 disabled:opacity-50"
             >
               Add Exercise
@@ -542,6 +752,175 @@ export function Settings() {
               Cancel
             </button>
           </div>
+        </Modal>
+      )}
+
+      {/* Add Substitution Modal */}
+      {showAddSubstitutionModal && (
+        <Modal onClose={resetSubstitutionModal}>
+          <h2 className="mb-4 text-lg font-bold">Add Lift Substitution</h2>
+
+          {substitutionStep === 'select-original' ? (
+            <div className="space-y-2">
+              <p className="mb-3 text-sm text-zinc-400">Select the lift to replace:</p>
+              {REPLACEABLE_LIFTS.filter((lift) => !substitutedLiftIds.has(lift.id)).map((lift) => (
+                <button
+                  key={lift.id}
+                  onClick={() => {
+                    setSelectedOriginalLift(lift.id)
+                    setSubstitutionStep('select-substitute')
+                  }}
+                  className="w-full rounded-lg bg-zinc-700 px-4 py-3 text-left hover:bg-zinc-600"
+                >
+                  <span className="font-medium">{lift.name}</span>
+                  <span className="ml-2 text-sm text-zinc-400">{lift.tier}</span>
+                </button>
+              ))}
+              {REPLACEABLE_LIFTS.filter((lift) => !substitutedLiftIds.has(lift.id)).length === 0 && (
+                <p className="text-sm text-zinc-400">All lifts have been substituted.</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-zinc-700 px-4 py-3">
+                <span className="text-sm text-zinc-400">Replacing: </span>
+                <span className="font-medium">
+                  {REPLACEABLE_LIFTS.find((l) => l.id === selectedOriginalLift)?.name}
+                </span>
+              </div>
+
+              {!selectedSubstituteId ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-zinc-400">Select substitute from library:</p>
+                  {exerciseLibrary.map((exercise) => (
+                    <button
+                      key={exercise.id}
+                      onClick={() => setSelectedSubstituteId(exercise.id)}
+                      className="w-full rounded-lg bg-zinc-700 px-4 py-3 text-left hover:bg-zinc-600"
+                    >
+                      <span className="font-medium">{exercise.name}</span>
+                      {exercise.isDumbbell && (
+                        <span className="ml-2 rounded bg-blue-900/50 px-1.5 py-0.5 text-xs text-blue-400">
+                          Dumbbell
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                  {exerciseLibrary.length === 0 && (
+                    <p className="text-sm text-zinc-400">
+                      No exercises in library. Add exercises first.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="rounded-lg bg-zinc-700 px-4 py-3">
+                    <span className="text-sm text-zinc-400">Substitute: </span>
+                    <span className="font-medium">{getExerciseName(selectedSubstituteId)}</span>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm text-zinc-400">
+                      Starting Weight <span className="text-zinc-500">(optional)</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={substituteStartingWeight}
+                        onChange={(e) => setSubstituteStartingWeight(e.target.value)}
+                        placeholder="Leave empty to use current"
+                        className="flex-1 rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 focus:border-blue-500 focus:outline-none"
+                        step={unit === 'kg' ? 2.5 : 5}
+                        min={0}
+                      />
+                      <span className="text-zinc-400">{unit}</span>
+                    </div>
+                  </div>
+
+                  {selectedOriginalLift in LIFTS && (
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        id="forceT3"
+                        checked={substituteForceT3}
+                        onChange={(e) => setSubstituteForceT3(e.target.checked)}
+                        className="mt-1 h-5 w-5 rounded border-zinc-600 bg-zinc-700 text-blue-600 focus:ring-blue-500"
+                      />
+                      <label htmlFor="forceT3" className="text-sm">
+                        <span className="font-medium">Force T3 progression</span>
+                        <span className="block text-zinc-400">
+                          Use 3×15+ with AMRAP progression instead of normal tier stages.
+                        </span>
+                      </label>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleAddSubstitution}
+                      className="flex-1 rounded-lg bg-blue-600 py-2 font-medium hover:bg-blue-500"
+                    >
+                      Add Substitution
+                    </button>
+                    <button
+                      onClick={() => setSelectedSubstituteId('')}
+                      className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
+                    >
+                      Back
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!selectedSubstituteId && (
+                <button
+                  onClick={() => {
+                    setSelectedOriginalLift('')
+                    setSubstitutionStep('select-original')
+                  }}
+                  className="w-full rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
+                >
+                  Back
+                </button>
+              )}
+            </div>
+          )}
+        </Modal>
+      )}
+
+      {/* Assign Additional T3 Modal */}
+      {showAssignT3Modal && assignT3WorkoutType && (
+        <Modal onClose={() => { setShowAssignT3Modal(false); setAssignT3WorkoutType(null) }}>
+          <h2 className="mb-4 text-lg font-bold">Add T3 to {assignT3WorkoutType}</h2>
+
+          <div className="space-y-2">
+            {getAvailableT3sForWorkout(assignT3WorkoutType).map((exercise) => (
+              <button
+                key={exercise.id}
+                onClick={() => handleAssignAdditionalT3(exercise.id)}
+                className="w-full rounded-lg bg-zinc-700 px-4 py-3 text-left hover:bg-zinc-600"
+              >
+                {exercise.name}
+                {exercise.isDumbbell && (
+                  <span className="ml-2 rounded bg-blue-900/50 px-1.5 py-0.5 text-xs text-blue-400">
+                    Dumbbell
+                  </span>
+                )}
+              </button>
+            ))}
+            {getAvailableT3sForWorkout(assignT3WorkoutType).length === 0 && (
+              <p className="text-sm text-zinc-400">
+                All exercises from your library are already assigned to this workout.
+              </p>
+            )}
+          </div>
+
+          <button
+            onClick={() => { setShowAssignT3Modal(false); setAssignT3WorkoutType(null) }}
+            className="mt-4 w-full rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
+          >
+            Cancel
+          </button>
         </Modal>
       )}
     </div>

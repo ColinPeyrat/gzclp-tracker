@@ -1,12 +1,13 @@
 import { X } from 'lucide-react'
 import { Modal } from '../ui/Modal'
-import type { Workout, WeightUnit, CustomExercise } from '../../lib/types'
+import type { Workout, WeightUnit, LiftSubstitution, ExerciseDefinition } from '../../lib/types'
 import { getExerciseName } from '../../lib/exercises'
 
 interface WorkoutStatsModalProps {
   workout: Workout
   unit: WeightUnit
-  customExercises?: CustomExercise[]
+  liftSubstitutions?: LiftSubstitution[]
+  exerciseLibrary?: ExerciseDefinition[]
   onClose: () => void
 }
 
@@ -28,7 +29,7 @@ function StatRow({ label, value, subValue }: StatRowProps) {
   )
 }
 
-export function WorkoutStatsModal({ workout, unit, customExercises, onClose }: WorkoutStatsModalProps) {
+export function WorkoutStatsModal({ workout, unit, liftSubstitutions, exerciseLibrary, onClose }: WorkoutStatsModalProps) {
   // Calculate statistics
   let totalVolume = 0
   let totalSets = 0
@@ -37,7 +38,7 @@ export function WorkoutStatsModal({ workout, unit, customExercises, onClose }: W
   let heaviestLift = { name: '', weight: 0 }
 
   for (const exercise of workout.exercises) {
-    const exerciseName = getExerciseName(exercise.liftId, exercise.tier, customExercises)
+    const exerciseName = getExerciseName(exercise.liftId, exercise.tier, liftSubstitutions, exerciseLibrary)
 
     for (const set of exercise.sets) {
       totalSets++

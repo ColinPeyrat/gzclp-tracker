@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom'
 import { Dumbbell, Play, Bug, Settings } from 'lucide-react'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
-import { WORKOUTS, WORKOUT_ORDER, type WorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit, type CustomExercise } from '../lib/types'
+import { WORKOUTS, WORKOUT_ORDER, type WorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit, type LiftSubstitution, type ExerciseDefinition } from '../lib/types'
 import { getStageConfig, estimate5RM, applyT1Reset } from '../lib/progression'
-import { getExerciseName, getCustomExercise } from '../lib/exercises'
+import { getExerciseName, getLiftSubstitution } from '../lib/exercises'
 import { Modal } from '../components/ui/Modal'
 import { BottomNav } from '../components/ui/BottomNav'
 
@@ -21,7 +21,8 @@ interface Pending5RMInfo {
 function getPending5RMInfo(
   state: ProgramState | null,
   unit: WeightUnit,
-  customExercises?: CustomExercise[]
+  liftSubstitutions?: LiftSubstitution[],
+  exerciseLibrary?: ExerciseDefinition[]
 ): Pending5RMInfo | null {
   if (!state) return null
   const liftId = WORKOUTS[state.nextWorkoutType].t1
@@ -34,7 +35,7 @@ function getPending5RMInfo(
   return {
     liftId,
     liftState,
-    liftName: getExerciseName(liftId, 'T1', customExercises),
+    liftName: getExerciseName(liftId, 'T1', liftSubstitutions, exerciseLibrary),
     bestSetReps,
     bestSetWeight,
     estimated5RM: estimate5RM(bestSetWeight, bestSetReps, unit),
@@ -52,7 +53,7 @@ export function Home() {
     if (!settingsLoaded) loadSettings()
   }, [programLoaded, settingsLoaded, loadProgram, loadSettings])
 
-  const currentPending = getPending5RMInfo(state, settings.weightUnit, settings.customExercises)
+  const currentPending = getPending5RMInfo(state, settings.weightUnit, settings.liftSubstitutions, settings.exerciseLibrary)
 
   const handleApply5RM = async (new5RM: number) => {
     if (!state || !currentPending) return
@@ -100,10 +101,10 @@ export function Home() {
   const workout = WORKOUTS[state.nextWorkoutType]
   const t1State = state.t1[workout.t1]
   const t2State = state.t2[workout.t2]
-  const t1Custom = getCustomExercise(workout.t1, settings.customExercises)
-  const t2Custom = getCustomExercise(workout.t2, settings.customExercises)
-  const t1Config = t1Custom?.forceT3Progression ? getStageConfig('T3', 1) : getStageConfig('T1', t1State.stage)
-  const t2Config = t2Custom?.forceT3Progression ? getStageConfig('T3', 1) : getStageConfig('T2', t2State.stage)
+  const t1Sub = getLiftSubstitution(workout.t1, settings.liftSubstitutions)
+  const t2Sub = getLiftSubstitution(workout.t2, settings.liftSubstitutions)
+  const t1Config = t1Sub?.forceT3Progression ? getStageConfig('T3', 1) : getStageConfig('T1', t1State.stage)
+  const t2Config = t2Sub?.forceT3Progression ? getStageConfig('T3', 1) : getStageConfig('T2', t2State.stage)
 
   return (
     <div className="flex min-h-screen flex-col pb-(--nav-height)">
@@ -138,7 +139,7 @@ export function Home() {
             <div className="mb-1 text-xs font-medium text-blue-400">T1</div>
             <div className="flex items-baseline justify-between">
               <span className="text-lg font-medium">
-                {getExerciseName(workout.t1, 'T1', settings.customExercises)}
+                {getExerciseName(workout.t1, 'T1', settings.liftSubstitutions, settings.exerciseLibrary)}
               </span>
               <span className="text-zinc-400">
                 {t1Config.sets}×{t1Config.reps}+ @ {t1State.weightLbs} {settings.weightUnit}
@@ -150,25 +151,37 @@ export function Home() {
             <div className="mb-1 text-xs font-medium text-green-400">T2</div>
             <div className="flex items-baseline justify-between">
               <span className="text-lg font-medium">
-                {getExerciseName(workout.t2, 'T2', settings.customExercises)}
+                {getExerciseName(workout.t2, 'T2', settings.liftSubstitutions, settings.exerciseLibrary)}
               </span>
               <span className="text-zinc-400">
-                {t2Config.sets}×{t2Config.reps}{t2Custom?.forceT3Progression ? '+' : ''} @ {t2State.weightLbs} {settings.weightUnit}
+                {t2Config.sets}×{t2Config.reps}{t2Sub?.forceT3Progression ? '+' : ''} @ {t2State.weightLbs} {settings.weightUnit}
               </span>
             </div>
           </div>
 
-          <div className="rounded-lg bg-zinc-800 p-4">
-            <div className="mb-1 text-xs font-medium text-yellow-400">T3</div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-lg font-medium">
-                {getExerciseName(workout.t3, 'T3', settings.customExercises)}
-              </span>
-              <span className="text-zinc-400">
-                3×15+ @ {state.t3[workout.t3].weightLbs} {settings.weightUnit}
-              </span>
-            </div>
-          </div>
+          {(() => {
+            // Default T3 from WORKOUTS + any additional T3s
+            const t3Ids: string[] = [workout.t3]
+            const additionalAssignment = settings.additionalT3s?.find(
+              (a) => a.workoutType === state.nextWorkoutType
+            )
+            if (additionalAssignment) {
+              t3Ids.push(...additionalAssignment.exerciseIds)
+            }
+            return t3Ids.map((t3Id) => (
+              <div key={t3Id} className="rounded-lg bg-zinc-800 p-4">
+                <div className="mb-1 text-xs font-medium text-yellow-400">T3</div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-lg font-medium">
+                    {getExerciseName(t3Id, 'T3', settings.liftSubstitutions, settings.exerciseLibrary)}
+                  </span>
+                  <span className="text-zinc-400">
+                    3×15+ @ {state.t3[t3Id]?.weightLbs ?? 50} {settings.weightUnit}
+                  </span>
+                </div>
+              </div>
+            ))
+          })()}
         </div>
 
         <Link
@@ -254,7 +267,7 @@ export function Home() {
                 >
                   <span className="font-medium">{workoutType}</span>
                   <span className="ml-2 text-sm text-zinc-400">
-                    T1: {getExerciseName(w.t1, 'T1', settings.customExercises)}, T2: {getExerciseName(w.t2, 'T2', settings.customExercises)}
+                    T1: {getExerciseName(w.t1, 'T1', settings.liftSubstitutions, settings.exerciseLibrary)}, T2: {getExerciseName(w.t2, 'T2', settings.liftSubstitutions, settings.exerciseLibrary)}
                   </span>
                 </button>
               )

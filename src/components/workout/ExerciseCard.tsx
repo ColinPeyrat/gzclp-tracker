@@ -1,4 +1,4 @@
-import type { ExerciseLog, WeightUnit, CustomExercise } from '../../lib/types'
+import type { ExerciseLog, WeightUnit, LiftSubstitution, ExerciseDefinition } from '../../lib/types'
 import { SetLogger } from './SetLogger'
 import { PlateDisplay } from '../plates/PlateDisplay'
 import { getExerciseName, TIER_COLORS, isDumbbellExercise } from '../../lib/exercises'
@@ -9,7 +9,8 @@ interface ExerciseCardProps {
   dumbbellHandleWeight: number
   plateInventory: Record<string, number>
   unit: WeightUnit
-  customExercises?: CustomExercise[]
+  liftSubstitutions?: LiftSubstitution[]
+  exerciseLibrary?: ExerciseDefinition[]
   onCompleteSet: (setIndex: number, reps: number) => void
   onWeightChange?: (newWeight: number) => void
 }
@@ -20,12 +21,13 @@ export function ExerciseCard({
   dumbbellHandleWeight,
   plateInventory,
   unit,
-  customExercises,
+  liftSubstitutions,
+  exerciseLibrary,
   onCompleteSet,
   onWeightChange,
 }: ExerciseCardProps) {
-  const exerciseName = getExerciseName(exercise.liftId, exercise.tier, customExercises)
-  const isDumbbell = isDumbbellExercise(exercise.liftId, customExercises)
+  const exerciseName = getExerciseName(exercise.liftId, exercise.tier, liftSubstitutions, exerciseLibrary)
+  const isDumbbell = isDumbbellExercise(exercise.liftId, liftSubstitutions, exerciseLibrary)
   const showPlates = exercise.tier !== 'T3' || isDumbbell
   const effectiveBarWeight = isDumbbell ? dumbbellHandleWeight : barWeight
   const completedSets = exercise.sets.filter((s) => s.completed).length

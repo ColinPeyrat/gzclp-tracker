@@ -1,26 +1,16 @@
 import { ChevronRight } from 'lucide-react'
-import type { Workout, WeightUnit, ExerciseLog, CustomExercise } from '../../lib/types'
+import type { Workout, WeightUnit, LiftSubstitution, ExerciseDefinition } from '../../lib/types'
 import { WORKOUTS } from '../../lib/types'
 import { formatWorkoutDate } from '../../hooks/useWorkoutHistory'
-import { didHitRepTarget } from '../../lib/progression'
 import { getExerciseName } from '../../lib/exercises'
+import { getLiftStatus, getT3Labels, type LiftStatus } from '../../lib/workoutStatus'
 
 interface WorkoutCardProps {
   workout: Workout
   unit: WeightUnit
-  customExercises?: CustomExercise[]
+  liftSubstitutions?: LiftSubstitution[]
+  exerciseLibrary?: ExerciseDefinition[]
   onClick: () => void
-}
-
-type LiftStatus = 'success' | 'fail' | 'neutral'
-
-function getLiftStatus(exercise: ExerciseLog): LiftStatus {
-  if (exercise.tier === 'T3') {
-    const amrapSet = exercise.sets.find((s) => s.isAmrap)
-    const amrapReps = amrapSet?.reps ?? 0
-    return amrapReps >= 25 ? 'success' : 'neutral'
-  }
-  return didHitRepTarget(exercise) ? 'success' : 'fail'
 }
 
 function StatusIndicator({ status, label }: { status: LiftStatus; label: string }) {
@@ -38,16 +28,15 @@ function StatusIndicator({ status, label }: { status: LiftStatus; label: string 
   )
 }
 
-export function WorkoutCard({ workout, unit, customExercises, onClick }: WorkoutCardProps) {
+export function WorkoutCard({ workout, unit, liftSubstitutions, exerciseLibrary, onClick }: WorkoutCardProps) {
   const workoutDef = WORKOUTS[workout.type]
-  const t1Name = getExerciseName(workoutDef.t1, 'T1', customExercises)
+  const t1Name = getExerciseName(workoutDef.t1, 'T1', liftSubstitutions, exerciseLibrary)
   const t1Exercise = workout.exercises.find((e) => e.tier === 'T1')
   const t2Exercise = workout.exercises.find((e) => e.tier === 'T2')
-  const t3Exercise = workout.exercises.find((e) => e.tier === 'T3')
+  const t3Exercises = workout.exercises.filter((e) => e.tier === 'T3')
 
   const t1Status = t1Exercise ? getLiftStatus(t1Exercise) : 'neutral'
   const t2Status = t2Exercise ? getLiftStatus(t2Exercise) : 'neutral'
-  const t3Status = t3Exercise ? getLiftStatus(t3Exercise) : 'neutral'
 
   return (
     <button
@@ -68,7 +57,9 @@ export function WorkoutCard({ workout, unit, customExercises, onClick }: Workout
           <div className="mt-2 flex items-center gap-3">
             <StatusIndicator status={t1Status} label="T1" />
             <StatusIndicator status={t2Status} label="T2" />
-            <StatusIndicator status={t3Status} label="T3" />
+            {t3Exercises.map((t3, i) => (
+              <StatusIndicator key={i} status={getLiftStatus(t3)} label={getT3Labels(t3Exercises.length)[i]} />
+            ))}
           </div>
         </div>
         <ChevronRight className="h-5 w-5 text-zinc-500" />

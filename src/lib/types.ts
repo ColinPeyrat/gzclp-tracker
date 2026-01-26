@@ -14,6 +14,26 @@ export interface T3Exercise {
   name: string
 }
 
+// Unified exercise definition for all custom/additional exercises
+export interface ExerciseDefinition {
+  id: string              // 'face-pulls'
+  name: string            // 'Face Pulls'
+  isDumbbell?: boolean    // Uses dumbbell plates
+}
+
+// Replace a default lift (T1/T2/T3) with one from the exercise library
+export interface LiftSubstitution {
+  originalLiftId: string        // 'lat-pulldown', 'squat', etc.
+  substituteId: string          // ID from exercise library
+  forceT3Progression?: boolean  // Use 3×15+ instead of normal stages
+}
+
+// Additional T3 exercises per workout (on top of default T3s from WORKOUTS)
+export interface AdditionalT3Assignment {
+  workoutType: WorkoutType
+  exerciseIds: string[]   // IDs from exercise library
+}
+
 export interface LiftState {
   liftId: LiftName
   tier: Tier
@@ -50,15 +70,6 @@ export interface Workout {
   notes?: string
 }
 
-export interface CustomExercise {
-  id: string                      // 'pullups' (auto-generated slug)
-  name: string                    // 'Pullups'
-  replacesId: string              // 'lat-pulldown', 'ohp', etc.
-  forceT3Progression?: boolean    // Skip stages, use 3×15+ AMRAP progression
-  isDumbbell?: boolean            // Uses dumbbell plates (shows single dumbbell weight)
-  startingWeight?: number         // Optional starting weight in user's unit
-}
-
 export interface UserSettings {
   barWeightLbs: number
   dumbbellHandleWeightLbs: number // Weight of empty dumbbell handle (default 5 lbs / 2.5 kg)
@@ -69,7 +80,9 @@ export interface UserSettings {
     t3Seconds: number
   }
   weightUnit: WeightUnit
-  customExercises?: CustomExercise[]
+  exerciseLibrary?: ExerciseDefinition[]        // Unified library of custom exercises
+  liftSubstitutions?: LiftSubstitution[]        // Replaces default lifts
+  additionalT3s?: AdditionalT3Assignment[]      // Extra T3s per workout (on top of defaults)
 }
 
 export interface ProgramState {

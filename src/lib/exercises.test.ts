@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { getExerciseName, getCustomExercise, isDumbbellExercise, TIER_COLORS, getStageFromConfig } from './exercises'
-import type { ExerciseLog, CustomExercise } from './types'
+import { getExerciseName, getLiftSubstitution, getExerciseFromLibrary, isDumbbellExercise, TIER_COLORS, getStageFromConfig } from './exercises'
+import type { ExerciseLog, LiftSubstitution, ExerciseDefinition } from './types'
 
 function makeExercise(overrides: Partial<ExerciseLog>): ExerciseLog {
   return {
@@ -81,48 +81,90 @@ describe('getStageFromConfig', () => {
   })
 })
 
-describe('getCustomExercise', () => {
-  const customExercises: CustomExercise[] = [
-    { id: 'pullups', name: 'Pullups', replacesId: 'lat-pulldown' },
-    { id: 'landmine-press', name: 'Landmine Press', replacesId: 'ohp', forceT3Progression: true },
+describe('getLiftSubstitution', () => {
+  const liftSubstitutions: LiftSubstitution[] = [
+    { originalLiftId: 'lat-pulldown', substituteId: 'pullups' },
+    { originalLiftId: 'ohp', substituteId: 'landmine-press', forceT3Progression: true },
   ]
 
-  it('returns custom exercise when found', () => {
-    const result = getCustomExercise('lat-pulldown', customExercises)
-    expect(result).toEqual({ id: 'pullups', name: 'Pullups', replacesId: 'lat-pulldown' })
+  it('returns substitution when found', () => {
+    const result = getLiftSubstitution('lat-pulldown', liftSubstitutions)
+    expect(result).toEqual({ originalLiftId: 'lat-pulldown', substituteId: 'pullups' })
   })
 
   it('returns undefined when not found', () => {
-    expect(getCustomExercise('squat', customExercises)).toBeUndefined()
+    expect(getLiftSubstitution('squat', liftSubstitutions)).toBeUndefined()
   })
 
-  it('returns undefined when customExercises is undefined', () => {
-    expect(getCustomExercise('lat-pulldown', undefined)).toBeUndefined()
+  it('returns undefined when liftSubstitutions is undefined', () => {
+    expect(getLiftSubstitution('lat-pulldown', undefined)).toBeUndefined()
   })
 
-  it('returns undefined when customExercises is empty', () => {
-    expect(getCustomExercise('lat-pulldown', [])).toBeUndefined()
+  it('returns undefined when liftSubstitutions is empty', () => {
+    expect(getLiftSubstitution('lat-pulldown', [])).toBeUndefined()
+  })
+
+  it('returns substitution with forceT3Progression', () => {
+    const result = getLiftSubstitution('ohp', liftSubstitutions)
+    expect(result?.forceT3Progression).toBe(true)
   })
 })
 
-describe('getExerciseName with custom exercises', () => {
-  const customExercises: CustomExercise[] = [
-    { id: 'pullups', name: 'Pullups', replacesId: 'lat-pulldown' },
-    { id: 'landmine-press', name: 'Landmine Press', replacesId: 'ohp' },
+describe('getExerciseFromLibrary', () => {
+  const exerciseLibrary: ExerciseDefinition[] = [
+    { id: 'pullups', name: 'Pullups' },
+    { id: 'face-pulls', name: 'Face Pulls', isDumbbell: true },
   ]
 
-  it('returns custom name when exercise is replaced', () => {
-    expect(getExerciseName('lat-pulldown', 'T3', customExercises)).toBe('Pullups')
-    expect(getExerciseName('ohp', 'T1', customExercises)).toBe('Landmine Press')
+  it('returns exercise when found', () => {
+    const result = getExerciseFromLibrary('pullups', exerciseLibrary)
+    expect(result).toEqual({ id: 'pullups', name: 'Pullups' })
   })
 
-  it('returns original name when no custom exercise', () => {
-    expect(getExerciseName('squat', 'T1', customExercises)).toBe('Squat')
-    expect(getExerciseName('dumbbell-row', 'T3', customExercises)).toBe('Dumbbell Row')
+  it('returns undefined when not found', () => {
+    expect(getExerciseFromLibrary('unknown', exerciseLibrary)).toBeUndefined()
   })
 
-  it('returns original name when customExercises is undefined', () => {
+  it('returns undefined when exerciseLibrary is undefined', () => {
+    expect(getExerciseFromLibrary('pullups', undefined)).toBeUndefined()
+  })
+
+  it('returns exercise with isDumbbell flag', () => {
+    const result = getExerciseFromLibrary('face-pulls', exerciseLibrary)
+    expect(result?.isDumbbell).toBe(true)
+  })
+})
+
+describe('getExerciseName with substitutions', () => {
+  const exerciseLibrary: ExerciseDefinition[] = [
+    { id: 'pullups', name: 'Pullups' },
+    { id: 'landmine-press', name: 'Landmine Press' },
+  ]
+
+  const liftSubstitutions: LiftSubstitution[] = [
+    { originalLiftId: 'lat-pulldown', substituteId: 'pullups' },
+    { originalLiftId: 'ohp', substituteId: 'landmine-press' },
+  ]
+
+  it('returns substitute name when exercise is replaced', () => {
+    expect(getExerciseName('lat-pulldown', 'T3', liftSubstitutions, exerciseLibrary)).toBe('Pullups')
+    expect(getExerciseName('ohp', 'T1', liftSubstitutions, exerciseLibrary)).toBe('Landmine Press')
+  })
+
+  it('returns original name when no substitution', () => {
+    expect(getExerciseName('squat', 'T1', liftSubstitutions, exerciseLibrary)).toBe('Squat')
+    expect(getExerciseName('dumbbell-row', 'T3', liftSubstitutions, exerciseLibrary)).toBe('Dumbbell Row')
+  })
+
+  it('returns original name when liftSubstitutions is undefined', () => {
     expect(getExerciseName('lat-pulldown', 'T3', undefined)).toBe('Lat Pulldown')
+  })
+
+  it('falls back to substituteId when exercise not in library', () => {
+    const subsOnly: LiftSubstitution[] = [
+      { originalLiftId: 'squat', substituteId: 'goblet-squat' },
+    ]
+    expect(getExerciseName('squat', 'T1', subsOnly, [])).toBe('goblet-squat')
   })
 })
 
@@ -139,24 +181,137 @@ describe('isDumbbellExercise', () => {
     expect(isDumbbellExercise('lat-pulldown')).toBe(false)
   })
 
-  it('returns true for custom exercise with isDumbbell flag', () => {
-    const customExercises: CustomExercise[] = [
-      { id: 'db-press', name: 'Dumbbell Press', replacesId: 'bench', isDumbbell: true },
+  it('returns true for exercise in library with isDumbbell flag', () => {
+    const exerciseLibrary: ExerciseDefinition[] = [
+      { id: 'bicep-curls', name: 'Bicep Curls', isDumbbell: true },
     ]
-    expect(isDumbbellExercise('bench', customExercises)).toBe(true)
+    expect(isDumbbellExercise('bicep-curls', undefined, exerciseLibrary)).toBe(true)
   })
 
-  it('returns false for custom exercise without isDumbbell flag', () => {
-    const customExercises: CustomExercise[] = [
-      { id: 'pullups', name: 'Pullups', replacesId: 'lat-pulldown' },
+  it('returns false for exercise in library without isDumbbell flag', () => {
+    const exerciseLibrary: ExerciseDefinition[] = [
+      { id: 'face-pulls', name: 'Face Pulls' },
     ]
-    expect(isDumbbellExercise('lat-pulldown', customExercises)).toBe(false)
+    expect(isDumbbellExercise('face-pulls', undefined, exerciseLibrary)).toBe(false)
+  })
+})
+
+describe('isDumbbellExercise with substitutions', () => {
+  const exerciseLibrary: ExerciseDefinition[] = [
+    { id: 'db-press', name: 'Dumbbell Press', isDumbbell: true },
+    { id: 'cable-row', name: 'Cable Row', isDumbbell: false },
+    { id: 'pullups', name: 'Pullups' },
+  ]
+
+  it('returns true when substitute exercise is a dumbbell exercise', () => {
+    const liftSubstitutions: LiftSubstitution[] = [
+      { originalLiftId: 'bench', substituteId: 'db-press' },
+    ]
+    expect(isDumbbellExercise('bench', liftSubstitutions, exerciseLibrary)).toBe(true)
   })
 
-  it('custom exercise overrides built-in dumbbell status', () => {
-    const customExercises: CustomExercise[] = [
-      { id: 'cable-row', name: 'Cable Row', replacesId: 'dumbbell-row', isDumbbell: false },
+  it('returns false when substitute exercise is not a dumbbell exercise', () => {
+    const liftSubstitutions: LiftSubstitution[] = [
+      { originalLiftId: 'dumbbell-row', substituteId: 'cable-row' },
     ]
-    expect(isDumbbellExercise('dumbbell-row', customExercises)).toBe(false)
+    expect(isDumbbellExercise('dumbbell-row', liftSubstitutions, exerciseLibrary)).toBe(false)
+  })
+
+  it('returns false when substitute exercise has no isDumbbell flag', () => {
+    const liftSubstitutions: LiftSubstitution[] = [
+      { originalLiftId: 'lat-pulldown', substituteId: 'pullups' },
+    ]
+    expect(isDumbbellExercise('lat-pulldown', liftSubstitutions, exerciseLibrary)).toBe(false)
+  })
+
+  it('built-in dumbbell exercises still work without substitution', () => {
+    const liftSubstitutions: LiftSubstitution[] = []
+    expect(isDumbbellExercise('dumbbell-row', liftSubstitutions, exerciseLibrary)).toBe(true)
+  })
+})
+
+describe('getExerciseName with exerciseLibrary for T3s', () => {
+  const exerciseLibrary: ExerciseDefinition[] = [
+    { id: 'face-pulls', name: 'Face Pulls' },
+    { id: 'bicep-curls', name: 'Bicep Curls', isDumbbell: true },
+  ]
+
+  it('returns T3 name from library', () => {
+    expect(getExerciseName('face-pulls', 'T3', undefined, exerciseLibrary)).toBe('Face Pulls')
+    expect(getExerciseName('bicep-curls', 'T3', undefined, exerciseLibrary)).toBe('Bicep Curls')
+  })
+
+  it('returns built-in T3 name when not in library', () => {
+    expect(getExerciseName('lat-pulldown', 'T3', undefined, exerciseLibrary)).toBe('Lat Pulldown')
+  })
+
+  it('falls back to liftId for unknown T3', () => {
+    expect(getExerciseName('unknown-t3', 'T3', undefined, exerciseLibrary)).toBe('unknown-t3')
+  })
+
+  it('substitution takes precedence over library', () => {
+    const liftSubstitutions: LiftSubstitution[] = [
+      { originalLiftId: 'face-pulls', substituteId: 'bicep-curls' },
+    ]
+    expect(getExerciseName('face-pulls', 'T3', liftSubstitutions, exerciseLibrary)).toBe('Bicep Curls')
+  })
+
+  it('handles undefined exerciseLibrary', () => {
+    expect(getExerciseName('lat-pulldown', 'T3', undefined, undefined)).toBe('Lat Pulldown')
+  })
+
+  it('handles empty exerciseLibrary', () => {
+    expect(getExerciseName('lat-pulldown', 'T3', undefined, [])).toBe('Lat Pulldown')
+  })
+})
+
+describe('isDumbbellExercise with exerciseLibrary', () => {
+  const exerciseLibrary: ExerciseDefinition[] = [
+    { id: 'face-pulls', name: 'Face Pulls' },
+    { id: 'bicep-curls', name: 'Bicep Curls', isDumbbell: true },
+    { id: 'tricep-pushdown', name: 'Tricep Pushdown', isDumbbell: false },
+  ]
+
+  it('returns true for exercise with isDumbbell flag', () => {
+    expect(isDumbbellExercise('bicep-curls', undefined, exerciseLibrary)).toBe(true)
+  })
+
+  it('returns false for exercise without isDumbbell flag', () => {
+    expect(isDumbbellExercise('face-pulls', undefined, exerciseLibrary)).toBe(false)
+    expect(isDumbbellExercise('tricep-pushdown', undefined, exerciseLibrary)).toBe(false)
+  })
+
+  it('returns false for unknown exercise not in library', () => {
+    expect(isDumbbellExercise('unknown-exercise', undefined, exerciseLibrary)).toBe(false)
+  })
+
+  it('substitution takes precedence over library', () => {
+    const liftSubstitutions: LiftSubstitution[] = [
+      { originalLiftId: 'bicep-curls', substituteId: 'face-pulls' },
+    ]
+    // bicep-curls in library is dumbbell, but substituted with face-pulls which is not
+    expect(isDumbbellExercise('bicep-curls', liftSubstitutions, exerciseLibrary)).toBe(false)
+  })
+
+  it('substitution can mark non-dumbbell as dumbbell', () => {
+    const liftSubstitutions: LiftSubstitution[] = [
+      { originalLiftId: 'face-pulls', substituteId: 'bicep-curls' },
+    ]
+    // face-pulls in library is not dumbbell, but substituted with bicep-curls which is
+    expect(isDumbbellExercise('face-pulls', liftSubstitutions, exerciseLibrary)).toBe(true)
+  })
+
+  it('built-in dumbbell exercises still work with exerciseLibrary', () => {
+    expect(isDumbbellExercise('dumbbell-row', undefined, exerciseLibrary)).toBe(true)
+  })
+
+  it('handles undefined exerciseLibrary', () => {
+    expect(isDumbbellExercise('bicep-curls', undefined, undefined)).toBe(false)
+    expect(isDumbbellExercise('dumbbell-row', undefined, undefined)).toBe(true)
+  })
+
+  it('handles empty exerciseLibrary', () => {
+    expect(isDumbbellExercise('bicep-curls', undefined, [])).toBe(false)
+    expect(isDumbbellExercise('dumbbell-row', undefined, [])).toBe(true)
   })
 })
