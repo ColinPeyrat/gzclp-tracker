@@ -93,7 +93,7 @@
 - [x] Add T3 exercises on the fly during a workout
 
 ### Cleanup
-- [ ] Remove legacy db migration code in `db.ts` (weightLbs→weight, barWeightLbs→barWeight, customExercises, t3Library, t3Assignments)
+- [ ] Remove legacy db migration code in `db.ts` and `App.tsx` (weightLbs→weight, barWeightLbs→barWeight, customExercises, t3Library, t3Assignments, migrateWorkouts call)
 
 ### Code Quality (DRY/KISS)
 - [x] Rename weight fields to unit-agnostic names (weightLbs→weight, barWeightLbs→barWeight)

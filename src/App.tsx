@@ -6,11 +6,14 @@ import { Workout } from './pages/Workout'
 import { History } from './pages/History'
 import { Settings } from './pages/Settings'
 import { OfflineBanner } from './components/ui/OfflineBanner'
+import { migrateWorkouts } from './lib/db'
 
 function Layout() {
   useEffect(() => {
     // Request persistent storage to prevent browser from evicting IndexedDB data
     navigator.storage?.persist?.()
+    // Migrate legacy workout data (weightLbs -> weight)
+    migrateWorkouts()
   }, [])
 
   return (
