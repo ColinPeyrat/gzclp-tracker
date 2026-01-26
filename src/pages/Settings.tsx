@@ -425,33 +425,6 @@ export function Settings() {
           </div>
         </section>
 
-        {/* Rest Timers */}
-        <section>
-          <h2 className="mb-3 text-sm font-medium text-zinc-400">Rest Timers</h2>
-          <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
-            {[
-              { key: 't1Seconds' as const, label: 'T1 (Heavy)' },
-              { key: 't2Seconds' as const, label: 'T2 (Volume)' },
-              { key: 't3Seconds' as const, label: 'T3 (Accessory)' },
-            ].map(({ key, label }) => (
-              <div key={key} className="flex items-center justify-between">
-                <span className="text-sm">{label}</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    value={settings.restTimers[key]}
-                    onChange={(e) => handleRestTimerChange(key, e.target.value)}
-                    className="w-20 rounded border border-zinc-600 bg-zinc-900 px-3 py-2 text-right focus:border-blue-500 focus:outline-none"
-                    step={30}
-                    min={30}
-                  />
-                  <span className="text-sm text-zinc-400">sec</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
         {/* Exercise Library */}
         <section>
           <h2 className="mb-3 text-sm font-medium text-zinc-400">Exercise Library</h2>
@@ -608,6 +581,33 @@ export function Settings() {
             <p className="text-xs text-zinc-500">
               Default T3s always appear. To replace them, use Lift Substitutions.
             </p>
+          </div>
+        </section>
+
+        {/* Rest Timers */}
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-zinc-400">Rest Timers</h2>
+          <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
+            {[
+              { key: 't1Seconds' as const, label: 'T1 (Heavy)' },
+              { key: 't2Seconds' as const, label: 'T2 (Volume)' },
+              { key: 't3Seconds' as const, label: 'T3 (Accessory)' },
+            ].map(({ key, label }) => (
+              <div key={key} className="flex items-center justify-between">
+                <span className="text-sm">{label}</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={settings.restTimers[key]}
+                    onChange={(e) => handleRestTimerChange(key, e.target.value)}
+                    className="w-20 rounded border border-zinc-600 bg-zinc-900 px-3 py-2 text-right focus:border-blue-500 focus:outline-none"
+                    step={30}
+                    min={30}
+                  />
+                  <span className="text-sm text-zinc-400">sec</span>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
