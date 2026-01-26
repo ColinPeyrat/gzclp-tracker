@@ -7,6 +7,7 @@ import { UNIT_CONFIG, getDefaultPlateInventory } from '../lib/units'
 import { BottomNav } from '../components/ui/BottomNav'
 import { Modal } from '../components/ui/Modal'
 import { LIFTS, T3_EXERCISES, WORKOUTS, WORKOUT_ORDER, type ExerciseDefinition, type LiftSubstitution, type WorkoutType } from '../lib/types'
+import { getExerciseDisplayName } from '../lib/exercises'
 
 const REPLACEABLE_LIFTS = [
   { id: 'squat', name: 'Squat', tier: 'T1/T2' },
@@ -275,16 +276,6 @@ export function Settings() {
   }
 
   // Helper functions
-  const getExerciseName = (exerciseId: string) => {
-    const exercise = settings.exerciseLibrary?.find((e) => e.id === exerciseId)
-    if (exercise) return exercise.name
-    const t3 = T3_EXERCISES[exerciseId]
-    if (t3) return t3.name
-    const lift = LIFTS[exerciseId as keyof typeof LIFTS]
-    if (lift) return lift.name
-    return exerciseId
-  }
-
   const getOriginalLiftName = (liftId: string) => {
     const lift = LIFTS[liftId as keyof typeof LIFTS]
     if (lift) return lift.name
@@ -481,7 +472,7 @@ export function Settings() {
                       className="flex items-center justify-between rounded-lg bg-zinc-700 px-4 py-3"
                     >
                       <div>
-                        <div className="font-medium">{getExerciseName(sub.substituteId)}</div>
+                        <div className="font-medium">{getExerciseDisplayName(sub.substituteId, settings.exerciseLibrary)}</div>
                         <div className="text-sm text-zinc-400">
                           Replaces {getOriginalLiftName(sub.originalLiftId)}
                           {sub.forceT3Progression && (
@@ -563,7 +554,7 @@ export function Settings() {
                           key={exerciseId}
                           className="flex items-center gap-1 rounded bg-yellow-900/50 px-2 py-1 text-xs text-yellow-400"
                         >
-                          {getExerciseName(exerciseId)}
+                          {getExerciseDisplayName(exerciseId, settings.exerciseLibrary)}
                           <button
                             onClick={() => handleUnassignAdditionalT3(workoutType, exerciseId)}
                             className="hover:text-yellow-200"
@@ -816,7 +807,7 @@ export function Settings() {
                 <div className="space-y-4">
                   <div className="rounded-lg bg-zinc-700 px-4 py-3">
                     <span className="text-sm text-zinc-400">Substitute: </span>
-                    <span className="font-medium">{getExerciseName(selectedSubstituteId)}</span>
+                    <span className="font-medium">{getExerciseDisplayName(selectedSubstituteId, settings.exerciseLibrary)}</span>
                   </div>
 
                   <div>

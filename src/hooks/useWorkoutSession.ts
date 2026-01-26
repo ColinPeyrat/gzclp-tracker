@@ -1,10 +1,9 @@
 import { useState, useCallback, useMemo } from 'react'
 import { nanoid } from 'nanoid'
-import type { Workout, ExerciseLog, UserSettings } from '../lib/types'
+import type { Workout, ExerciseLog, UserSettings, ProgramState } from '../lib/types'
 import { WORKOUTS } from '../lib/types'
 import { getStageConfig } from '../lib/progression'
-import { getLiftSubstitution } from '../lib/exercises'
-import type { ProgramState } from '../lib/types'
+import { getEffectiveStageConfig, getT3IdsForWorkout, createSetLogs } from '../lib/exercises'
 export { getExerciseName } from '../lib/exercises'
 
 interface WorkoutSession {
@@ -33,107 +32,42 @@ function createExerciseLogs(
   settings: UserSettings
 ): ExerciseLog[] {
   const workoutDef = WORKOUTS[programState.nextWorkoutType]
-  const liftSubstitutions = settings.liftSubstitutions
   const exercises: ExerciseLog[] = []
 
   // T1
-  const t1Substitution = getLiftSubstitution(workoutDef.t1, liftSubstitutions)
   const t1State = programState.t1[workoutDef.t1]
-  if (t1Substitution?.forceT3Progression) {
-    // Use T3-style progression (3×15+)
-    const t3Config = getStageConfig('T3', 1)
-    exercises.push({
-      liftId: workoutDef.t1,
-      tier: 'T1',
-      weight: t1State.weight,
-      targetSets: t3Config.sets,
-      targetReps: t3Config.reps,
-      sets: Array.from({ length: t3Config.sets }, (_, i) => ({
-        setNumber: i + 1,
-        reps: 0,
-        completed: false,
-        isAmrap: i === t3Config.sets - 1,
-      })),
-    })
-  } else {
-    const t1Config = getStageConfig('T1', t1State.stage)
-    exercises.push({
-      liftId: workoutDef.t1,
-      tier: 'T1',
-      weight: t1State.weight,
-      targetSets: t1Config.sets,
-      targetReps: t1Config.reps,
-      sets: Array.from({ length: t1Config.sets }, (_, i) => ({
-        setNumber: i + 1,
-        reps: 0,
-        completed: false,
-        isAmrap: i === t1Config.sets - 1,
-      })),
-    })
-  }
+  const t1Config = getEffectiveStageConfig('T1', t1State.stage, workoutDef.t1, settings.liftSubstitutions)
+  exercises.push({
+    liftId: workoutDef.t1,
+    tier: 'T1',
+    weight: t1State.weight,
+    targetSets: t1Config.sets,
+    targetReps: t1Config.reps,
+    sets: createSetLogs(t1Config.sets, t1Config.hasAmrap),
+  })
 
   // T2
-  const t2Substitution = getLiftSubstitution(workoutDef.t2, liftSubstitutions)
   const t2State = programState.t2[workoutDef.t2]
-  if (t2Substitution?.forceT3Progression) {
-    // Use T3-style progression (3×15+)
-    const t3Config = getStageConfig('T3', 1)
-    exercises.push({
-      liftId: workoutDef.t2,
-      tier: 'T2',
-      weight: t2State.weight,
-      targetSets: t3Config.sets,
-      targetReps: t3Config.reps,
-      sets: Array.from({ length: t3Config.sets }, (_, i) => ({
-        setNumber: i + 1,
-        reps: 0,
-        completed: false,
-        isAmrap: i === t3Config.sets - 1,
-      })),
-    })
-  } else {
-    const t2Config = getStageConfig('T2', t2State.stage)
-    exercises.push({
-      liftId: workoutDef.t2,
-      tier: 'T2',
-      weight: t2State.weight,
-      targetSets: t2Config.sets,
-      targetReps: t2Config.reps,
-      sets: Array.from({ length: t2Config.sets }, (_, i) => ({
-        setNumber: i + 1,
-        reps: 0,
-        completed: false,
-        isAmrap: false,
-      })),
-    })
-  }
+  const t2Config = getEffectiveStageConfig('T2', t2State.stage, workoutDef.t2, settings.liftSubstitutions)
+  exercises.push({
+    liftId: workoutDef.t2,
+    tier: 'T2',
+    weight: t2State.weight,
+    targetSets: t2Config.sets,
+    targetReps: t2Config.reps,
+    sets: createSetLogs(t2Config.sets, t2Config.hasAmrap),
+  })
 
-  // T3s - default T3 from WORKOUTS + any additional T3s
+  // T3s
   const t3Config = getStageConfig('T3', 1)
-  const t3Ids: string[] = [workoutDef.t3] // Start with default T3
-
-  // Add any additional T3s for this workout
-  const additionalAssignment = settings.additionalT3s?.find(
-    (a) => a.workoutType === programState.nextWorkoutType
-  )
-  if (additionalAssignment) {
-    t3Ids.push(...additionalAssignment.exerciseIds)
-  }
-
-  for (const t3Id of t3Ids) {
-    const t3Weight = programState.t3[t3Id]?.weight ?? 50
+  for (const t3Id of getT3IdsForWorkout(programState.nextWorkoutType, settings.additionalT3s)) {
     exercises.push({
       liftId: t3Id,
       tier: 'T3',
-      weight: t3Weight,
+      weight: programState.t3[t3Id]?.weight ?? 50,
       targetSets: t3Config.sets,
       targetReps: t3Config.reps,
-      sets: Array.from({ length: t3Config.sets }, (_, i) => ({
-        setNumber: i + 1,
-        reps: 0,
-        completed: false,
-        isAmrap: i === t3Config.sets - 1,
-      })),
+      sets: createSetLogs(t3Config.sets, true),
     })
   }
 
@@ -195,12 +129,7 @@ export function useWorkoutSession(): UseWorkoutSessionReturn {
         weight,
         targetSets: t3Config.sets,
         targetReps: t3Config.reps,
-        sets: Array.from({ length: t3Config.sets }, (_, i) => ({
-          setNumber: i + 1,
-          reps: 0,
-          completed: false,
-          isAmrap: i === t3Config.sets - 1,
-        })),
+        sets: createSetLogs(t3Config.sets, true),
       }
       return { ...prev, exercises: [...prev.exercises, newExercise] }
     })

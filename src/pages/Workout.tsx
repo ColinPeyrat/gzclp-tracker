@@ -11,13 +11,7 @@ import { RestTimer } from '../components/workout/RestTimer'
 import { WarmupModal } from '../components/workout/WarmupModal'
 import { Modal } from '../components/ui/Modal'
 import { db } from '../lib/db'
-import {
-  calculateT1Progression,
-  calculateT2Progression,
-  calculateT3Progression,
-} from '../lib/progression'
-import { LIFTS, WORKOUTS } from '../lib/types'
-import { getIncrement } from '../lib/units'
+import { applyWorkoutProgression } from '../lib/progression'
 import { getSmallestPlate } from '../lib/plates'
 import { vibrate } from '../lib/haptics'
 import { getLiftSubstitution, getExerciseName } from '../lib/exercises'
@@ -121,89 +115,14 @@ export function Workout() {
     const completedWorkout = finishWorkout()
     if (!completedWorkout) return
 
-    // Save workout to database
     await db.workouts.add(completedWorkout)
 
-    // Calculate progression for each exercise
-    const workoutDef = WORKOUTS[completedWorkout.type]
-    const newProgramState = { ...programState }
-
-    const unit = settings.weightUnit
-
-    // T1 progression
-    const t1Exercise = completedWorkout.exercises.find((e) => e.tier === 'T1')
-    if (t1Exercise) {
-      const liftId = workoutDef.t1
-      const currentState = programState.t1[liftId]
-      const t1Sub = getLiftSubstitution(liftId, settings.liftSubstitutions)
-
-      if (t1Sub?.forceT3Progression) {
-        // Use T3-style progression
-        const amrapSet = t1Exercise.sets.find((s) => s.isAmrap)
-        if (amrapSet) {
-          const t3Increment = getSmallestPlate(settings.plateInventory)
-          const result = calculateT3Progression(currentState.weight, amrapSet.reps, t3Increment)
-          if (result.increased) {
-            newProgramState.t1 = {
-              ...newProgramState.t1,
-              [liftId]: { ...currentState, weight: result.newWeight },
-            }
-          }
-        }
-      } else {
-        const increment = getIncrement('T1', LIFTS[liftId].isLower, unit)
-        const result = calculateT1Progression(currentState, t1Exercise, increment, unit)
-        newProgramState.t1 = { ...newProgramState.t1, [liftId]: result.newState }
-      }
-    }
-
-    // T2 progression
-    const t2Exercise = completedWorkout.exercises.find((e) => e.tier === 'T2')
-    if (t2Exercise) {
-      const liftId = workoutDef.t2
-      const currentState = programState.t2[liftId]
-      const t2Sub = getLiftSubstitution(liftId, settings.liftSubstitutions)
-
-      if (t2Sub?.forceT3Progression) {
-        // Use T3-style progression
-        const amrapSet = t2Exercise.sets.find((s) => s.isAmrap)
-        if (amrapSet) {
-          const t3Increment = getSmallestPlate(settings.plateInventory)
-          const result = calculateT3Progression(currentState.weight, amrapSet.reps, t3Increment)
-          if (result.increased) {
-            newProgramState.t2 = {
-              ...newProgramState.t2,
-              [liftId]: { ...currentState, weight: result.newWeight },
-            }
-          }
-        }
-      } else {
-        const increment = getIncrement('T2', LIFTS[liftId].isLower, unit)
-        const result = calculateT2Progression(currentState, t2Exercise, increment, unit)
-        newProgramState.t2 = { ...newProgramState.t2, [liftId]: result.newState }
-      }
-    }
-
-    // T3 progression - process all T3 exercises
-    const t3Exercises = completedWorkout.exercises.filter((e) => e.tier === 'T3')
-    for (const t3Exercise of t3Exercises) {
-      const amrapSet = t3Exercise.sets.find((s) => s.isAmrap)
-      if (amrapSet) {
-        const t3Id = t3Exercise.liftId
-        const currentWeight = programState.t3[t3Id]?.weight ?? t3Exercise.weight
-        const t3Increment = getSmallestPlate(settings.plateInventory)
-        const result = calculateT3Progression(currentWeight, amrapSet.reps, t3Increment)
-        if (result.increased) {
-          newProgramState.t3 = { ...newProgramState.t3, [t3Id]: { weight: result.newWeight } }
-        }
-      }
-    }
-
-    // Advance to next workout
-    newProgramState.nextWorkoutType = (['A1', 'A2', 'B1', 'B2'] as const)[
-      (['A1', 'A2', 'B1', 'B2'].indexOf(completedWorkout.type) + 1) % 4
-    ]
-    newProgramState.workoutCount += 1
+    const newProgramState = applyWorkoutProgression(completedWorkout, programState, {
+      unit: settings.weightUnit,
+      plateInventory: settings.plateInventory,
+      liftSubstitutions: settings.liftSubstitutions,
+      getSmallestPlate,
+    })
 
     await saveProgram(newProgramState)
     navigate('/')

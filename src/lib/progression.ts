@@ -194,3 +194,102 @@ export function applyT1Reset(currentState: LiftState, new5RM: number, unit: Weig
     bestSetWeight: undefined,
   }
 }
+
+// Unified workout progression - calculates new program state after completing a workout
+import type { Workout, ProgramState, LiftSubstitution } from './types'
+import { LIFTS, WORKOUTS } from './types'
+
+interface ProgressionContext {
+  unit: WeightUnit
+  plateInventory: Record<string, number>
+  liftSubstitutions?: LiftSubstitution[]
+  getSmallestPlate: (inventory: Record<string, number>) => number
+}
+
+function applyT3StyleProgression(
+  currentWeight: number,
+  exercise: ExerciseLog,
+  smallestPlate: number
+): number | null {
+  const amrapSet = exercise.sets.find((s) => s.isAmrap)
+  if (!amrapSet) return null
+  const result = calculateT3Progression(currentWeight, amrapSet.reps, smallestPlate)
+  return result.increased ? result.newWeight : null
+}
+
+function getLiftSubstitution(liftId: string, subs?: LiftSubstitution[]): LiftSubstitution | undefined {
+  return subs?.find((s) => s.originalLiftId === liftId)
+}
+
+function getIncrement(tier: 'T1' | 'T2', isLower: boolean, unit: WeightUnit): number {
+  const increments = {
+    kg: { T1: { upper: 2.5, lower: 5 }, T2: { upper: 1.25, lower: 2.5 } },
+    lbs: { T1: { upper: 5, lower: 10 }, T2: { upper: 2.5, lower: 5 } },
+  }
+  return increments[unit][tier][isLower ? 'lower' : 'upper']
+}
+
+export function applyWorkoutProgression(
+  workout: Workout,
+  programState: ProgramState,
+  ctx: ProgressionContext
+): ProgramState {
+  const workoutDef = WORKOUTS[workout.type]
+  const newState = { ...programState }
+  const smallestPlate = ctx.getSmallestPlate(ctx.plateInventory)
+
+  // T1 progression
+  const t1Exercise = workout.exercises.find((e) => e.tier === 'T1')
+  if (t1Exercise) {
+    const liftId = workoutDef.t1
+    const currentState = programState.t1[liftId]
+    const sub = getLiftSubstitution(liftId, ctx.liftSubstitutions)
+
+    if (sub?.forceT3Progression) {
+      const newWeight = applyT3StyleProgression(currentState.weight, t1Exercise, smallestPlate)
+      if (newWeight !== null) {
+        newState.t1 = { ...newState.t1, [liftId]: { ...currentState, weight: newWeight } }
+      }
+    } else {
+      const increment = getIncrement('T1', LIFTS[liftId].isLower, ctx.unit)
+      const result = calculateT1Progression(currentState, t1Exercise, increment, ctx.unit)
+      newState.t1 = { ...newState.t1, [liftId]: result.newState }
+    }
+  }
+
+  // T2 progression
+  const t2Exercise = workout.exercises.find((e) => e.tier === 'T2')
+  if (t2Exercise) {
+    const liftId = workoutDef.t2
+    const currentState = programState.t2[liftId]
+    const sub = getLiftSubstitution(liftId, ctx.liftSubstitutions)
+
+    if (sub?.forceT3Progression) {
+      const newWeight = applyT3StyleProgression(currentState.weight, t2Exercise, smallestPlate)
+      if (newWeight !== null) {
+        newState.t2 = { ...newState.t2, [liftId]: { ...currentState, weight: newWeight } }
+      }
+    } else {
+      const increment = getIncrement('T2', LIFTS[liftId].isLower, ctx.unit)
+      const result = calculateT2Progression(currentState, t2Exercise, increment, ctx.unit)
+      newState.t2 = { ...newState.t2, [liftId]: result.newState }
+    }
+  }
+
+  // T3 progression - all T3 exercises
+  for (const t3Exercise of workout.exercises.filter((e) => e.tier === 'T3')) {
+    const t3Id = t3Exercise.liftId
+    const currentWeight = programState.t3[t3Id]?.weight ?? t3Exercise.weight
+    const newWeight = applyT3StyleProgression(currentWeight, t3Exercise, smallestPlate)
+    if (newWeight !== null) {
+      newState.t3 = { ...newState.t3, [t3Id]: { weight: newWeight } }
+    }
+  }
+
+  // Advance to next workout
+  const workoutOrder = ['A1', 'A2', 'B1', 'B2'] as const
+  newState.nextWorkoutType = workoutOrder[(workoutOrder.indexOf(workout.type) + 1) % 4]
+  newState.workoutCount += 1
+
+  return newState
+}

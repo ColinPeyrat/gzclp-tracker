@@ -4,8 +4,8 @@ import { Dumbbell, Play, Bug, Settings } from 'lucide-react'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { WORKOUTS, WORKOUT_ORDER, type WorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit, type LiftSubstitution, type ExerciseDefinition } from '../lib/types'
-import { getStageConfig, estimate5RM, applyT1Reset } from '../lib/progression'
-import { getExerciseName, getLiftSubstitution } from '../lib/exercises'
+import { estimate5RM, applyT1Reset } from '../lib/progression'
+import { getExerciseName, getEffectiveStageConfig, getT3IdsForWorkout } from '../lib/exercises'
 import { Modal } from '../components/ui/Modal'
 import { BottomNav } from '../components/ui/BottomNav'
 
@@ -101,10 +101,8 @@ export function Home() {
   const workout = WORKOUTS[state.nextWorkoutType]
   const t1State = state.t1[workout.t1]
   const t2State = state.t2[workout.t2]
-  const t1Sub = getLiftSubstitution(workout.t1, settings.liftSubstitutions)
-  const t2Sub = getLiftSubstitution(workout.t2, settings.liftSubstitutions)
-  const t1Config = t1Sub?.forceT3Progression ? getStageConfig('T3', 1) : getStageConfig('T1', t1State.stage)
-  const t2Config = t2Sub?.forceT3Progression ? getStageConfig('T3', 1) : getStageConfig('T2', t2State.stage)
+  const t1Config = getEffectiveStageConfig('T1', t1State.stage, workout.t1, settings.liftSubstitutions)
+  const t2Config = getEffectiveStageConfig('T2', t2State.stage, workout.t2, settings.liftSubstitutions)
 
   return (
     <div className="flex min-h-screen flex-col pb-(--nav-height)">
@@ -154,34 +152,24 @@ export function Home() {
                 {getExerciseName(workout.t2, 'T2', settings.liftSubstitutions, settings.exerciseLibrary)}
               </span>
               <span className="text-zinc-400">
-                {t2Config.sets}×{t2Config.reps}{t2Sub?.forceT3Progression ? '+' : ''} @ {t2State.weight} {settings.weightUnit}
+                {t2Config.sets}×{t2Config.reps}{t2Config.hasAmrap ? '+' : ''} @ {t2State.weight} {settings.weightUnit}
               </span>
             </div>
           </div>
 
-          {(() => {
-            // Default T3 from WORKOUTS + any additional T3s
-            const t3Ids: string[] = [workout.t3]
-            const additionalAssignment = settings.additionalT3s?.find(
-              (a) => a.workoutType === state.nextWorkoutType
-            )
-            if (additionalAssignment) {
-              t3Ids.push(...additionalAssignment.exerciseIds)
-            }
-            return t3Ids.map((t3Id) => (
-              <div key={t3Id} className="rounded-lg bg-zinc-800 p-4">
-                <div className="mb-1 text-xs font-medium text-yellow-400">T3</div>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-lg font-medium">
-                    {getExerciseName(t3Id, 'T3', settings.liftSubstitutions, settings.exerciseLibrary)}
-                  </span>
-                  <span className="text-zinc-400">
-                    3×15+ @ {state.t3[t3Id]?.weight ?? 50} {settings.weightUnit}
-                  </span>
-                </div>
+          {getT3IdsForWorkout(state.nextWorkoutType, settings.additionalT3s).map((t3Id) => (
+            <div key={t3Id} className="rounded-lg bg-zinc-800 p-4">
+              <div className="mb-1 text-xs font-medium text-yellow-400">T3</div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-lg font-medium">
+                  {getExerciseName(t3Id, 'T3', settings.liftSubstitutions, settings.exerciseLibrary)}
+                </span>
+                <span className="text-zinc-400">
+                  3×15+ @ {state.t3[t3Id]?.weight ?? 50} {settings.weightUnit}
+                </span>
               </div>
-            ))
-          })()}
+            </div>
+          ))}
         </div>
 
         <Link

@@ -90,22 +90,100 @@ const DEFAULT_T3_IDS: Record<string, string> = {
   B2: 'dumbbell-row',
 }
 
+// --- Settings Migration Helpers ---
+
+function migrateSettingsFieldNames(stored: LegacySettings): { settings: Partial<UserSettings>; migrated: boolean } {
+  const migrated = stored.barWeightLbs !== undefined || stored.dumbbellHandleWeightLbs !== undefined
+  return {
+    settings: {
+      barWeight: stored.barWeight ?? stored.barWeightLbs ?? DEFAULT_SETTINGS.barWeight,
+      dumbbellHandleWeight: stored.dumbbellHandleWeight ?? stored.dumbbellHandleWeightLbs ?? DEFAULT_SETTINGS.dumbbellHandleWeight,
+    },
+    migrated,
+  }
+}
+
+function migrateFromOldModel(stored: LegacySettings): {
+  exerciseLibrary: ExerciseDefinition[]
+  liftSubstitutions: LiftSubstitution[]
+  additionalT3s: AdditionalT3Assignment[]
+} | null {
+  const hasOldModel = stored.customExercises || stored.t3Library || stored.t3Assignments
+  const hasNewModel = stored.exerciseLibrary || stored.liftSubstitutions || stored.additionalT3s
+  if (!hasOldModel || hasNewModel) return null
+
+  const exerciseLibrary: ExerciseDefinition[] = [...DEFAULT_EXERCISE_LIBRARY]
+  const liftSubstitutions: LiftSubstitution[] = []
+  const additionalT3s: AdditionalT3Assignment[] = []
+
+  // Migrate customExercises → exerciseLibrary + liftSubstitutions
+  for (const custom of stored.customExercises ?? []) {
+    if (!exerciseLibrary.some((e) => e.id === custom.id)) {
+      exerciseLibrary.push({ id: custom.id, name: custom.name, isDumbbell: custom.isDumbbell })
+    }
+    liftSubstitutions.push({
+      originalLiftId: custom.replacesId,
+      substituteId: custom.id,
+      forceT3Progression: custom.forceT3Progression,
+    })
+  }
+
+  // Migrate t3Library → exerciseLibrary
+  for (const t3 of stored.t3Library ?? []) {
+    if (!exerciseLibrary.some((e) => e.id === t3.id)) {
+      exerciseLibrary.push({ id: t3.id, name: t3.name, isDumbbell: t3.isDumbbell })
+    }
+  }
+
+  // Migrate t3Assignments → additionalT3s (only non-default T3s)
+  for (const assignment of stored.t3Assignments ?? []) {
+    const defaultT3 = DEFAULT_T3_IDS[assignment.workoutType]
+    const extraIds = assignment.t3Ids.filter((id) => id !== defaultT3)
+    if (extraIds.length > 0) {
+      additionalT3s.push({ workoutType: assignment.workoutType, exerciseIds: extraIds })
+    }
+  }
+
+  return { exerciseLibrary, liftSubstitutions, additionalT3s }
+}
+
+function ensureDefaults(settings: UserSettings & { id: string }): boolean {
+  let updated = false
+  if (!settings.exerciseLibrary) {
+    settings.exerciseLibrary = DEFAULT_EXERCISE_LIBRARY
+    updated = true
+  }
+  if (!settings.liftSubstitutions) {
+    settings.liftSubstitutions = DEFAULT_LIFT_SUBSTITUTIONS
+    updated = true
+  }
+  if (!settings.additionalT3s) {
+    settings.additionalT3s = DEFAULT_ADDITIONAL_T3S
+    updated = true
+  }
+  return updated
+}
+
+function cleanLegacyFields(settings: Record<string, unknown>): void {
+  delete settings.customExercises
+  delete settings.t3Library
+  delete settings.t3Assignments
+  delete settings.barWeightLbs
+  delete settings.dumbbellHandleWeightLbs
+}
+
+// --- Main Settings Functions ---
+
 export async function getSettings(): Promise<UserSettings> {
   const stored = await db.settings.get('user') as (LegacySettings & { id: string }) | undefined
   if (!stored) return DEFAULT_SETTINGS
 
-  let needsUpdate = false
-
-  // Migrate legacy field names (barWeightLbs -> barWeight, etc.)
-  const barWeight = stored.barWeight ?? stored.barWeightLbs ?? DEFAULT_SETTINGS.barWeight
-  const dumbbellHandleWeight = stored.dumbbellHandleWeight ?? stored.dumbbellHandleWeightLbs ?? DEFAULT_SETTINGS.dumbbellHandleWeight
-  if (stored.barWeightLbs !== undefined || stored.dumbbellHandleWeightLbs !== undefined) {
-    needsUpdate = true
-  }
+  // Migrate field names
+  const fieldMigration = migrateSettingsFieldNames(stored)
+  let needsUpdate = fieldMigration.migrated
 
   const migrated: UserSettings & { id: string } = {
-    barWeight,
-    dumbbellHandleWeight,
+    ...fieldMigration.settings as Pick<UserSettings, 'barWeight' | 'dumbbellHandleWeight'>,
     plateInventory: stored.plateInventory,
     restTimers: stored.restTimers,
     weightUnit: stored.weightUnit,
@@ -115,96 +193,24 @@ export async function getSettings(): Promise<UserSettings> {
     id: 'user',
   }
 
-  // Migration from old model to new unified model
-  const hasOldModel = stored.customExercises || stored.t3Library || stored.t3Assignments
-  const hasNewModel = stored.exerciseLibrary || stored.liftSubstitutions || stored.additionalT3s
-
-  if (hasOldModel && !hasNewModel) {
+  // Migrate from old model if needed
+  const oldModelMigration = migrateFromOldModel(stored)
+  if (oldModelMigration) {
     needsUpdate = true
-
-    // Start with default T3s in library
-    const exerciseLibrary: ExerciseDefinition[] = [...DEFAULT_EXERCISE_LIBRARY]
-    const liftSubstitutions: LiftSubstitution[] = []
-    const additionalT3s: AdditionalT3Assignment[] = []
-
-    // Migrate customExercises → exerciseLibrary + liftSubstitutions
-    if (stored.customExercises) {
-      for (const custom of stored.customExercises) {
-        // Add to library if not already there
-        if (!exerciseLibrary.some((e) => e.id === custom.id)) {
-          exerciseLibrary.push({
-            id: custom.id,
-            name: custom.name,
-            isDumbbell: custom.isDumbbell,
-          })
-        }
-        // Create substitution
-        liftSubstitutions.push({
-          originalLiftId: custom.replacesId,
-          substituteId: custom.id,
-          forceT3Progression: custom.forceT3Progression,
-        })
-      }
-    }
-
-    // Migrate t3Library → exerciseLibrary (dedupe by id)
-    if (stored.t3Library) {
-      for (const t3 of stored.t3Library) {
-        if (!exerciseLibrary.some((e) => e.id === t3.id)) {
-          exerciseLibrary.push({
-            id: t3.id,
-            name: t3.name,
-            isDumbbell: t3.isDumbbell,
-          })
-        }
-      }
-    }
-
-    // Migrate t3Assignments → additionalT3s (only keep non-default T3s)
-    if (stored.t3Assignments) {
-      for (const assignment of stored.t3Assignments) {
-        const defaultT3 = DEFAULT_T3_IDS[assignment.workoutType]
-        // Filter out the default T3 - only keep additional ones
-        const extraIds = assignment.t3Ids.filter((id) => id !== defaultT3)
-        if (extraIds.length > 0) {
-          additionalT3s.push({
-            workoutType: assignment.workoutType,
-            exerciseIds: extraIds,
-          })
-        }
-      }
-    }
-
-    migrated.exerciseLibrary = exerciseLibrary
-    migrated.liftSubstitutions = liftSubstitutions
-    migrated.additionalT3s = additionalT3s
+    migrated.exerciseLibrary = oldModelMigration.exerciseLibrary
+    migrated.liftSubstitutions = oldModelMigration.liftSubstitutions
+    migrated.additionalT3s = oldModelMigration.additionalT3s
   }
 
-  // Initialize new model fields if not present
-  if (!migrated.exerciseLibrary) {
-    migrated.exerciseLibrary = DEFAULT_EXERCISE_LIBRARY
-    needsUpdate = true
-  }
-  if (!migrated.liftSubstitutions) {
-    migrated.liftSubstitutions = DEFAULT_LIFT_SUBSTITUTIONS
-    needsUpdate = true
-  }
-  if (!migrated.additionalT3s) {
-    migrated.additionalT3s = DEFAULT_ADDITIONAL_T3S
+  // Ensure defaults
+  if (ensureDefaults(migrated)) {
     needsUpdate = true
   }
 
   if (needsUpdate) {
-    // Clean up old fields before saving
     const toSave = { ...migrated }
-    delete (toSave as Record<string, unknown>).customExercises
-    delete (toSave as Record<string, unknown>).t3Library
-    delete (toSave as Record<string, unknown>).t3Assignments
-    delete (toSave as Record<string, unknown>).barWeightLbs
-    delete (toSave as Record<string, unknown>).dumbbellHandleWeightLbs
+    cleanLegacyFields(toSave as Record<string, unknown>)
     await db.settings.put(toSave)
-
-    // Also migrate workout data if settings needed migration
     await migrateWorkouts()
   }
 
@@ -250,51 +256,51 @@ function migrateLiftState(lift: LegacyLiftState): LegacyLiftState {
   return migrated
 }
 
+function migrateLiftStateMap(lifts: Record<string, LegacyLiftState>): { result: Record<string, LegacyLiftState>; migrated: boolean } {
+  let migrated = false
+  const result: Record<string, LegacyLiftState> = {}
+  for (const [key, lift] of Object.entries(lifts)) {
+    if (lift.weightLbs !== undefined || lift.lastStage1WeightLbs !== undefined) {
+      migrated = true
+    }
+    result[key] = migrateLiftState(lift)
+  }
+  return { result, migrated }
+}
+
+function migrateT3Weights(t3s: Record<string, { weight?: number; weightLbs?: number }>): { result: Record<string, { weight: number }>; migrated: boolean } {
+  let migrated = false
+  const result: Record<string, { weight: number }> = {}
+  for (const [key, t3State] of Object.entries(t3s)) {
+    if (t3State.weightLbs !== undefined && t3State.weight === undefined) {
+      migrated = true
+      result[key] = { weight: t3State.weightLbs }
+    } else {
+      result[key] = { weight: t3State.weight ?? 0 }
+    }
+  }
+  return { result, migrated }
+}
+
 export async function getProgramState(): Promise<ProgramState | undefined> {
   const stored = await db.programState.get('current') as (LegacyProgramState & { id: string }) | undefined
   if (!stored) return undefined
 
-  let needsUpdate = false
-
-  // Migrate T1/T2 lift states
-  const t1: Record<string, LegacyLiftState> = {}
-  for (const [key, lift] of Object.entries(stored.t1)) {
-    if (lift.weightLbs !== undefined || lift.lastStage1WeightLbs !== undefined) {
-      needsUpdate = true
-    }
-    t1[key] = migrateLiftState(lift)
-  }
-
-  const t2: Record<string, LegacyLiftState> = {}
-  for (const [key, lift] of Object.entries(stored.t2)) {
-    if (lift.weightLbs !== undefined || lift.lastStage1WeightLbs !== undefined) {
-      needsUpdate = true
-    }
-    t2[key] = migrateLiftState(lift)
-  }
-
-  // Migrate T3 weights
-  const t3: Record<string, { weight: number }> = {}
-  for (const [key, t3State] of Object.entries(stored.t3)) {
-    if (t3State.weightLbs !== undefined && t3State.weight === undefined) {
-      needsUpdate = true
-      t3[key] = { weight: t3State.weightLbs }
-    } else {
-      t3[key] = { weight: t3State.weight ?? 0 }
-    }
-  }
+  const t1Migration = migrateLiftStateMap(stored.t1)
+  const t2Migration = migrateLiftStateMap(stored.t2)
+  const t3Migration = migrateT3Weights(stored.t3)
+  const needsUpdate = t1Migration.migrated || t2Migration.migrated || t3Migration.migrated
 
   const migrated: ProgramState = {
-    t1: t1 as ProgramState['t1'],
-    t2: t2 as ProgramState['t2'],
-    t3,
+    t1: t1Migration.result as ProgramState['t1'],
+    t2: t2Migration.result as ProgramState['t2'],
+    t3: t3Migration.result,
     nextWorkoutType: stored.nextWorkoutType,
     workoutCount: stored.workoutCount,
   }
 
   if (needsUpdate) {
     await db.programState.put({ ...migrated, id: 'current' })
-    // Also migrate workout data when program state is migrated
     await migrateWorkouts()
   }
 
