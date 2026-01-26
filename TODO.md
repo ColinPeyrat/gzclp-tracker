@@ -96,6 +96,7 @@
 - [ ] Remove legacy db migration code in `db.ts` (weightLbs→weight, barWeightLbs→barWeight, customExercises, t3Library, t3Assignments)
 
 ### Code Quality (DRY/KISS)
+- [x] Rename weight fields to unit-agnostic names (weightLbs→weight, barWeightLbs→barWeight)
 - [x] Extract `applyWorkoutProgression()` - unified workout completion logic
 - [x] Split `getSettings()` into focused migration helpers
 - [x] Extract `getEffectiveStageConfig()` - forceT3Progression pattern
