@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ChevronLeft, ChevronRight, Check, Dumbbell, Plus } from 'lucide-react'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
-import { useWorkoutSession } from '../hooks/useWorkoutSession'
+import { useWorkoutSessionStore } from '../stores/workoutSessionStore'
 import { useRestTimer } from '../hooks/useRestTimer'
-import { useBeforeUnload } from '../hooks/useBeforeUnload'
 import { ExerciseCard } from '../components/workout/ExerciseCard'
 import { RestTimer } from '../components/workout/RestTimer'
 import { WarmupModal } from '../components/workout/WarmupModal'
@@ -20,7 +19,20 @@ export function Workout() {
   const navigate = useNavigate()
   const { state: programState, loaded: programLoaded, load: loadProgram, save: saveProgram } = useProgramStore()
   const { settings, loaded: settingsLoaded, load: loadSettings } = useSettingsStore()
-  const { session, startWorkout, completeSet, failRemainingCurrentExerciseSets, updateCurrentExerciseWeight, nextExercise, prevExercise, finishWorkout, addT3Exercise } = useWorkoutSession()
+
+  // Workout session store
+  const workout = useWorkoutSessionStore((s) => s.workout)
+  const currentExerciseIndex = useWorkoutSessionStore((s) => s.currentExerciseIndex)
+  const startWorkout = useWorkoutSessionStore((s) => s.startWorkout)
+  const completeSet = useWorkoutSessionStore((s) => s.completeSet)
+  const failRemainingCurrentExerciseSets = useWorkoutSessionStore((s) => s.failRemainingCurrentExerciseSets)
+  const updateCurrentExerciseWeight = useWorkoutSessionStore((s) => s.updateCurrentExerciseWeight)
+  const nextExercise = useWorkoutSessionStore((s) => s.nextExercise)
+  const prevExercise = useWorkoutSessionStore((s) => s.prevExercise)
+  const finishWorkout = useWorkoutSessionStore((s) => s.finishWorkout)
+  const addT3Exercise = useWorkoutSessionStore((s) => s.addT3Exercise)
+  const isLastExercise = useWorkoutSessionStore((s) => s.isLastExercise)
+
   const [showFailModal, setShowFailModal] = useState(false)
   const [showWarmupModal, setShowWarmupModal] = useState(false)
   const [showAddT3Modal, setShowAddT3Modal] = useState(false)
@@ -29,25 +41,27 @@ export function Workout() {
   const [warmupChecked, setWarmupChecked] = useState(false)
   const restTimer = useRestTimer()
 
+  // Track when we're finishing to prevent auto-starting a new workout
+  const isFinishingRef = useRef(false)
+
+  const currentExercise = workout?.exercises[currentExerciseIndex] ?? null
+
+  // Check if workout has started (any set completed)
+  const hasStarted = workout?.exercises.some((ex) => ex.sets.some((s) => s.completed)) ?? false
+
   // Auto-show warmup modal for T1 only (unless it uses T3 progression)
+  // Don't show if resuming a workout that's already started
   useEffect(() => {
-    if (session && !warmupChecked && session.currentExerciseIndex === 0) {
-      const t1Exercise = session.workout.exercises.find((e) => e.tier === 'T1')
-      if (t1Exercise && session.currentExercise.tier === 'T1') {
+    if (workout && !warmupChecked && currentExerciseIndex === 0 && !hasStarted) {
+      const t1Exercise = workout.exercises.find((e) => e.tier === 'T1')
+      if (t1Exercise && currentExercise?.tier === 'T1') {
         const t1Sub = getLiftSubstitution(t1Exercise.liftId, settings.liftSubstitutions)
         const usesT3Progression = t1Sub?.forceT3Progression
-        // Show warmup modal by default only if T1 doesn't use T3 progression
         setShowWarmupModal(!usesT3Progression)
       }
       setWarmupChecked(true)
     }
-  }, [session, warmupChecked, settings.liftSubstitutions])
-
-  // Block navigation if workout has started
-  const hasStarted = session?.workout.exercises.some((ex) =>
-    ex.sets.some((s) => s.completed)
-  ) ?? false
-  const blocker = useBeforeUnload(hasStarted, 'You have an active workout. Are you sure you want to leave?')
+  }, [workout, warmupChecked, currentExerciseIndex, currentExercise, hasStarted, settings.liftSubstitutions])
 
   useEffect(() => {
     if (!programLoaded) loadProgram()
@@ -55,18 +69,20 @@ export function Workout() {
   }, [programLoaded, settingsLoaded, loadProgram, loadSettings])
 
   useEffect(() => {
-    if (programLoaded && programState && settingsLoaded && !session) {
+    // Don't auto-start if we're in the middle of finishing
+    if (isFinishingRef.current) return
+    if (programLoaded && programState && settingsLoaded && !workout) {
       startWorkout(programState, settings)
     }
-  }, [programLoaded, programState, session, startWorkout, settingsLoaded, settings])
+  }, [programLoaded, programState, workout, startWorkout, settingsLoaded, settings])
 
   const handleCompleteSet = (setIndex: number, reps: number) => {
     completeSet(setIndex, reps)
     vibrate()
 
     // Start rest timer based on tier
-    if (session) {
-      const tier = session.currentExercise.tier
+    if (currentExercise) {
+      const tier = currentExercise.tier
       const restDuration =
         tier === 'T1'
           ? settings.restTimers.t1Seconds
@@ -78,8 +94,8 @@ export function Workout() {
   }
 
   const handleNextExercise = () => {
-    if (!session) return
-    const hasIncompleteSets = session.currentExercise.sets.some((s) => !s.completed)
+    if (!currentExercise) return
+    const hasIncompleteSets = currentExercise.sets.some((s) => !s.completed)
     if (hasIncompleteSets) {
       setShowFailModal(true)
     } else {
@@ -106,11 +122,14 @@ export function Workout() {
 
   // Get T3s available to add (from library but not already in workout)
   const availableT3s = settings.exerciseLibrary?.filter(
-    (ex) => !session?.workout.exercises.some((e) => e.liftId === ex.id)
+    (ex) => !workout?.exercises.some((e) => e.liftId === ex.id)
   ) ?? []
 
   const handleFinishWorkout = async () => {
-    if (!session || !programState) return
+    if (!workout || !programState) return
+
+    // Prevent auto-start effect from creating a new workout
+    isFinishingRef.current = true
 
     const completedWorkout = finishWorkout()
     if (!completedWorkout) return
@@ -128,7 +147,7 @@ export function Workout() {
     navigate('/')
   }
 
-  if (!programLoaded || !settingsLoaded || !session) {
+  if (!programLoaded || !settingsLoaded || !workout || !currentExercise) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-zinc-400">Loading...</div>
@@ -136,7 +155,7 @@ export function Workout() {
     )
   }
 
-  const allExercisesComplete = session.workout.exercises.every((ex) =>
+  const allExercisesComplete = workout.exercises.every((ex) =>
     ex.sets.every((s) => s.completed)
   )
 
@@ -149,9 +168,9 @@ export function Workout() {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div>
-              <h1 className="font-bold">{session.workout.type}</h1>
+              <h1 className="font-bold">{workout.type}</h1>
               <p className="text-xs text-zinc-400">
-                Exercise {session.currentExerciseIndex + 1} of {session.workout.exercises.length}
+                Exercise {currentExerciseIndex + 1} of {workout.exercises.length}
               </p>
             </div>
           </div>
@@ -188,7 +207,7 @@ export function Workout() {
 
       <main className="flex-1 p-4">
         <ExerciseCard
-          exercise={session.currentExercise}
+          exercise={currentExercise}
           barWeight={settings.barWeight}
           dumbbellHandleWeight={settings.dumbbellHandleWeight}
           plateInventory={settings.plateInventory}
@@ -204,7 +223,7 @@ export function Workout() {
         <div className="flex w-full items-center justify-between">
           <button
             onClick={prevExercise}
-            disabled={session.currentExerciseIndex === 0}
+            disabled={currentExerciseIndex === 0}
             className="flex items-center gap-1 rounded-lg px-4 py-2 text-zinc-400 hover:text-white disabled:opacity-30"
           >
             <ChevronLeft className="h-5 w-5" />
@@ -212,11 +231,11 @@ export function Workout() {
           </button>
 
           <div className="flex gap-1">
-            {session.workout.exercises.map((ex, i) => (
+            {workout.exercises.map((ex, i) => (
               <div
                 key={i}
                 className={`h-2 w-2 rounded-full ${
-                  i === session.currentExerciseIndex
+                  i === currentExerciseIndex
                     ? 'bg-blue-500'
                     : ex.sets.every((s) => s.completed)
                       ? 'bg-green-500'
@@ -228,7 +247,7 @@ export function Workout() {
 
           <button
             onClick={handleNextExercise}
-            disabled={session.isLastExercise}
+            disabled={isLastExercise()}
             className="flex items-center gap-1 rounded-lg px-4 py-2 text-zinc-400 hover:text-white disabled:opacity-30"
           >
             Next
@@ -247,34 +266,11 @@ export function Workout() {
         />
       )}
 
-      {blocker.state === 'blocked' && (
-        <Modal>
-          <h2 className="mb-2 text-lg font-bold">Leave Workout?</h2>
-          <p className="mb-6 text-sm text-zinc-400">
-            Your progress will be lost. Are you sure you want to leave?
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => blocker.proceed?.()}
-              className="flex-1 rounded-lg bg-red-600 py-2 font-medium hover:bg-red-500"
-            >
-              Leave
-            </button>
-            <button
-              onClick={() => blocker.reset?.()}
-              className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
-            >
-              Stay
-            </button>
-          </div>
-        </Modal>
-      )}
-
       {showFailModal && (
         <Modal onClose={() => setShowFailModal(false)}>
           <h2 className="mb-2 text-lg font-bold">Incomplete Sets</h2>
           <p className="mb-6 text-sm text-zinc-400">
-            You have {session.currentExercise.sets.filter((s) => !s.completed).length} incomplete sets. Mark them as failed and move on?
+            You have {currentExercise.sets.filter((s) => !s.completed).length} incomplete sets. Mark them as failed and move on?
           </p>
           <div className="flex gap-3">
             <button
@@ -295,8 +291,8 @@ export function Workout() {
 
       {showWarmupModal && (
         <WarmupModal
-          exerciseName={getExerciseName(session.currentExercise.liftId, session.currentExercise.tier, settings.liftSubstitutions, settings.exerciseLibrary)}
-          workWeight={session.currentExercise.weight}
+          exerciseName={getExerciseName(currentExercise.liftId, currentExercise.tier, settings.liftSubstitutions, settings.exerciseLibrary)}
+          workWeight={currentExercise.weight}
           barWeight={settings.barWeight}
           plateInventory={settings.plateInventory}
           unit={settings.weightUnit}

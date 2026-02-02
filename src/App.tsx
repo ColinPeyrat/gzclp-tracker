@@ -7,6 +7,7 @@ import { History } from './pages/History'
 import { Progress } from './pages/Progress'
 import { Settings } from './pages/Settings'
 import { OfflineBanner } from './components/ui/OfflineBanner'
+import { ActiveWorkoutToaster } from './components/ui/ActiveWorkoutToaster'
 import { migrateWorkouts } from './lib/db'
 
 function Layout() {
@@ -21,6 +22,7 @@ function Layout() {
     <>
       <OfflineBanner />
       <Outlet />
+      <ActiveWorkoutToaster />
     </>
   )
 }
