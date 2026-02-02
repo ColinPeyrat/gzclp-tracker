@@ -21,6 +21,7 @@ export function History() {
       <WorkoutDetail
         workout={selectedWorkout}
         unit={settings.weightUnit}
+        barWeight={settings.barWeight}
         plateInventory={settings.plateInventory}
         liftSubstitutions={settings.liftSubstitutions}
         exerciseLibrary={settings.exerciseLibrary}

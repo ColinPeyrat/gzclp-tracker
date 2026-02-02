@@ -2,10 +2,13 @@ import { X } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 import type { Workout, WeightUnit, LiftSubstitution, ExerciseDefinition } from '../../lib/types'
 import { getExerciseName } from '../../lib/exercises'
+import { calculateWorkoutStats } from '../../lib/workoutStats'
 
 interface WorkoutStatsModalProps {
   workout: Workout
   unit: WeightUnit
+  barWeight: number
+  plateInventory: Record<string, number>
   liftSubstitutions?: LiftSubstitution[]
   exerciseLibrary?: ExerciseDefinition[]
   onClose: () => void
@@ -29,35 +32,19 @@ function StatRow({ label, value, subValue }: StatRowProps) {
   )
 }
 
-export function WorkoutStatsModal({ workout, unit, liftSubstitutions, exerciseLibrary, onClose }: WorkoutStatsModalProps) {
-  // Calculate statistics
-  let totalVolume = 0
-  let totalSets = 0
-  let totalReps = 0
-  let completedSets = 0
-  let heaviestLift = { name: '', weight: 0 }
+export function WorkoutStatsModal({ workout, unit, barWeight, plateInventory, liftSubstitutions, exerciseLibrary, onClose }: WorkoutStatsModalProps) {
+  const stats = calculateWorkoutStats(
+    workout,
+    barWeight,
+    plateInventory,
+    unit,
+    liftSubstitutions,
+    (liftId, tier) => getExerciseName(liftId, tier, liftSubstitutions, exerciseLibrary)
+  )
 
-  for (const exercise of workout.exercises) {
-    const exerciseName = getExerciseName(exercise.liftId, exercise.tier, liftSubstitutions, exerciseLibrary)
-
-    for (const set of exercise.sets) {
-      totalSets++
-      if (set.completed && set.reps > 0) {
-        completedSets++
-        totalReps += set.reps
-        totalVolume += exercise.weight * set.reps
-      }
-    }
-
-    if (exercise.weight > heaviestLift.weight) {
-      heaviestLift = { name: exerciseName, weight: exercise.weight }
-    }
-  }
-
-  const successRate = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0
-
-  // Format volume with thousands separator
-  const formattedVolume = totalVolume.toLocaleString()
+  const formattedWarmupVolume = stats.warmupVolume.toLocaleString()
+  const formattedWorkingVolume = stats.workingVolume.toLocaleString()
+  const formattedTotalVolume = stats.totalVolume.toLocaleString()
 
   return (
     <Modal onClose={onClose}>
@@ -73,29 +60,43 @@ export function WorkoutStatsModal({ workout, unit, liftSubstitutions, exerciseLi
         </div>
 
         <div className="divide-y divide-zinc-700">
+          {stats.warmupVolume > 0 && (
+            <StatRow
+              label="Warmup Volume"
+              value={formattedWarmupVolume}
+              subValue={unit}
+            />
+          )}
           <StatRow
-            label="Total Volume"
-            value={formattedVolume}
+            label="Working Volume"
+            value={formattedWorkingVolume}
             subValue={unit}
           />
+          {stats.warmupVolume > 0 && (
+            <StatRow
+              label="Total Volume"
+              value={formattedTotalVolume}
+              subValue={unit}
+            />
+          )}
           <StatRow
             label="Total Reps"
-            value={totalReps}
+            value={stats.totalReps}
           />
           <StatRow
             label="Sets Completed"
-            value={`${completedSets}/${totalSets}`}
-            subValue={`${successRate}%`}
+            value={`${stats.completedSets}/${stats.totalSets}`}
+            subValue={`${stats.successRate}%`}
           />
           <StatRow
             label="Exercises"
             value={workout.exercises.length}
           />
-          {heaviestLift.weight > 0 && (
+          {stats.heaviestLift.weight > 0 && (
             <StatRow
               label="Heaviest Lift"
-              value={`${heaviestLift.weight} ${unit}`}
-              subValue={heaviestLift.name}
+              value={`${stats.heaviestLift.weight} ${unit}`}
+              subValue={stats.heaviestLift.name}
             />
           )}
         </div>

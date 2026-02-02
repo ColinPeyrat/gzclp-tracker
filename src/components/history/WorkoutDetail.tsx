@@ -11,6 +11,7 @@ import { getExerciseName, getLiftSubstitution, TIER_COLORS, getStageFromConfig }
 interface WorkoutDetailProps {
   workout: Workout
   unit: WeightUnit
+  barWeight: number
   plateInventory: Record<string, number>
   liftSubstitutions?: LiftSubstitution[]
   exerciseLibrary?: ExerciseDefinition[]
@@ -98,7 +99,7 @@ function ExerciseResult({ exercise, tier, unit, plateInventory, liftSubstitution
   )
 }
 
-export function WorkoutDetail({ workout, unit, plateInventory, liftSubstitutions, exerciseLibrary, onBack }: WorkoutDetailProps) {
+export function WorkoutDetail({ workout, unit, barWeight, plateInventory, liftSubstitutions, exerciseLibrary, onBack }: WorkoutDetailProps) {
   const [showStats, setShowStats] = useState(false)
 
   const date = new Date(workout.date)
@@ -139,6 +140,8 @@ export function WorkoutDetail({ workout, unit, plateInventory, liftSubstitutions
         <WorkoutStatsModal
           workout={workout}
           unit={unit}
+          barWeight={barWeight}
+          plateInventory={plateInventory}
           liftSubstitutions={liftSubstitutions}
           exerciseLibrary={exerciseLibrary}
           onClose={() => setShowStats(false)}
