@@ -56,6 +56,7 @@ export interface ExerciseLog {
   liftId: string
   tier: Tier
   weight: number
+  originalWeight?: number // Set at workout start for trial lift detection
   targetSets: number
   targetReps: number
   sets: SetLog[]

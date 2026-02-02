@@ -44,6 +44,11 @@ export function getAmrapReps(exercise: ExerciseLog): number | undefined {
   return amrapSet?.reps
 }
 
+export function isTrialWeight(exercise: ExerciseLog): boolean {
+  return exercise.originalWeight !== undefined &&
+         exercise.weight !== exercise.originalWeight
+}
+
 export interface ProgressionResult {
   newState: LiftState
   message: string
@@ -63,6 +68,14 @@ export function calculateT1Progression(
     return {
       newState: { ...currentState, weight: newWeight },
       message: `+${increment} ${unit} → ${newWeight} ${unit}`,
+    }
+  }
+
+  // Trial weight failure: no penalty, return unchanged state
+  if (isTrialWeight(exercise)) {
+    return {
+      newState: currentState,
+      message: `Trial at ${exercise.weight} ${unit} failed, keeping ${weight} ${unit}`,
     }
   }
 
@@ -112,6 +125,14 @@ export function calculateT2Progression(
     return {
       newState,
       message: `+${increment} ${unit} → ${newWeight} ${unit}`,
+    }
+  }
+
+  // Trial weight failure: no penalty, return unchanged state
+  if (isTrialWeight(exercise)) {
+    return {
+      newState: currentState,
+      message: `Trial at ${exercise.weight} ${unit} failed, keeping ${weight} ${unit}`,
     }
   }
 
