@@ -115,3 +115,8 @@ export const T3_EXERCISES: Record<string, T3Exercise> = {
 }
 
 export const WORKOUT_ORDER: WorkoutType[] = ['A1', 'A2', 'B1', 'B2']
+
+export function getUpcomingWorkoutTypes(current: WorkoutType): WorkoutType[] {
+  const idx = WORKOUT_ORDER.indexOf(current)
+  return WORKOUT_ORDER.map((_, i) => WORKOUT_ORDER[(idx + i) % WORKOUT_ORDER.length])
+}

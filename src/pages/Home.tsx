@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom'
 import { Dumbbell, Play, Bug, Settings } from 'lucide-react'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
-import { WORKOUTS, WORKOUT_ORDER, type WorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit, type LiftSubstitution, type ExerciseDefinition } from '../lib/types'
+import { WORKOUTS, WORKOUT_ORDER, getUpcomingWorkoutTypes, type WorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit, type LiftSubstitution, type ExerciseDefinition } from '../lib/types'
 import { estimate5RM, applyT1Reset } from '../lib/progression'
-import { getExerciseName, getEffectiveStageConfig, getT3IdsForWorkout, getLiftSubstitution } from '../lib/exercises'
+import { getExerciseName } from '../lib/exercises'
 import { Modal } from '../components/ui/Modal'
 import { BottomNav } from '../components/ui/BottomNav'
+import { WorkoutPreviewCard } from '../components/home/WorkoutPreviewCard'
 
 interface Pending5RMInfo {
   liftId: LiftName
@@ -98,19 +99,7 @@ export function Home() {
     )
   }
 
-  const workout = WORKOUTS[state.nextWorkoutType]
-  const t1State = state.t1[workout.t1]
-  const t2State = state.t2[workout.t2]
-  const t1Config = getEffectiveStageConfig('T1', t1State.stage, workout.t1, settings.liftSubstitutions)
-  const t2Config = getEffectiveStageConfig('T2', t2State.stage, workout.t2, settings.liftSubstitutions)
-  const t1Sub = getLiftSubstitution(workout.t1, settings.liftSubstitutions)
-  const t1Weight = t1Sub?.forceT3Progression
-    ? Math.max(t1State.weight, state.t2[workout.t1]?.weight ?? 0)
-    : t1State.weight
-  const t2Sub = getLiftSubstitution(workout.t2, settings.liftSubstitutions)
-  const t2Weight = t2Sub?.forceT3Progression
-    ? Math.max(t2State.weight, state.t1[workout.t2]?.weight ?? 0)
-    : t2State.weight
+  const upcoming = getUpcomingWorkoutTypes(state.nextWorkoutType)
 
   return (
     <div className="flex min-h-screen flex-col pb-(--nav-height)">
@@ -140,53 +129,37 @@ export function Home() {
           <p className="text-zinc-400">Workout #{state.workoutCount + 1}</p>
         </div>
 
-        <div className="mb-6 space-y-3">
-          <div className="rounded-lg bg-zinc-800 p-4">
-            <div className="mb-1 text-xs font-medium text-blue-400">T1</div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-lg font-medium">
-                {getExerciseName(workout.t1, 'T1', settings.liftSubstitutions, settings.exerciseLibrary)}
-              </span>
-              <span className="text-zinc-400">
-                {t1Config.sets}×{t1Config.reps}+ @ {t1Weight} {settings.weightUnit}
-              </span>
-            </div>
-          </div>
-
-          <div className="rounded-lg bg-zinc-800 p-4">
-            <div className="mb-1 text-xs font-medium text-green-400">T2</div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-lg font-medium">
-                {getExerciseName(workout.t2, 'T2', settings.liftSubstitutions, settings.exerciseLibrary)}
-              </span>
-              <span className="text-zinc-400">
-                {t2Config.sets}×{t2Config.reps}{t2Config.hasAmrap ? '+' : ''} @ {t2Weight} {settings.weightUnit}
-              </span>
-            </div>
-          </div>
-
-          {getT3IdsForWorkout(state.nextWorkoutType, settings.additionalT3s).map((t3Id) => (
-            <div key={t3Id} className="rounded-lg bg-zinc-800 p-4">
-              <div className="mb-1 text-xs font-medium text-yellow-400">T3</div>
-              <div className="flex items-baseline justify-between">
-                <span className="text-lg font-medium">
-                  {getExerciseName(t3Id, 'T3', settings.liftSubstitutions, settings.exerciseLibrary)}
-                </span>
-                <span className="text-zinc-400">
-                  3×15+ @ {state.t3[t3Id]?.weight ?? 50} {settings.weightUnit}
-                </span>
-              </div>
-            </div>
-          ))}
+        <div className="mb-6">
+          <WorkoutPreviewCard
+            workoutType={upcoming[0]}
+            state={state}
+            settings={settings}
+            isNext={true}
+          />
         </div>
 
         <Link
           to="/workout"
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 font-medium text-white hover:bg-blue-500"
+          className="mb-8 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 font-medium text-white hover:bg-blue-500"
         >
           <Play className="h-5 w-5" />
           Start Workout
         </Link>
+
+        <div>
+          <h3 className="mb-3 text-sm font-medium text-zinc-400">Upcoming</h3>
+          <div className="space-y-3">
+            {upcoming.slice(1).map((workoutType) => (
+              <WorkoutPreviewCard
+                key={workoutType}
+                workoutType={workoutType}
+                state={state}
+                settings={settings}
+                isNext={false}
+              />
+            ))}
+          </div>
+        </div>
       </main>
 
       {currentPending && (
