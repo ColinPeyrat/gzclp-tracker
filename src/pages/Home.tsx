@@ -5,7 +5,7 @@ import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { WORKOUTS, WORKOUT_ORDER, type WorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit, type LiftSubstitution, type ExerciseDefinition } from '../lib/types'
 import { estimate5RM, applyT1Reset } from '../lib/progression'
-import { getExerciseName, getEffectiveStageConfig, getT3IdsForWorkout } from '../lib/exercises'
+import { getExerciseName, getEffectiveStageConfig, getT3IdsForWorkout, getLiftSubstitution } from '../lib/exercises'
 import { Modal } from '../components/ui/Modal'
 import { BottomNav } from '../components/ui/BottomNav'
 
@@ -103,6 +103,14 @@ export function Home() {
   const t2State = state.t2[workout.t2]
   const t1Config = getEffectiveStageConfig('T1', t1State.stage, workout.t1, settings.liftSubstitutions)
   const t2Config = getEffectiveStageConfig('T2', t2State.stage, workout.t2, settings.liftSubstitutions)
+  const t1Sub = getLiftSubstitution(workout.t1, settings.liftSubstitutions)
+  const t1Weight = t1Sub?.forceT3Progression
+    ? Math.max(t1State.weight, state.t2[workout.t1]?.weight ?? 0)
+    : t1State.weight
+  const t2Sub = getLiftSubstitution(workout.t2, settings.liftSubstitutions)
+  const t2Weight = t2Sub?.forceT3Progression
+    ? Math.max(t2State.weight, state.t1[workout.t2]?.weight ?? 0)
+    : t2State.weight
 
   return (
     <div className="flex min-h-screen flex-col pb-(--nav-height)">
@@ -140,7 +148,7 @@ export function Home() {
                 {getExerciseName(workout.t1, 'T1', settings.liftSubstitutions, settings.exerciseLibrary)}
               </span>
               <span className="text-zinc-400">
-                {t1Config.sets}×{t1Config.reps}+ @ {t1State.weight} {settings.weightUnit}
+                {t1Config.sets}×{t1Config.reps}+ @ {t1Weight} {settings.weightUnit}
               </span>
             </div>
           </div>
@@ -152,7 +160,7 @@ export function Home() {
                 {getExerciseName(workout.t2, 'T2', settings.liftSubstitutions, settings.exerciseLibrary)}
               </span>
               <span className="text-zinc-400">
-                {t2Config.sets}×{t2Config.reps}{t2Config.hasAmrap ? '+' : ''} @ {t2State.weight} {settings.weightUnit}
+                {t2Config.sets}×{t2Config.reps}{t2Config.hasAmrap ? '+' : ''} @ {t2Weight} {settings.weightUnit}
               </span>
             </div>
           </div>

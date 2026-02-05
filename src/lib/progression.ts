@@ -297,6 +297,22 @@ export function applyWorkoutProgression(
     }
   }
 
+  // Sync forceT3Progression weights between T1 and T2
+  for (const liftId of Object.keys(newState.t1) as LiftName[]) {
+    const sub = getLiftSubstitution(liftId, ctx.liftSubstitutions)
+    if (sub?.forceT3Progression) {
+      const t1Weight = newState.t1[liftId].weight
+      const t2Weight = newState.t2[liftId].weight
+      const syncedWeight = Math.max(t1Weight, t2Weight)
+      if (t1Weight !== syncedWeight) {
+        newState.t1 = { ...newState.t1, [liftId]: { ...newState.t1[liftId], weight: syncedWeight } }
+      }
+      if (t2Weight !== syncedWeight) {
+        newState.t2 = { ...newState.t2, [liftId]: { ...newState.t2[liftId], weight: syncedWeight } }
+      }
+    }
+  }
+
   // T3 progression - all T3 exercises
   for (const t3Exercise of workout.exercises.filter((e) => e.tier === 'T3')) {
     const t3Id = t3Exercise.liftId

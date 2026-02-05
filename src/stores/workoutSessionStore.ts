@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid'
 import type { Workout, ExerciseLog, UserSettings, ProgramState } from '../lib/types'
 import { WORKOUTS } from '../lib/types'
 import { getStageConfig } from '../lib/progression'
-import { getEffectiveStageConfig, getT3IdsForWorkout, createSetLogs } from '../lib/exercises'
+import { getEffectiveStageConfig, getT3IdsForWorkout, createSetLogs, getLiftSubstitution } from '../lib/exercises'
 
 interface WorkoutSessionState {
   workout: Workout | null
@@ -41,11 +41,15 @@ function createExerciseLogs(
   // T1
   const t1State = programState.t1[workoutDef.t1]
   const t1Config = getEffectiveStageConfig('T1', t1State.stage, workoutDef.t1, settings.liftSubstitutions)
+  const t1Sub = getLiftSubstitution(workoutDef.t1, settings.liftSubstitutions)
+  const t1Weight = t1Sub?.forceT3Progression
+    ? Math.max(t1State.weight, programState.t2[workoutDef.t1]?.weight ?? 0)
+    : t1State.weight
   exercises.push({
     liftId: workoutDef.t1,
     tier: 'T1',
-    weight: t1State.weight,
-    originalWeight: t1State.weight,
+    weight: t1Weight,
+    originalWeight: t1Weight,
     targetSets: t1Config.sets,
     targetReps: t1Config.reps,
     sets: createSetLogs(t1Config.sets, t1Config.hasAmrap),
@@ -54,11 +58,15 @@ function createExerciseLogs(
   // T2
   const t2State = programState.t2[workoutDef.t2]
   const t2Config = getEffectiveStageConfig('T2', t2State.stage, workoutDef.t2, settings.liftSubstitutions)
+  const t2Sub = getLiftSubstitution(workoutDef.t2, settings.liftSubstitutions)
+  const t2Weight = t2Sub?.forceT3Progression
+    ? Math.max(t2State.weight, programState.t1[workoutDef.t2]?.weight ?? 0)
+    : t2State.weight
   exercises.push({
     liftId: workoutDef.t2,
     tier: 'T2',
-    weight: t2State.weight,
-    originalWeight: t2State.weight,
+    weight: t2Weight,
+    originalWeight: t2Weight,
     targetSets: t2Config.sets,
     targetReps: t2Config.reps,
     sets: createSetLogs(t2Config.sets, t2Config.hasAmrap),
