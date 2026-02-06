@@ -39,7 +39,8 @@ export function WorkoutStatsModal({ workout, unit, barWeight, plateInventory, li
     plateInventory,
     unit,
     liftSubstitutions,
-    (liftId, tier) => getExerciseName(liftId, tier, liftSubstitutions, exerciseLibrary)
+    (liftId, tier) => getExerciseName(liftId, tier, liftSubstitutions, exerciseLibrary),
+    exerciseLibrary
   )
 
   const formattedWarmupVolume = stats.warmupVolume.toLocaleString()

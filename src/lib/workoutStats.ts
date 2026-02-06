@@ -1,5 +1,5 @@
-import type { Workout, WeightUnit, LiftSubstitution, Tier } from './types'
-import { getLiftSubstitution } from './exercises'
+import type { Workout, WeightUnit, LiftSubstitution, ExerciseDefinition, Tier } from './types'
+import { getLiftSubstitution, isDumbbellExercise } from './exercises'
 import { calculateWarmupSets } from './warmup'
 
 export interface WorkoutStats {
@@ -19,7 +19,8 @@ export function calculateWorkoutStats(
   plateInventory: Record<string, number>,
   unit: WeightUnit,
   liftSubstitutions?: LiftSubstitution[],
-  getExerciseNameFn?: (liftId: string, tier: Tier) => string
+  getExerciseNameFn?: (liftId: string, tier: Tier) => string,
+  exerciseLibrary?: ExerciseDefinition[]
 ): WorkoutStats {
   let workingVolume = 0
   let warmupVolume = 0
@@ -44,12 +45,15 @@ export function calculateWorkoutStats(
       }
     }
 
+    const isDumbbell = isDumbbellExercise(exercise.liftId, liftSubstitutions, exerciseLibrary)
+    const effectiveWeight = isDumbbell ? exercise.weight * 2 : exercise.weight
+
     for (const set of exercise.sets) {
       totalSets++
       if (set.completed && set.reps > 0) {
         completedSets++
         totalReps += set.reps
-        workingVolume += exercise.weight * set.reps
+        workingVolume += effectiveWeight * set.reps
       }
     }
 

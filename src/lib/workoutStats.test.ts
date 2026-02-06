@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { calculateWorkoutStats } from './workoutStats'
-import type { Workout, ExerciseLog, SetLog, LiftSubstitution, Tier } from './types'
+import type { Workout, ExerciseLog, SetLog, LiftSubstitution, ExerciseDefinition, Tier } from './types'
 
 function makeSet(reps: number, completed = true, isAmrap = false): SetLog {
   return { setNumber: 1, reps, completed, isAmrap }
@@ -292,6 +292,99 @@ describe('calculateWorkoutStats', () => {
 
       const stats = calculateWorkoutStats(workout, 45, LBS_PLATE_INVENTORY, 'lbs')
       expect(stats.successRate).toBe(0)
+    })
+  })
+
+  describe('dumbbell volume', () => {
+    it('doubles working volume for built-in dumbbell exercises', () => {
+      const workout = makeWorkout([
+        makeExercise({
+          liftId: 'dumbbell-row',
+          tier: 'T3',
+          weight: 10,
+          targetSets: 3,
+          targetReps: 15,
+          sets: [makeSet(15), makeSet(15), makeSet(15)],
+        }),
+      ])
+
+      const stats = calculateWorkoutStats(workout, 20, KG_PLATE_INVENTORY, 'kg')
+      // 10 * 2 * 45 = 900
+      expect(stats.workingVolume).toBe(900)
+    })
+
+    it('doubles volume for custom dumbbell exercises via exerciseLibrary', () => {
+      const exerciseLibrary: ExerciseDefinition[] = [
+        { id: 'dumbbell-curl', name: 'Dumbbell Curl', isDumbbell: true },
+      ]
+      const workout = makeWorkout([
+        makeExercise({
+          liftId: 'dumbbell-curl',
+          tier: 'T3',
+          weight: 8,
+          targetSets: 3,
+          targetReps: 15,
+          sets: [makeSet(15), makeSet(15), makeSet(15)],
+        }),
+      ])
+
+      const stats = calculateWorkoutStats(workout, 20, KG_PLATE_INVENTORY, 'kg', undefined, undefined, exerciseLibrary)
+      // 8 * 2 * 45 = 720
+      expect(stats.workingVolume).toBe(720)
+    })
+
+    it('does NOT double volume for non-dumbbell exercises', () => {
+      const workout = makeWorkout([
+        makeExercise({
+          liftId: 'squat',
+          tier: 'T1',
+          weight: 100,
+          sets: [makeSet(3), makeSet(3), makeSet(3)],
+        }),
+      ])
+
+      const stats = calculateWorkoutStats(workout, 45, LBS_PLATE_INVENTORY, 'lbs')
+      expect(stats.workingVolume).toBe(900) // 100 * 9
+    })
+
+    it('correctly sums mixed workout with barbell and dumbbell exercises', () => {
+      const workout = makeWorkout([
+        makeExercise({
+          liftId: 'squat',
+          tier: 'T1',
+          weight: 100,
+          sets: [makeSet(3), makeSet(3), makeSet(3)],
+        }),
+        makeExercise({
+          liftId: 'dumbbell-row',
+          tier: 'T3',
+          weight: 20,
+          targetSets: 3,
+          targetReps: 15,
+          sets: [makeSet(15), makeSet(15), makeSet(15)],
+        }),
+      ])
+
+      const stats = calculateWorkoutStats(workout, 45, LBS_PLATE_INVENTORY, 'lbs')
+      // Squat: 100 * 9 = 900
+      // DB Row: 20 * 2 * 45 = 1800
+      expect(stats.workingVolume).toBe(2700)
+    })
+
+    it('uses per-hand weight for heaviestLift even for dumbbell exercises', () => {
+      const workout = makeWorkout([
+        makeExercise({
+          liftId: 'dumbbell-row',
+          tier: 'T3',
+          weight: 50,
+          targetSets: 3,
+          targetReps: 15,
+          sets: [makeSet(15), makeSet(15), makeSet(15)],
+        }),
+      ])
+
+      const stats = calculateWorkoutStats(workout, 45, LBS_PLATE_INVENTORY, 'lbs')
+      expect(stats.heaviestLift.weight).toBe(50) // per-hand, not doubled
     })
   })
 
