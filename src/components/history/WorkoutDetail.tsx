@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { ArrowLeft, Check, X, Minus, TrendingUp, TrendingDown, BarChart2 } from 'lucide-react'
-import type { Workout, WeightUnit, Tier, ExerciseLog, LiftName, LiftSubstitution, ExerciseDefinition } from '../../lib/types'
+import { ArrowLeft, Check, X, Minus, TrendingUp, TrendingDown, BarChart2, Trophy, Flame, Zap, Target } from 'lucide-react'
+import type { Workout, WeightUnit, Tier, ExerciseLog, LiftName, LiftSubstitution, ExerciseDefinition, Medal, MedalType } from '../../lib/types'
 import { WorkoutStatsModal } from './WorkoutStatsModal'
 import { LIFTS } from '../../lib/types'
 import { getTotalReps, getTargetTotalReps, didHitRepTarget, getStageConfig } from '../../lib/progression'
@@ -99,6 +99,54 @@ function ExerciseResult({ exercise, tier, unit, plateInventory, liftSubstitution
   )
 }
 
+const MEDAL_ICONS: Record<MedalType, typeof Trophy> = {
+  'weight-pr': Trophy,
+  'volume-pr': Flame,
+  'streak': Zap,
+  'amrap-record': Target,
+  'stage-clear': TrendingUp,
+}
+
+const MEDAL_LABELS: Record<MedalType, string> = {
+  'weight-pr': 'Weight PR',
+  'volume-pr': 'Volume PR',
+  'streak': 'Streak',
+  'amrap-record': 'T3 Level Up',
+  'stage-clear': 'Weight Up',
+}
+
+function MedalsSection({ medals, unit, liftSubstitutions, exerciseLibrary }: {
+  medals: Medal[]
+  unit: WeightUnit
+  liftSubstitutions?: LiftSubstitution[]
+  exerciseLibrary?: ExerciseDefinition[]
+}) {
+  return (
+    <div className="rounded-lg border border-amber-500/20 bg-amber-950/20 p-4">
+      <h3 className="mb-2 text-sm font-medium text-amber-400">Achievements</h3>
+      <div className="space-y-1.5">
+        {medals.map((medal, i) => {
+          const Icon = MEDAL_ICONS[medal.type]
+          const label = medal.type === 'streak' ? `${medal.value} Workouts` : MEDAL_LABELS[medal.type]
+          const liftName = medal.liftId
+            ? getExerciseName(medal.liftId, medal.tier ?? 'T1', liftSubstitutions, exerciseLibrary)
+            : null
+          return (
+            <div key={i} className="flex items-center gap-2 text-sm">
+              <Icon className="h-4 w-4 shrink-0 text-amber-400" />
+              <span className="text-amber-300">{label}</span>
+              {liftName && <span className="text-zinc-400">{liftName}{medal.tier ? ` (${medal.tier})` : ''}</span>}
+              {(medal.type === 'weight-pr' || medal.type === 'stage-clear' || medal.type === 'volume-pr') && (
+                <span className="text-zinc-500">{medal.value} {unit}</span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function WorkoutDetail({ workout, unit, barWeight, plateInventory, liftSubstitutions, exerciseLibrary, onBack }: WorkoutDetailProps) {
   const [showStats, setShowStats] = useState(false)
 
@@ -149,6 +197,9 @@ export function WorkoutDetail({ workout, unit, barWeight, plateInventory, liftSu
       )}
 
       <main className="flex-1 space-y-4 p-4">
+        {workout.medals && workout.medals.length > 0 && (
+          <MedalsSection medals={workout.medals} unit={unit} liftSubstitutions={liftSubstitutions} exerciseLibrary={exerciseLibrary} />
+        )}
         {workout.exercises.map((exercise, i) => (
           <div key={i} className="rounded-lg bg-zinc-800 p-4">
             <div className="mb-1 flex items-center justify-between">

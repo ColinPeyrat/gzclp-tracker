@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Trophy } from 'lucide-react'
 import type { Workout, WeightUnit, LiftSubstitution, ExerciseDefinition } from '../../lib/types'
 import { WORKOUTS } from '../../lib/types'
 import { formatWorkoutDate } from '../../hooks/useWorkoutHistory'
@@ -50,6 +50,12 @@ export function WorkoutCard({ workout, unit, liftSubstitutions, exerciseLibrary,
             <span className="text-sm text-zinc-400">
               {formatWorkoutDate(workout.date)}
             </span>
+            {workout.medals && workout.medals.length > 0 && (
+              <span className="flex items-center gap-0.5 text-amber-400">
+                <Trophy className="h-3.5 w-3.5" />
+                <span className="text-xs font-medium">{workout.medals.length}</span>
+              </span>
+            )}
           </div>
           <div className="mt-1 text-sm text-zinc-400">
             {t1Name} @ {t1Exercise?.weight ?? '?'} {unit}

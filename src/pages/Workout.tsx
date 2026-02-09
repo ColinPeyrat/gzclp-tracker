@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ChevronLeft, ChevronRight, Check, Dumbbell, Plus } from 'lucide-react'
 import { useProgramStore } from '../stores/programStore'
@@ -11,9 +11,19 @@ import { WarmupModal } from '../components/workout/WarmupModal'
 import { Modal } from '../components/ui/Modal'
 import { db } from '../lib/db'
 import { applyWorkoutProgression } from '../lib/progression'
+import { buildHistoryMap, detectWeightPR, detectVolumePR, detectStageClearMedal, detectStreakMedal } from '../lib/medals'
 import { getSmallestPlate } from '../lib/plates'
 import { vibrate } from '../lib/haptics'
 import { getLiftSubstitution, getExerciseName } from '../lib/exercises'
+import { useMedalToastStore } from '../stores/medalToastStore'
+import type { Medal, Workout as WorkoutType } from '../lib/types'
+import type { HistoryRecord } from '../lib/medals'
+
+interface MedalChecks {
+  weightPR: boolean
+  volumePR: boolean
+  stageClear: boolean
+}
 
 export function Workout() {
   const navigate = useNavigate()
@@ -44,10 +54,71 @@ export function Workout() {
   // Track when we're finishing to prevent auto-starting a new workout
   const isFinishingRef = useRef(false)
 
+  // Medal tracking refs
+  const medalChecksRef = useRef<Map<number, MedalChecks>>(new Map())
+  const accumulatedMedalsRef = useRef<Medal[]>([])
+  const historyRef = useRef<{ workouts: WorkoutType[]; map: Map<string, HistoryRecord> } | null>(null)
+
   const currentExercise = workout?.exercises[currentExerciseIndex] ?? null
 
   // Check if workout has started (any set completed)
   const hasStarted = workout?.exercises.some((ex) => ex.sets.some((s) => s.completed)) ?? false
+
+  const loadHistoryIfNeeded = useCallback(async () => {
+    if (historyRef.current) return historyRef.current
+    const workouts = await db.workouts.toArray()
+    const map = buildHistoryMap(workouts)
+    historyRef.current = { workouts, map }
+    return historyRef.current
+  }, [])
+
+  const showMedals = useCallback((medals: Medal[]) => {
+    if (medals.length === 0) return
+    accumulatedMedalsRef.current.push(...medals)
+    useMedalToastStore.getState().addMedals(medals)
+  }, [])
+
+  const getChecks = useCallback((index: number): MedalChecks => {
+    if (!medalChecksRef.current.has(index)) {
+      medalChecksRef.current.set(index, { weightPR: false, volumePR: false, stageClear: false })
+    }
+    return medalChecksRef.current.get(index)!
+  }, [])
+
+  const checkExerciseComplete = useCallback(async (exerciseIndex: number) => {
+    const state = useWorkoutSessionStore.getState()
+    const ex = state.workout?.exercises[exerciseIndex]
+    if (!ex) return
+    if (!ex.sets.every((s) => s.completed)) return
+
+    const checks = getChecks(exerciseIndex)
+
+    // For T2 (no AMRAP), check volume PR on exercise complete
+    if (!checks.volumePR) {
+      const history = await loadHistoryIfNeeded()
+      const volumeMedals = detectVolumePR(ex, history.map)
+      if (volumeMedals.length > 0) {
+        showMedals(volumeMedals)
+      }
+      checks.volumePR = true
+    }
+
+    // Stage clear
+    if (!checks.stageClear && programState) {
+      const smallestPlate = getSmallestPlate(settings.plateInventory)
+      const stageMedal = detectStageClearMedal(
+        ex,
+        programState,
+        settings.weightUnit,
+        settings.liftSubstitutions,
+        smallestPlate
+      )
+      if (stageMedal) {
+        showMedals([stageMedal])
+      }
+      checks.stageClear = true
+    }
+  }, [programState, settings, getChecks, loadHistoryIfNeeded, showMedals])
 
   // Auto-show warmup modal for T1 only (unless it uses T3 progression)
   // Don't show if resuming a workout that's already started
@@ -76,7 +147,7 @@ export function Workout() {
     }
   }, [programLoaded, programState, workout, startWorkout, settingsLoaded, settings])
 
-  const handleCompleteSet = (setIndex: number, reps: number) => {
+  const handleCompleteSet = async (setIndex: number, reps: number) => {
     completeSet(setIndex, reps)
     vibrate()
 
@@ -91,6 +162,34 @@ export function Workout() {
             : settings.restTimers.t3Seconds
       restTimer.start(restDuration)
     }
+
+    // Medal detection
+    const state = useWorkoutSessionStore.getState()
+    const ex = state.workout?.exercises[currentExerciseIndex]
+    if (!ex || reps === 0) return
+
+    const checks = getChecks(currentExerciseIndex)
+    const history = await loadHistoryIfNeeded()
+
+    // Weight PR: first completed set with reps > 0
+    if (!checks.weightPR) {
+      const weightMedal = detectWeightPR(ex, history.map)
+      if (weightMedal) showMedals([weightMedal])
+      checks.weightPR = true
+    }
+
+    // Volume PR: on AMRAP set completion (T1/T3 have AMRAP)
+    const completedSet = ex.sets[setIndex]
+    if (completedSet?.isAmrap && !checks.volumePR) {
+      const volumeMedals = detectVolumePR(ex, history.map)
+      if (volumeMedals.length > 0) showMedals(volumeMedals)
+      checks.volumePR = true
+    }
+
+    // Check if exercise is now complete
+    if (ex.sets.every((s) => s.completed)) {
+      await checkExerciseComplete(currentExerciseIndex)
+    }
   }
 
   const handleNextExercise = () => {
@@ -103,9 +202,13 @@ export function Workout() {
     }
   }
 
-  const handleConfirmFail = () => {
+  const handleConfirmFail = async () => {
     failRemainingCurrentExerciseSets()
     setShowFailModal(false)
+
+    // Check exercise complete after failing remaining sets
+    await checkExerciseComplete(currentExerciseIndex)
+
     nextExercise()
   }
 
@@ -131,10 +234,38 @@ export function Workout() {
     // Prevent auto-start effect from creating a new workout
     isFinishingRef.current = true
 
+    // Sweep any unchecked exercises
+    const history = await loadHistoryIfNeeded()
+    for (let i = 0; i < workout.exercises.length; i++) {
+      const ex = workout.exercises[i]
+      const checks = getChecks(i)
+
+      if (!checks.weightPR) {
+        const weightMedal = detectWeightPR(ex, history.map)
+        if (weightMedal) showMedals([weightMedal])
+        checks.weightPR = true
+      }
+      if (!checks.volumePR) {
+        const volumeMedals = detectVolumePR(ex, history.map)
+        if (volumeMedals.length > 0) showMedals(volumeMedals)
+        checks.volumePR = true
+      }
+      if (!checks.stageClear) {
+        const smallestPlate = getSmallestPlate(settings.plateInventory)
+        const stageMedal = detectStageClearMedal(
+          ex,
+          programState,
+          settings.weightUnit,
+          settings.liftSubstitutions,
+          smallestPlate
+        )
+        if (stageMedal) showMedals([stageMedal])
+        checks.stageClear = true
+      }
+    }
+
     const completedWorkout = finishWorkout()
     if (!completedWorkout) return
-
-    await db.workouts.add(completedWorkout)
 
     const newProgramState = applyWorkoutProgression(completedWorkout, programState, {
       unit: settings.weightUnit,
@@ -143,7 +274,22 @@ export function Workout() {
       getSmallestPlate,
     })
 
+    // Streak medal
+    const workoutCount = history.workouts.length + 1
+    const streakMedal = detectStreakMedal(workoutCount)
+    if (streakMedal) showMedals([streakMedal])
+
+    const allMedals = accumulatedMedalsRef.current
+    const workoutWithMedals = allMedals.length > 0 ? { ...completedWorkout, medals: allMedals } : completedWorkout
+
+    await db.workouts.add(workoutWithMedals)
     await saveProgram(newProgramState)
+
+    // Reset refs for next workout
+    medalChecksRef.current.clear()
+    accumulatedMedalsRef.current = []
+    historyRef.current = null
+
     navigate('/')
   }
 

@@ -8,6 +8,7 @@ import { Progress } from './pages/Progress'
 import { Settings } from './pages/Settings'
 import { OfflineBanner } from './components/ui/OfflineBanner'
 import { ActiveWorkoutToaster } from './components/ui/ActiveWorkoutToaster'
+import { MedalToast } from './components/ui/MedalToast'
 import { migrateWorkouts } from './lib/db'
 
 function Layout() {
@@ -23,6 +24,7 @@ function Layout() {
       <OfflineBanner />
       <Outlet />
       <ActiveWorkoutToaster />
+      <MedalToast />
     </>
   )
 }

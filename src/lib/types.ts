@@ -62,6 +62,16 @@ export interface ExerciseLog {
   sets: SetLog[]
 }
 
+export type MedalType = 'weight-pr' | 'volume-pr' | 'streak' | 'amrap-record' | 'stage-clear'
+
+export interface Medal {
+  type: MedalType
+  liftId?: string
+  tier?: Tier
+  value: number
+  previousValue?: number
+}
+
 export interface Workout {
   id: string
   date: string // ISO date
@@ -69,6 +79,7 @@ export interface Workout {
   exercises: ExerciseLog[]
   completed: boolean
   notes?: string
+  medals?: Medal[]
 }
 
 export interface UserSettings {
