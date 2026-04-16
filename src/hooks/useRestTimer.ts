@@ -15,34 +15,55 @@ export function useRestTimer(onComplete?: () => void): UseRestTimerReturn {
   const [seconds, setSeconds] = useState(0)
   const [totalSeconds, setTotalSeconds] = useState(0)
   const [isRunning, setIsRunning] = useState(false)
+  const endTimeRef = useRef(0)
   const onCompleteRef = useRef(onComplete)
 
   useEffect(() => {
     onCompleteRef.current = onComplete
   }, [onComplete])
 
+  const complete = useCallback(() => {
+    setIsRunning(false)
+    setSeconds(0)
+    onCompleteRef.current?.()
+    playTimerEnd()
+    if (navigator.vibrate) {
+      navigator.vibrate([200, 100, 200])
+    }
+  }, [])
+
+  const updateFromEndTime = useCallback(() => {
+    const remaining = Math.ceil((endTimeRef.current - Date.now()) / 1000)
+    if (remaining <= 0) {
+      complete()
+    } else {
+      setSeconds(remaining)
+    }
+  }, [complete])
+
+  // Tick interval
   useEffect(() => {
-    if (!isRunning || seconds <= 0) return
+    if (!isRunning) return
 
-    const interval = setInterval(() => {
-      setSeconds((prev) => {
-        if (prev <= 1) {
-          setIsRunning(false)
-          onCompleteRef.current?.()
-          playTimerEnd()
-          if (navigator.vibrate) {
-            navigator.vibrate([200, 100, 200])
-          }
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-
+    const interval = setInterval(updateFromEndTime, 1000)
     return () => clearInterval(interval)
-  }, [isRunning, seconds])
+  }, [isRunning, updateFromEndTime])
+
+  // Recalculate when app returns from background
+  useEffect(() => {
+    if (!isRunning) return
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        updateFromEndTime()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [isRunning, updateFromEndTime])
 
   const start = useCallback((duration: number) => {
+    endTimeRef.current = Date.now() + duration * 1000
     setSeconds(duration)
     setTotalSeconds(duration)
     setIsRunning(true)
@@ -53,8 +74,9 @@ export function useRestTimer(onComplete?: () => void): UseRestTimerReturn {
   }, [])
 
   const addTime = useCallback((amount: number) => {
-    setSeconds((prev) => Math.max(0, prev + amount))
-  }, [])
+    endTimeRef.current += amount * 1000
+    updateFromEndTime()
+  }, [updateFromEndTime])
 
   const skip = useCallback(() => {
     setSeconds(0)
