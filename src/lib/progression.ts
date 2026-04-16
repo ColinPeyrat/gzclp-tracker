@@ -268,7 +268,8 @@ export function applyWorkoutProgression(
     const sub = getLiftSubstitution(liftId, ctx.liftSubstitutions)
 
     if (sub?.forceT3Progression) {
-      const newWeight = applyT3StyleProgression(currentState.weight, t1Exercise, smallestPlate)
+      const syncedWeight = Math.max(currentState.weight, programState.t2[liftId]?.weight ?? 0)
+      const newWeight = applyT3StyleProgression(syncedWeight, t1Exercise, smallestPlate)
       if (newWeight !== null) {
         newState.t1 = { ...newState.t1, [liftId]: { ...currentState, weight: newWeight } }
       }
@@ -287,7 +288,8 @@ export function applyWorkoutProgression(
     const sub = getLiftSubstitution(liftId, ctx.liftSubstitutions)
 
     if (sub?.forceT3Progression) {
-      const newWeight = applyT3StyleProgression(currentState.weight, t2Exercise, smallestPlate)
+      const syncedWeight = Math.max(currentState.weight, programState.t1[liftId]?.weight ?? 0)
+      const newWeight = applyT3StyleProgression(syncedWeight, t2Exercise, smallestPlate)
       if (newWeight !== null) {
         newState.t2 = { ...newState.t2, [liftId]: { ...currentState, weight: newWeight } }
       }

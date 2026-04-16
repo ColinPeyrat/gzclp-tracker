@@ -712,8 +712,8 @@ describe('applyWorkoutProgression - forceT3Progression weight sync', () => {
 
   it('syncs T2 weight increase to T1 using max', () => {
     // B1 workout: T1=bench, T2=squat. Squat has forceT3Progression.
-    // T2 squat AMRAP hits 25 → weight increases from 9 to 10.25
-    // But T1 squat is 15, so sync uses max(15, 10.25) = 15 for both
+    // T2 squat stored at 9 but synced weight is max(15, 9) = 15.
+    // AMRAP hits 25 → progresses from synced 15, not stored 9.
     const programState = makeProgramState({ nextWorkoutType: 'B1' })
     const workout: Workout = {
       id: '2', date: '2025-01-02', type: 'B1', completed: true,
@@ -734,8 +734,8 @@ describe('applyWorkoutProgression - forceT3Progression weight sync', () => {
     }
 
     const result = applyWorkoutProgression(workout, programState, ctx)
-    expect(result.t1.squat.weight).toBe(15) // max(15, 10.25)
-    expect(result.t2.squat.weight).toBe(15) // synced up from 10.25 to 15
+    expect(result.t1.squat.weight).toBe(16.25) // synced from 15 + 1.25
+    expect(result.t2.squat.weight).toBe(16.25) // synced from 15 + 1.25
   })
 
   it('syncs T2 weight increase to T1 when T2 exceeds T1', () => {
@@ -859,5 +859,33 @@ describe('applyWorkoutProgression - forceT3Progression weight sync', () => {
     // No progression (AMRAP < 25), but sync should equalize: max(15, 9) = 15
     expect(result.t1.squat.weight).toBe(15)
     expect(result.t2.squat.weight).toBe(15)
+  })
+
+  it('progresses from synced weight when T1/T2 have diverged', () => {
+    // T1 squat = 15, T2 squat = 9 (diverged from initial setup)
+    // B1 workout: T2 = squat, AMRAP hits 25 → should progress from 15 (synced), not 9
+    const programState = makeProgramState({ nextWorkoutType: 'B1' })
+    const workout: Workout = {
+      id: '2c', date: '2025-01-03', type: 'B1', completed: true,
+      exercises: [
+        makeExercise({
+          liftId: 'bench', tier: 'T1', weight: 40, targetSets: 5, targetReps: 3,
+          sets: [makeSet(3), makeSet(3), makeSet(3), makeSet(3), makeSet(5, true, true)],
+        }),
+        makeExercise({
+          liftId: 'squat', tier: 'T2', weight: 15, targetSets: 3, targetReps: 15,
+          sets: [makeSet(15), makeSet(15), makeSet(26, true, true)],
+        }),
+        makeExercise({
+          liftId: 'lat-pulldown', tier: 'T3', weight: 50, targetSets: 3, targetReps: 15,
+          sets: [makeSet(15), makeSet(15), makeSet(20, true, true)],
+        }),
+      ],
+    }
+
+    const result = applyWorkoutProgression(workout, programState, ctx)
+    // Should progress from synced weight 15, not stored T2 weight 9
+    expect(result.t2.squat.weight).toBe(16.25) // 15 + 1.25
+    expect(result.t1.squat.weight).toBe(16.25) // synced
   })
 })
