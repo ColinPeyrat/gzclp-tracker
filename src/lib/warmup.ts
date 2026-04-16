@@ -29,26 +29,29 @@ function getWarmupPlateInventory(
   return filtered
 }
 
-// Calculate plates smallest-first for better warmup subsets
-// e.g., 15kg per side = 5+10 instead of just 15
 function calculateWarmupPlates(
   targetWeight: number,
   barWeight: number,
   plateInventory: Record<string, number>
 ): number[] {
-  const weightPerSide = (targetWeight - barWeight) / 2
-  if (weightPerSide <= 0) return []
+  const rawPerSide = (targetWeight - barWeight) / 2
+  if (rawPerSide <= 0) return []
 
-  // Sort smallest first for granular combinations
+  // Sort largest first so greedy fills heavy plates before small ones
   const availablePlates = Object.entries(plateInventory)
     .filter(([_, qty]) => qty > 0)
     .map(([weight]) => parseFloat(weight))
-    .sort((a, b) => a - b)
+    .sort((a, b) => b - a)
+
+  // Round to nearest smallest plate so targets like 4kg with 5kg plates → 5kg
+  const smallestPlate = availablePlates[availablePlates.length - 1]
+  const weightPerSide = smallestPlate
+    ? Math.round(rawPerSide / smallestPlate) * smallestPlate
+    : rawPerSide
 
   const perSide: number[] = []
   let remaining = weightPerSide
 
-  // Greedy smallest-first
   for (const plate of availablePlates) {
     const maxPerSide = Math.floor((plateInventory[plate.toString()] || 0) / 2)
     let used = 0
@@ -63,38 +66,6 @@ function calculateWarmupPlates(
   return perSide.sort((a, b) => b - a)
 }
 
-// Find best subset of maxPlates that gets closest to targetWeight (without exceeding)
-function findBestSubset(
-  maxPlates: number[],
-  targetWeightPerSide: number
-): number[] {
-  if (targetWeightPerSide <= 0) return []
-
-  // Get unique plates sorted largest first
-  const uniquePlates = [...new Set(maxPlates)].sort((a, b) => b - a)
-
-  // Count how many of each plate we have available
-  const available = new Map<number, number>()
-  for (const p of maxPlates) {
-    available.set(p, (available.get(p) || 0) + 1)
-  }
-
-  // Greedy: pick largest plates that fit
-  const result: number[] = []
-  let remaining = targetWeightPerSide
-
-  for (const plate of uniquePlates) {
-    const maxCount = available.get(plate) || 0
-    let used = 0
-    while (remaining >= plate && used < maxCount) {
-      result.push(plate)
-      remaining -= plate
-      used++
-    }
-  }
-
-  return result
-}
 
 export function calculateWarmupSets(
   workWeight: number,
@@ -120,54 +91,36 @@ export function calculateWarmupSets(
     label: 'Bar',
   })
 
-  // Calculate heaviest warmup (85%) first using only big plates
-  // Use smallest-first algorithm for granular combinations (5+10 instead of 15)
   const warmupInventory = getWarmupPlateInventory(plateInventory, unit)
-  const heaviestTarget = Math.round(workWeight * 0.85)
 
-  if (heaviestTarget <= barWeight) return sets
-
-  const maxPlates = calculateWarmupPlates(heaviestTarget, barWeight, warmupInventory)
-  if (maxPlates.length === 0) return sets
-
-  // Earlier sets use subsets of the heaviest plates (additive loading)
+  // Calculate plates independently for each warmup percentage
   const percentages = [
     { pct: 0.45, reps: 5, label: '45%' },
     { pct: 0.65, reps: 3, label: '65%' },
+    { pct: 0.85, reps: 2, label: '85%' },
   ]
 
   for (const { pct, reps, label } of percentages) {
     const targetWeight = Math.round(workWeight * pct)
     if (targetWeight <= barWeight) continue
 
-    const targetPerSide = (targetWeight - barWeight) / 2
-    const subset = findBestSubset(maxPlates, targetPerSide)
+    const plates = calculateWarmupPlates(targetWeight, barWeight, warmupInventory)
+    if (plates.length === 0) continue
 
-    if (subset.length === 0) continue
-
-    const actualPerSide = subset.reduce((sum, p) => sum + p, 0)
+    const actualPerSide = plates.reduce((sum, p) => sum + p, 0)
     const actualWeight = barWeight + actualPerSide * 2
+
+    // Skip if same weight as the previous set
+    if (sets.length > 0 && sets[sets.length - 1].weight === actualWeight) continue
 
     sets.push({
       weight: actualWeight,
       reps,
-      plates: subset,
+      plates,
       completed: false,
       label,
     })
   }
-
-  // Add the heaviest set (85%)
-  const heaviestPerSide = maxPlates.reduce((sum, p) => sum + p, 0)
-  const heaviestWeight = barWeight + heaviestPerSide * 2
-
-  sets.push({
-    weight: heaviestWeight,
-    reps: 2,
-    plates: maxPlates,
-    completed: false,
-    label: '85%',
-  })
 
   return sets
 }
