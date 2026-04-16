@@ -56,13 +56,13 @@ export const useProgramStore = create<ProgramStore>((set, get) => ({
 
   initialize: async (startingWeights) => {
     const state = createInitialState(startingWeights)
-    await saveProgramState(state)
     set({ state })
+    await saveProgramState(state)
   },
 
   save: async (state) => {
-    await saveProgramState(state)
     set({ state })
+    await saveProgramState(state)
   },
 
   advanceWorkout: async () => {
@@ -79,7 +79,7 @@ export const useProgramStore = create<ProgramStore>((set, get) => ({
       workoutCount: current.workoutCount + 1,
     }
 
-    await saveProgramState(newState)
     set({ state: newState })
+    await saveProgramState(newState)
   },
 }))
