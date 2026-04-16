@@ -148,12 +148,14 @@ export function Home() {
           </Link>
           <Link
             to="/workout?mode=maintenance"
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-700 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+            className="flex w-full flex-col items-center gap-1 rounded-lg border border-zinc-700 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
           >
-            <Shield className="h-4 w-4" />
-            Maintenance Day
+            <span className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Maintenance Day
+            </span>
             <span className="text-xs text-zinc-500">
-              — {MAINTENANCE_LIFTS.map((id) => `${LIFTS[id].name} ${state.t1[id].weight}`).join(', ')} {settings.weightUnit}
+              {MAINTENANCE_LIFTS.map((id) => `${LIFTS[id].name} ${state.t1[id].weight}`).join(' / ')} {settings.weightUnit}
             </span>
           </Link>
         </div>
