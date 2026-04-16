@@ -170,7 +170,7 @@ export function WorkoutDetail({ workout, unit, barWeight, plateInventory, liftSu
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="flex-1">
-            <h1 className="font-bold">{workout.type}</h1>
+            <h1 className="font-bold">{workout.type === 'MN' ? 'Maintenance' : workout.type}</h1>
             <p className="text-xs text-zinc-400">
               {formattedDate} at {formattedTime}
             </p>

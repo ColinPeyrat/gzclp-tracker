@@ -1,5 +1,5 @@
 import { ChevronRight, Trophy } from 'lucide-react'
-import type { Workout, WeightUnit, LiftSubstitution, ExerciseDefinition } from '../../lib/types'
+import type { Workout, WeightUnit, LiftSubstitution, ExerciseDefinition, RotatingWorkoutType } from '../../lib/types'
 import { WORKOUTS } from '../../lib/types'
 import { formatWorkoutDate } from '../../hooks/useWorkoutHistory'
 import { getExerciseName } from '../../lib/exercises'
@@ -29,11 +29,14 @@ function StatusIndicator({ status, label }: { status: LiftStatus; label: string 
 }
 
 export function WorkoutCard({ workout, unit, liftSubstitutions, exerciseLibrary, onClick }: WorkoutCardProps) {
-  const workoutDef = WORKOUTS[workout.type]
-  const t1Name = getExerciseName(workoutDef.t1, 'T1', liftSubstitutions, exerciseLibrary)
+  const isMaintenance = workout.type === 'MN'
+  const workoutDef = isMaintenance ? null : WORKOUTS[workout.type as RotatingWorkoutType]
   const t1Exercise = workout.exercises.find((e) => e.tier === 'T1')
-  const t2Exercise = workout.exercises.find((e) => e.tier === 'T2')
-  const t3Exercises = workout.exercises.filter((e) => e.tier === 'T3')
+  const t1Name = isMaintenance
+    ? 'Heavy Singles'
+    : getExerciseName(workoutDef!.t1, 'T1', liftSubstitutions, exerciseLibrary)
+  const t2Exercise = isMaintenance ? null : workout.exercises.find((e) => e.tier === 'T2')
+  const t3Exercises = isMaintenance ? [] : workout.exercises.filter((e) => e.tier === 'T3')
 
   const t1Status = t1Exercise ? getLiftStatus(t1Exercise) : 'neutral'
   const t2Status = t2Exercise ? getLiftStatus(t2Exercise) : 'neutral'
@@ -46,7 +49,7 @@ export function WorkoutCard({ workout, unit, liftSubstitutions, exerciseLibrary,
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-bold">{workout.type}</span>
+            <span className="font-bold">{isMaintenance ? 'Maintenance' : workout.type}</span>
             <span className="text-sm text-zinc-400">
               {formatWorkoutDate(workout.date)}
             </span>
@@ -57,16 +60,26 @@ export function WorkoutCard({ workout, unit, liftSubstitutions, exerciseLibrary,
               </span>
             )}
           </div>
-          <div className="mt-1 text-sm text-zinc-400">
-            {t1Name} @ {t1Exercise?.weight ?? '?'} {unit}
-          </div>
-          <div className="mt-2 flex items-center gap-3">
-            <StatusIndicator status={t1Status} label="T1" />
-            <StatusIndicator status={t2Status} label="T2" />
-            {t3Exercises.map((t3, i) => (
-              <StatusIndicator key={i} status={getLiftStatus(t3)} label={getT3Labels(t3Exercises.length)[i]} />
-            ))}
-          </div>
+          {isMaintenance ? (
+            <div className="mt-1 text-sm text-zinc-400">
+              Heavy singles — {workout.exercises.map((ex) =>
+                `${getExerciseName(ex.liftId, ex.tier, liftSubstitutions, exerciseLibrary)} ${ex.weight}`
+              ).join(' / ')} {unit}
+            </div>
+          ) : (
+            <>
+              <div className="mt-1 text-sm text-zinc-400">
+                {t1Name} @ {t1Exercise?.weight ?? '?'} {unit}
+              </div>
+              <div className="mt-2 flex items-center gap-3">
+                <StatusIndicator status={t1Status} label="T1" />
+                <StatusIndicator status={t2Status} label="T2" />
+                {t3Exercises.map((t3, i) => (
+                  <StatusIndicator key={i} status={getLiftStatus(t3)} label={getT3Labels(t3Exercises.length)[i]} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
         <ChevronRight className="h-5 w-5 text-zinc-500" />
       </div>

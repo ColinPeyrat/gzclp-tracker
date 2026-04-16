@@ -41,7 +41,7 @@ export function ActiveWorkoutToaster() {
       >
         <div className="flex items-center justify-between">
           <div className="flex-1">
-            <span className="font-medium">{workout.type} in progress</span>
+            <span className="font-medium">{workout.type === 'MN' ? 'Maintenance' : workout.type} in progress</span>
             <span className="mx-2 text-zinc-400">•</span>
             <span className="text-zinc-400">{completedExercises}/{totalExercises} done</span>
           </div>

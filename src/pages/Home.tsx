@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Dumbbell, Play, Bug, Settings } from 'lucide-react'
+import { Dumbbell, Play, Bug, Settings, Shield } from 'lucide-react'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
-import { WORKOUTS, WORKOUT_ORDER, getUpcomingWorkoutTypes, type WorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit, type LiftSubstitution, type ExerciseDefinition } from '../lib/types'
+import { WORKOUTS, WORKOUT_ORDER, MAINTENANCE_LIFTS, LIFTS, getUpcomingWorkoutTypes, type RotatingWorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit, type LiftSubstitution, type ExerciseDefinition } from '../lib/types'
 import { estimate5RM, applyT1Reset } from '../lib/progression'
 import { getExerciseName } from '../lib/exercises'
 import { Modal } from '../components/ui/Modal'
@@ -67,7 +67,7 @@ export function Home() {
     setManual5RM('')
   }
 
-  const handleSetNextWorkout = async (workoutType: WorkoutType) => {
+  const handleSetNextWorkout = async (workoutType: RotatingWorkoutType) => {
     if (!state) return
     await saveProgram({ ...state, nextWorkoutType: workoutType })
     setShowDebugModal(false)
@@ -138,13 +138,25 @@ export function Home() {
           />
         </div>
 
-        <Link
-          to="/workout"
-          className="mb-8 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 font-medium text-white hover:bg-blue-500"
-        >
-          <Play className="h-5 w-5" />
-          Start Workout
-        </Link>
+        <div className="mb-8 space-y-3">
+          <Link
+            to="/workout"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 font-medium text-white hover:bg-blue-500"
+          >
+            <Play className="h-5 w-5" />
+            Start Workout
+          </Link>
+          <Link
+            to="/workout?mode=maintenance"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-700 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+          >
+            <Shield className="h-4 w-4" />
+            Maintenance Day
+            <span className="text-xs text-zinc-500">
+              — {MAINTENANCE_LIFTS.map((id) => `${LIFTS[id].name} ${state.t1[id].weight}`).join(', ')} {settings.weightUnit}
+            </span>
+          </Link>
+        </div>
 
         <div>
           <h3 className="mb-3 text-sm font-medium text-zinc-400">Upcoming</h3>

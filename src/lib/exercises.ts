@@ -1,4 +1,4 @@
-import type { Tier, LiftName, ExerciseLog, ExerciseDefinition, LiftSubstitution, WorkoutType, AdditionalT3Assignment, SetLog } from './types'
+import type { Tier, LiftName, ExerciseLog, ExerciseDefinition, LiftSubstitution, RotatingWorkoutType, AdditionalT3Assignment, SetLog } from './types'
 import { LIFTS, T3_EXERCISES, WORKOUTS } from './types'
 import { getStageConfig } from './progression'
 
@@ -127,7 +127,7 @@ export function getEffectiveStageConfig(
 
 // Get all T3 exercise IDs for a workout (default + additional)
 export function getT3IdsForWorkout(
-  workoutType: WorkoutType,
+  workoutType: RotatingWorkoutType,
   additionalT3s?: AdditionalT3Assignment[]
 ): string[] {
   const defaultT3 = WORKOUTS[workoutType].t3

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ChevronLeft, ChevronRight, Check, Dumbbell, Plus } from 'lucide-react'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
@@ -27,6 +27,8 @@ interface MedalChecks {
 
 export function Workout() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const isMaintenanceMode = searchParams.get('mode') === 'maintenance'
   const { state: programState, loaded: programLoaded, load: loadProgram, save: saveProgram } = useProgramStore()
   const { settings, loaded: settingsLoaded, load: loadSettings } = useSettingsStore()
 
@@ -34,12 +36,14 @@ export function Workout() {
   const workout = useWorkoutSessionStore((s) => s.workout)
   const currentExerciseIndex = useWorkoutSessionStore((s) => s.currentExerciseIndex)
   const startWorkout = useWorkoutSessionStore((s) => s.startWorkout)
+  const startMaintenanceWorkout = useWorkoutSessionStore((s) => s.startMaintenanceWorkout)
   const completeSet = useWorkoutSessionStore((s) => s.completeSet)
   const failRemainingCurrentExerciseSets = useWorkoutSessionStore((s) => s.failRemainingCurrentExerciseSets)
   const updateCurrentExerciseWeight = useWorkoutSessionStore((s) => s.updateCurrentExerciseWeight)
   const nextExercise = useWorkoutSessionStore((s) => s.nextExercise)
   const prevExercise = useWorkoutSessionStore((s) => s.prevExercise)
   const finishWorkout = useWorkoutSessionStore((s) => s.finishWorkout)
+  const setWarmupSets = useWorkoutSessionStore((s) => s.setWarmupSets)
   const addT3Exercise = useWorkoutSessionStore((s) => s.addT3Exercise)
   const isLastExercise = useWorkoutSessionStore((s) => s.isLastExercise)
 
@@ -48,7 +52,6 @@ export function Workout() {
   const [showAddT3Modal, setShowAddT3Modal] = useState(false)
   const [newT3Id, setNewT3Id] = useState('')
   const [newT3Weight, setNewT3Weight] = useState('')
-  const [warmupChecked, setWarmupChecked] = useState(false)
   const restTimer = useRestTimer()
 
   // Track when we're finishing to prevent auto-starting a new workout
@@ -60,9 +63,6 @@ export function Workout() {
   const historyRef = useRef<{ workouts: WorkoutType[]; map: Map<string, HistoryRecord> } | null>(null)
 
   const currentExercise = workout?.exercises[currentExerciseIndex] ?? null
-
-  // Check if workout has started (any set completed)
-  const hasStarted = workout?.exercises.some((ex) => ex.sets.some((s) => s.completed)) ?? false
 
   const loadHistoryIfNeeded = useCallback(async () => {
     if (historyRef.current) return historyRef.current
@@ -120,19 +120,23 @@ export function Workout() {
     }
   }, [programState, settings, getChecks, loadHistoryIfNeeded, showMedals])
 
-  // Auto-show warmup modal for T1 only (unless it uses T3 progression)
-  // Don't show if resuming a workout that's already started
+  // Auto-show warmup modal for T1/T2 when navigating to an exercise with no completed sets
+  const lastAutoShownIndex = useRef<number>(-1)
   useEffect(() => {
-    if (workout && !warmupChecked && currentExerciseIndex === 0 && !hasStarted) {
-      const t1Exercise = workout.exercises.find((e) => e.tier === 'T1')
-      if (t1Exercise && currentExercise?.tier === 'T1') {
-        const t1Sub = getLiftSubstitution(t1Exercise.liftId, settings.liftSubstitutions)
-        const usesT3Progression = t1Sub?.forceT3Progression
-        setShowWarmupModal(!usesT3Progression)
+    if (!workout || !currentExercise) return
+    if (lastAutoShownIndex.current === currentExerciseIndex) return
+
+    const hasCompletedSets = currentExercise.sets.some((s) => s.completed)
+    if (hasCompletedSets) return
+
+    if (currentExercise.tier === 'T1' || currentExercise.tier === 'T2') {
+      const sub = getLiftSubstitution(currentExercise.liftId, settings.liftSubstitutions)
+      if (!sub?.forceT3Progression) {
+        lastAutoShownIndex.current = currentExerciseIndex
+        setShowWarmupModal(true)
       }
-      setWarmupChecked(true)
     }
-  }, [workout, warmupChecked, currentExerciseIndex, currentExercise, hasStarted, settings.liftSubstitutions])
+  }, [workout, currentExercise, currentExerciseIndex, settings.liftSubstitutions])
 
   useEffect(() => {
     if (!programLoaded) loadProgram()
@@ -143,9 +147,13 @@ export function Workout() {
     // Don't auto-start if we're in the middle of finishing
     if (isFinishingRef.current) return
     if (programLoaded && programState && settingsLoaded && !workout) {
-      startWorkout(programState, settings)
+      if (isMaintenanceMode) {
+        startMaintenanceWorkout(programState)
+      } else {
+        startWorkout(programState, settings)
+      }
     }
-  }, [programLoaded, programState, workout, startWorkout, settingsLoaded, settings])
+  }, [programLoaded, programState, workout, startWorkout, startMaintenanceWorkout, settingsLoaded, settings, isMaintenanceMode])
 
   const handleCompleteSet = async (setIndex: number, reps: number) => {
     completeSet(setIndex, reps)
@@ -163,8 +171,10 @@ export function Workout() {
       restTimer.start(restDuration)
     }
 
-    // Medal detection
+    // No medal detection for maintenance workouts
     const state = useWorkoutSessionStore.getState()
+    if (state.workout?.type === 'MN') return
+
     const ex = state.workout?.exercises[currentExerciseIndex]
     if (!ex || reps === 0) return
 
@@ -234,56 +244,62 @@ export function Workout() {
     // Prevent auto-start effect from creating a new workout
     isFinishingRef.current = true
 
-    // Sweep any unchecked exercises
-    const history = await loadHistoryIfNeeded()
-    for (let i = 0; i < workout.exercises.length; i++) {
-      const ex = workout.exercises[i]
-      const checks = getChecks(i)
+    const isMaintenance = workout.type === 'MN'
 
-      if (!checks.weightPR) {
-        const weightMedal = detectWeightPR(ex, history.map)
-        if (weightMedal) showMedals([weightMedal])
-        checks.weightPR = true
+    // Skip medal detection for maintenance workouts
+    if (!isMaintenance) {
+      const history = await loadHistoryIfNeeded()
+      for (let i = 0; i < workout.exercises.length; i++) {
+        const ex = workout.exercises[i]
+        const checks = getChecks(i)
+
+        if (!checks.weightPR) {
+          const weightMedal = detectWeightPR(ex, history.map)
+          if (weightMedal) showMedals([weightMedal])
+          checks.weightPR = true
+        }
+        if (!checks.volumePR) {
+          const volumeMedals = detectVolumePR(ex, history.map)
+          if (volumeMedals.length > 0) showMedals(volumeMedals)
+          checks.volumePR = true
+        }
+        if (!checks.stageClear) {
+          const smallestPlate = getSmallestPlate(settings.plateInventory)
+          const stageMedal = detectStageClearMedal(
+            ex,
+            programState,
+            settings.weightUnit,
+            settings.liftSubstitutions,
+            smallestPlate
+          )
+          if (stageMedal) showMedals([stageMedal])
+          checks.stageClear = true
+        }
       }
-      if (!checks.volumePR) {
-        const volumeMedals = detectVolumePR(ex, history.map)
-        if (volumeMedals.length > 0) showMedals(volumeMedals)
-        checks.volumePR = true
-      }
-      if (!checks.stageClear) {
-        const smallestPlate = getSmallestPlate(settings.plateInventory)
-        const stageMedal = detectStageClearMedal(
-          ex,
-          programState,
-          settings.weightUnit,
-          settings.liftSubstitutions,
-          smallestPlate
-        )
-        if (stageMedal) showMedals([stageMedal])
-        checks.stageClear = true
-      }
+
+      // Streak medal
+      const workoutCount = history.workouts.length + 1
+      const streakMedal = detectStreakMedal(workoutCount)
+      if (streakMedal) showMedals([streakMedal])
     }
 
     const completedWorkout = finishWorkout()
     if (!completedWorkout) return
 
-    const newProgramState = applyWorkoutProgression(completedWorkout, programState, {
-      unit: settings.weightUnit,
-      plateInventory: settings.plateInventory,
-      liftSubstitutions: settings.liftSubstitutions,
-      getSmallestPlate,
-    })
-
-    // Streak medal
-    const workoutCount = history.workouts.length + 1
-    const streakMedal = detectStreakMedal(workoutCount)
-    if (streakMedal) showMedals([streakMedal])
+    if (!isMaintenance) {
+      const newProgramState = applyWorkoutProgression(completedWorkout, programState, {
+        unit: settings.weightUnit,
+        plateInventory: settings.plateInventory,
+        liftSubstitutions: settings.liftSubstitutions,
+        getSmallestPlate,
+      })
+      await saveProgram(newProgramState)
+    }
 
     const allMedals = accumulatedMedalsRef.current
     const workoutWithMedals = allMedals.length > 0 ? { ...completedWorkout, medals: allMedals } : completedWorkout
 
     await db.workouts.add(workoutWithMedals)
-    await saveProgram(newProgramState)
 
     // Reset refs for next workout
     medalChecksRef.current.clear()
@@ -314,7 +330,7 @@ export function Workout() {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div>
-              <h1 className="font-bold">{workout.type}</h1>
+              <h1 className="font-bold">{workout.type === 'MN' ? 'Maintenance' : workout.type}</h1>
               <p className="text-xs text-zinc-400">
                 Exercise {currentExerciseIndex + 1} of {workout.exercises.length}
               </p>
@@ -322,7 +338,7 @@ export function Workout() {
           </div>
 
           <div className="flex items-center gap-2">
-            {availableT3s.length > 0 && (
+            {workout.type !== 'MN' && availableT3s.length > 0 && (
               <button
                 onClick={() => setShowAddT3Modal(true)}
                 className="p-2 text-zinc-400 hover:text-white"
@@ -442,7 +458,13 @@ export function Workout() {
           barWeight={settings.barWeight}
           plateInventory={settings.plateInventory}
           unit={settings.weightUnit}
-          onComplete={() => setShowWarmupModal(false)}
+          completedWarmupSets={currentExercise.completedWarmupSets}
+          onComplete={(completedSets) => {
+            if (completedSets) {
+              setWarmupSets(currentExerciseIndex, completedSets)
+            }
+            setShowWarmupModal(false)
+          }}
         />
       )}
 

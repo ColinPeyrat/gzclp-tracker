@@ -1,9 +1,9 @@
-import type { WorkoutType, ProgramState, UserSettings } from '../../lib/types'
+import type { RotatingWorkoutType, ProgramState, UserSettings } from '../../lib/types'
 import { WORKOUTS } from '../../lib/types'
 import { getExerciseName, getEffectiveStageConfig, getT3IdsForWorkout, getLiftSubstitution, TIER_COLORS } from '../../lib/exercises'
 
 interface WorkoutPreviewCardProps {
-  workoutType: WorkoutType
+  workoutType: RotatingWorkoutType
   state: ProgramState
   settings: UserSettings
   isNext: boolean
@@ -15,7 +15,7 @@ interface ExerciseRow {
   detail: string
 }
 
-function getExerciseRows(workoutType: WorkoutType, state: ProgramState, settings: UserSettings): ExerciseRow[] {
+function getExerciseRows(workoutType: RotatingWorkoutType, state: ProgramState, settings: UserSettings): ExerciseRow[] {
   const workout = WORKOUTS[workoutType]
   const rows: ExerciseRow[] = []
 

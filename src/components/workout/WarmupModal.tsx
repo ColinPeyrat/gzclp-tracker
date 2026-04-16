@@ -3,7 +3,7 @@ import { Check, Circle } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 import { calculateWarmupSets, type WarmupSet } from '../../lib/warmup'
 import { PlateChips } from '../plates/PlateChips'
-import type { WeightUnit } from '../../lib/types'
+import type { WeightUnit, CompletedWarmupSet } from '../../lib/types'
 import { vibrate } from '../../lib/haptics'
 
 interface WarmupModalProps {
@@ -12,7 +12,8 @@ interface WarmupModalProps {
   barWeight: number
   plateInventory: Record<string, number>
   unit: WeightUnit
-  onComplete: () => void
+  completedWarmupSets?: CompletedWarmupSet[]
+  onComplete: (completedSets?: CompletedWarmupSet[]) => void
 }
 
 export function WarmupModal({
@@ -21,11 +22,18 @@ export function WarmupModal({
   barWeight,
   plateInventory,
   unit,
+  completedWarmupSets,
   onComplete,
 }: WarmupModalProps) {
-  const [sets, setSets] = useState<WarmupSet[]>(() =>
-    calculateWarmupSets(workWeight, barWeight, plateInventory, unit)
-  )
+  const [sets, setSets] = useState<WarmupSet[]>(() => {
+    const calculated = calculateWarmupSets(workWeight, barWeight, plateInventory, unit)
+    if (!completedWarmupSets?.length) return calculated
+    // Restore completed state by matching weight+reps
+    return calculated.map((s) => ({
+      ...s,
+      completed: completedWarmupSets.some((c) => c.weight === s.weight && c.reps === s.reps),
+    }))
+  })
 
   const toggleSet = (index: number) => {
     vibrate()
@@ -84,22 +92,21 @@ export function WarmupModal({
           ))}
         </div>
 
-        <div className="flex gap-3 pt-2">
+        <div className="pt-2">
           <button
-            onClick={onComplete}
-            className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
-          >
-            Skip
-          </button>
-          <button
-            onClick={onComplete}
-            className={`flex-1 rounded-lg py-2 font-medium transition-colors ${
+            onClick={() => {
+              const completed = sets
+                .filter((s) => s.completed)
+                .map(({ weight, reps }) => ({ weight, reps }))
+              onComplete(completed.length > 0 ? completed : undefined)
+            }}
+            className={`w-full rounded-lg py-2 font-medium transition-colors ${
               allCompleted
                 ? 'bg-blue-600 hover:bg-blue-500'
                 : 'bg-zinc-700 hover:bg-zinc-600'
             }`}
           >
-            Start Workout
+            {allCompleted ? 'Start Workout' : 'Close'}
           </button>
         </div>
       </div>

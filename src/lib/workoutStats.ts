@@ -34,8 +34,12 @@ export function calculateWorkoutStats(
       ? getExerciseNameFn(exercise.liftId, exercise.tier)
       : exercise.liftId
 
-    // Calculate warmup volume for T1 exercises (excluding those with forceT3Progression)
-    if (exercise.tier === 'T1') {
+    // Use persisted warmup data if available, otherwise estimate for T1
+    if (exercise.completedWarmupSets) {
+      for (const warmupSet of exercise.completedWarmupSets) {
+        warmupVolume += warmupSet.weight * warmupSet.reps
+      }
+    } else if (exercise.tier === 'T1') {
       const liftSubstitution = getLiftSubstitution(exercise.liftId, liftSubstitutions)
       if (!liftSubstitution?.forceT3Progression) {
         const warmupSets = calculateWarmupSets(exercise.weight, barWeight, plateInventory, unit)

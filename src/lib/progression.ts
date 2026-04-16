@@ -255,6 +255,7 @@ export function applyWorkoutProgression(
   programState: ProgramState,
   ctx: ProgressionContext
 ): ProgramState {
+  if (workout.type === 'MN') return programState
   const workoutDef = WORKOUTS[workout.type]
   const newState = { ...programState }
   const smallestPlate = ctx.getSmallestPlate(ctx.plateInventory)

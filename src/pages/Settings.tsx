@@ -6,7 +6,7 @@ import { db, DEFAULT_EXERCISE_LIBRARY } from '../lib/db'
 import { UNIT_CONFIG, getDefaultPlateInventory } from '../lib/units'
 import { BottomNav } from '../components/ui/BottomNav'
 import { Modal } from '../components/ui/Modal'
-import { LIFTS, T3_EXERCISES, WORKOUTS, WORKOUT_ORDER, type ExerciseDefinition, type LiftSubstitution, type WorkoutType } from '../lib/types'
+import { LIFTS, T3_EXERCISES, WORKOUTS, WORKOUT_ORDER, type ExerciseDefinition, type LiftSubstitution, type RotatingWorkoutType } from '../lib/types'
 import { getExerciseDisplayName } from '../lib/exercises'
 
 const REPLACEABLE_LIFTS = [
@@ -39,7 +39,7 @@ export function Settings() {
 
   // Additional T3s state
   const [showAssignT3Modal, setShowAssignT3Modal] = useState(false)
-  const [assignT3WorkoutType, setAssignT3WorkoutType] = useState<WorkoutType | null>(null)
+  const [assignT3RotatingWorkoutType, setAssignT3RotatingWorkoutType] = useState<RotatingWorkoutType | null>(null)
 
   useEffect(() => {
     if (!loaded) load()
@@ -237,16 +237,16 @@ export function Settings() {
 
   // Additional T3s handlers
   const handleAssignAdditionalT3 = (exerciseId: string) => {
-    if (!assignT3WorkoutType) return
+    if (!assignT3RotatingWorkoutType) return
 
     const existingAssignments = settings.additionalT3s ?? []
-    const assignment = existingAssignments.find((a) => a.workoutType === assignT3WorkoutType)
+    const assignment = existingAssignments.find((a) => a.workoutType === assignT3RotatingWorkoutType)
 
     if (assignment) {
       if (!assignment.exerciseIds.includes(exerciseId)) {
         update({
           additionalT3s: existingAssignments.map((a) =>
-            a.workoutType === assignT3WorkoutType
+            a.workoutType === assignT3RotatingWorkoutType
               ? { ...a, exerciseIds: [...a.exerciseIds, exerciseId] }
               : a
           ),
@@ -254,15 +254,15 @@ export function Settings() {
       }
     } else {
       update({
-        additionalT3s: [...existingAssignments, { workoutType: assignT3WorkoutType, exerciseIds: [exerciseId] }],
+        additionalT3s: [...existingAssignments, { workoutType: assignT3RotatingWorkoutType, exerciseIds: [exerciseId] }],
       })
     }
 
     setShowAssignT3Modal(false)
-    setAssignT3WorkoutType(null)
+    setAssignT3RotatingWorkoutType(null)
   }
 
-  const handleUnassignAdditionalT3 = (workoutType: WorkoutType, exerciseId: string) => {
+  const handleUnassignAdditionalT3 = (workoutType: RotatingWorkoutType, exerciseId: string) => {
     const existingAssignments = settings.additionalT3s ?? []
     update({
       additionalT3s: existingAssignments
@@ -305,7 +305,7 @@ export function Settings() {
   const substitutedLiftIds = new Set(liftSubstitutions.map((s) => s.originalLiftId))
 
   // Get exercises available to assign as additional T3s for the selected workout
-  const getAvailableT3sForWorkout = (workoutType: WorkoutType) => {
+  const getAvailableT3sForWorkout = (workoutType: RotatingWorkoutType) => {
     const defaultT3 = WORKOUTS[workoutType].t3
     const assignment = additionalT3s.find((a) => a.workoutType === workoutType)
     const assignedIds = new Set(assignment?.exerciseIds ?? [])
@@ -534,7 +534,7 @@ export function Settings() {
                       <span className="font-medium">{workoutType}</span>
                       <button
                         onClick={() => {
-                          setAssignT3WorkoutType(workoutType)
+                          setAssignT3RotatingWorkoutType(workoutType)
                           setShowAssignT3Modal(true)
                         }}
                         className="rounded bg-zinc-600 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-500"
@@ -880,12 +880,12 @@ export function Settings() {
       )}
 
       {/* Assign Additional T3 Modal */}
-      {showAssignT3Modal && assignT3WorkoutType && (
-        <Modal onClose={() => { setShowAssignT3Modal(false); setAssignT3WorkoutType(null) }}>
-          <h2 className="mb-4 text-lg font-bold">Add T3 to {assignT3WorkoutType}</h2>
+      {showAssignT3Modal && assignT3RotatingWorkoutType && (
+        <Modal onClose={() => { setShowAssignT3Modal(false); setAssignT3RotatingWorkoutType(null) }}>
+          <h2 className="mb-4 text-lg font-bold">Add T3 to {assignT3RotatingWorkoutType}</h2>
 
           <div className="space-y-2">
-            {getAvailableT3sForWorkout(assignT3WorkoutType).map((exercise) => (
+            {getAvailableT3sForWorkout(assignT3RotatingWorkoutType).map((exercise) => (
               <button
                 key={exercise.id}
                 onClick={() => handleAssignAdditionalT3(exercise.id)}
@@ -899,7 +899,7 @@ export function Settings() {
                 )}
               </button>
             ))}
-            {getAvailableT3sForWorkout(assignT3WorkoutType).length === 0 && (
+            {getAvailableT3sForWorkout(assignT3RotatingWorkoutType).length === 0 && (
               <p className="text-sm text-zinc-400">
                 All exercises from your library are already assigned to this workout.
               </p>
@@ -907,7 +907,7 @@ export function Settings() {
           </div>
 
           <button
-            onClick={() => { setShowAssignT3Modal(false); setAssignT3WorkoutType(null) }}
+            onClick={() => { setShowAssignT3Modal(false); setAssignT3RotatingWorkoutType(null) }}
             className="mt-4 w-full rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
           >
             Cancel

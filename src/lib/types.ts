@@ -1,6 +1,7 @@
 export type LiftName = 'squat' | 'bench' | 'deadlift' | 'ohp'
 export type Tier = 'T1' | 'T2' | 'T3'
-export type WorkoutType = 'A1' | 'A2' | 'B1' | 'B2'
+export type RotatingWorkoutType = 'A1' | 'A2' | 'B1' | 'B2'
+export type WorkoutType = RotatingWorkoutType | 'MN'
 export type WeightUnit = 'lbs' | 'kg'
 
 export interface Lift {
@@ -30,7 +31,7 @@ export interface LiftSubstitution {
 
 // Additional T3 exercises per workout (on top of default T3s from WORKOUTS)
 export interface AdditionalT3Assignment {
-  workoutType: WorkoutType
+  workoutType: RotatingWorkoutType
   exerciseIds: string[]   // IDs from exercise library
 }
 
@@ -52,6 +53,11 @@ export interface SetLog {
   isAmrap: boolean
 }
 
+export interface CompletedWarmupSet {
+  weight: number
+  reps: number
+}
+
 export interface ExerciseLog {
   liftId: string
   tier: Tier
@@ -60,6 +66,7 @@ export interface ExerciseLog {
   targetSets: number
   targetReps: number
   sets: SetLog[]
+  completedWarmupSets?: CompletedWarmupSet[]
 }
 
 export type MedalType = 'weight-pr' | 'volume-pr' | 'streak' | 'amrap-record' | 'stage-clear'
@@ -101,12 +108,14 @@ export interface ProgramState {
   t1: Record<LiftName, LiftState>
   t2: Record<LiftName, LiftState>
   t3: Record<string, { weight: number }>
-  nextWorkoutType: WorkoutType
+  nextWorkoutType: RotatingWorkoutType
   workoutCount: number
 }
 
 // Workout definitions
-export const WORKOUTS: Record<WorkoutType, { t1: LiftName; t2: LiftName; t3: string }> = {
+export const MAINTENANCE_LIFTS: LiftName[] = ['deadlift', 'squat', 'bench']
+
+export const WORKOUTS: Record<RotatingWorkoutType, { t1: LiftName; t2: LiftName; t3: string }> = {
   A1: { t1: 'squat', t2: 'bench', t3: 'lat-pulldown' },
   A2: { t1: 'ohp', t2: 'deadlift', t3: 'dumbbell-row' },
   B1: { t1: 'bench', t2: 'squat', t3: 'lat-pulldown' },
@@ -125,9 +134,9 @@ export const T3_EXERCISES: Record<string, T3Exercise> = {
   'dumbbell-row': { id: 'dumbbell-row', name: 'Dumbbell Row' },
 }
 
-export const WORKOUT_ORDER: WorkoutType[] = ['A1', 'A2', 'B1', 'B2']
+export const WORKOUT_ORDER: RotatingWorkoutType[] = ['A1', 'A2', 'B1', 'B2']
 
-export function getUpcomingWorkoutTypes(current: WorkoutType): WorkoutType[] {
+export function getUpcomingWorkoutTypes(current: RotatingWorkoutType): RotatingWorkoutType[] {
   const idx = WORKOUT_ORDER.indexOf(current)
   return WORKOUT_ORDER.map((_, i) => WORKOUT_ORDER[(idx + i) % WORKOUT_ORDER.length])
 }

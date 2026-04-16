@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { nanoid } from 'nanoid'
-import type { Workout, ExerciseLog, UserSettings, ProgramState } from '../lib/types'
-import { WORKOUTS } from '../lib/types'
+import type { Workout, ExerciseLog, UserSettings, ProgramState, CompletedWarmupSet } from '../lib/types'
+import { WORKOUTS, MAINTENANCE_LIFTS } from '../lib/types'
 import { getStageConfig } from '../lib/progression'
 import { getEffectiveStageConfig, getT3IdsForWorkout, createSetLogs, getLiftSubstitution } from '../lib/exercises'
 
@@ -20,6 +20,7 @@ interface WorkoutSessionStore extends WorkoutSessionState {
 
   // Actions
   startWorkout: (programState: ProgramState, settings: UserSettings) => void
+  startMaintenanceWorkout: (programState: ProgramState) => void
   completeSet: (setIndex: number, reps: number) => void
   failSet: (setIndex: number) => void
   failRemainingCurrentExerciseSets: () => void
@@ -27,6 +28,7 @@ interface WorkoutSessionStore extends WorkoutSessionState {
   nextExercise: () => void
   prevExercise: () => void
   finishWorkout: () => Workout | null
+  setWarmupSets: (exerciseIndex: number, warmupSets: CompletedWarmupSet[]) => void
   addT3Exercise: (t3Id: string, weight: number) => void
   abandonWorkout: () => void
 }
@@ -132,6 +134,31 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>()(
         })
       },
 
+      startMaintenanceWorkout: (programState) => {
+        if (get().workout) return
+
+        const exercises: ExerciseLog[] = MAINTENANCE_LIFTS.map((liftId) => ({
+          liftId,
+          tier: 'T1' as const,
+          weight: programState.t1[liftId].weight,
+          originalWeight: programState.t1[liftId].weight,
+          targetSets: 1,
+          targetReps: 1,
+          sets: [{ setNumber: 1, reps: 0, completed: false, isAmrap: false }],
+        }))
+
+        set({
+          workout: {
+            id: nanoid(),
+            date: new Date().toISOString(),
+            type: 'MN',
+            exercises,
+            completed: false,
+          },
+          currentExerciseIndex: 0,
+        })
+      },
+
       completeSet: (setIndex, reps) => {
         const { workout, currentExerciseIndex } = get()
         if (!workout) return
@@ -209,6 +236,18 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>()(
         const completedWorkout = { ...workout, completed: true }
         set({ workout: null, currentExerciseIndex: 0 })
         return completedWorkout
+      },
+
+      setWarmupSets: (exerciseIndex, warmupSets) => {
+        const { workout } = get()
+        if (!workout) return
+
+        const exercises = [...workout.exercises]
+        exercises[exerciseIndex] = {
+          ...exercises[exerciseIndex],
+          completedWarmupSets: warmupSets,
+        }
+        set({ workout: { ...workout, exercises } })
       },
 
       addT3Exercise: (t3Id, weight) => {
