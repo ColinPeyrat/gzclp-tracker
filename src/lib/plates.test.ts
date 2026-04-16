@@ -127,6 +127,39 @@ describe('calculatePlates', () => {
     })
   })
 
+  describe('non-standard bar weight', () => {
+    it('suggests correct weight with 10kg bar when target is unachievable', () => {
+      const inventory: Record<string, number> = {
+        '20': 2,
+        '15': 2,
+        '10': 2,
+        '5': 2,
+        '2.5': 2,
+        '1.25': 2,
+        '0.5': 4,
+      }
+      // 27.25kg with 10kg bar: per side = 8.625, not achievable
+      // Nearest above: 27.5 (5 + 2.5 + 1.25 = 8.75 per side)
+      const result = calculatePlates(27.25, 10, inventory)
+      expect(result.achievable).toBe(false)
+      expect(result.suggestedWeight).toBe(27.5)
+    })
+
+    it('finds achievable weight when search grid is offset from target', () => {
+      const inventory: Record<string, number> = {
+        '5': 2,
+        '2.5': 2,
+        '1.25': 2,
+      }
+      // 13.3kg with 10kg bar: per side = 1.65, not achievable
+      // Nearest above on grid (step=2.5): 12.5, 15.0...
+      // 12.5: per side 1.25 -> achievable!
+      const result = calculatePlates(13.3, 10, inventory)
+      expect(result.achievable).toBe(false)
+      expect(result.suggestedWeight).toBeDefined()
+    })
+  })
+
   describe('edge cases', () => {
     it('handles very small weights', () => {
       const result = calculatePlates(22.5, 20, standardKgInventory)

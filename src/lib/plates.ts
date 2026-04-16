@@ -12,6 +12,13 @@ export const plateColors: Record<number, string> = {
   1.25: 'bg-zinc-400 text-zinc-900',
 }
 
+function gcd(a: number, b: number): number {
+  while (b) {
+    ;[a, b] = [b, a % b]
+  }
+  return a
+}
+
 export interface PlateResult {
   perSide: number[]
   totalWeight: number
@@ -70,13 +77,15 @@ export function calculatePlates(
   const result = calculatePlatesInternal(targetWeight, barWeight, plateInventory, availablePlates)
 
   if (!result.achievable) {
-    // Find minimum achievable weight above target
-    // Use small increment to not miss any achievable weights
-    const smallestPlate = availablePlates[availablePlates.length - 1]
-    const increment = Math.min(smallestPlate, 0.5)
+    // Find minimum achievable weight above target.
+    // Achievable weights are barWeight + 2 * (subset sum of plates).
+    // The minimum weight granularity is 2 * GCD(all plate sizes).
+    const plateGcd = availablePlates.map(p => Math.round(p * 100)).reduce(gcd) / 100
+    const step = plateGcd * 2
+    const stepsAboveBar = Math.ceil((targetWeight - barWeight) / step)
+    const startWeight = Math.round((barWeight + stepsAboveBar * step) * 100) / 100
 
-    for (let tryWeight = targetWeight + increment; tryWeight <= targetWeight + 50; tryWeight += increment) {
-      // Round to avoid floating point issues
+    for (let tryWeight = startWeight; tryWeight <= targetWeight + 50; tryWeight += step) {
       const roundedWeight = Math.round(tryWeight * 100) / 100
       const tryResult = calculatePlatesInternal(roundedWeight, barWeight, plateInventory, availablePlates)
       if (tryResult.achievable) {
