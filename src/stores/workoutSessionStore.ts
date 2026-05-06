@@ -137,15 +137,19 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>()(
       startMaintenanceWorkout: (programState) => {
         if (get().workout) return
 
-        const exercises: ExerciseLog[] = MAINTENANCE_LIFTS.map((liftId) => ({
-          liftId,
-          tier: 'T1' as const,
-          weight: programState.t1[liftId].weight,
-          originalWeight: programState.t1[liftId].weight,
-          targetSets: 1,
-          targetReps: 1,
-          sets: [{ setNumber: 1, reps: 0, completed: false, isAmrap: false }],
-        }))
+        const exercises: ExerciseLog[] = MAINTENANCE_LIFTS.map((liftId) => {
+          const t1 = programState.t1[liftId]
+          const weight = t1.lastSuccessWeight ?? t1.weight
+          return {
+            liftId,
+            tier: 'T1' as const,
+            weight,
+            originalWeight: weight,
+            targetSets: 1,
+            targetReps: 1,
+            sets: [{ setNumber: 1, reps: 0, completed: false, isAmrap: false }],
+          }
+        })
 
         set({
           workout: {

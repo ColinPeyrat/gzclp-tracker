@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type { Workout, ProgramState, UserSettings, ExerciseDefinition, LiftSubstitution, AdditionalT3Assignment } from './types'
+import { backfillLastSuccessWeight } from './progression'
 
 const db = new Dexie('gzclp-tracker') as Dexie & {
   workouts: EntityTable<Workout, 'id'>
@@ -241,6 +242,7 @@ interface LegacyProgramState {
   t3: Record<string, { weight?: number; weightLbs?: number }>
   nextWorkoutType: 'A1' | 'A2' | 'B1' | 'B2'
   workoutCount: number
+  lastSuccessWeightBackfilled?: boolean
 }
 
 function migrateLiftState(lift: LegacyLiftState): LegacyLiftState {
@@ -289,14 +291,23 @@ export async function getProgramState(): Promise<ProgramState | undefined> {
   const t1Migration = migrateLiftStateMap(stored.t1)
   const t2Migration = migrateLiftStateMap(stored.t2)
   const t3Migration = migrateT3Weights(stored.t3)
-  const needsUpdate = t1Migration.migrated || t2Migration.migrated || t3Migration.migrated
+  let needsUpdate = t1Migration.migrated || t2Migration.migrated || t3Migration.migrated
 
-  const migrated: ProgramState = {
+  let migrated: ProgramState = {
     t1: t1Migration.result as ProgramState['t1'],
     t2: t2Migration.result as ProgramState['t2'],
     t3: t3Migration.result,
     nextWorkoutType: stored.nextWorkoutType,
     workoutCount: stored.workoutCount,
+    lastSuccessWeightBackfilled: stored.lastSuccessWeightBackfilled,
+  }
+
+  // One-time backfill of lastSuccessWeight from workout history
+  if (!migrated.lastSuccessWeightBackfilled) {
+    const allWorkouts = await db.workouts.toArray()
+    const backfill = backfillLastSuccessWeight(migrated, allWorkouts)
+    migrated = { ...backfill.state, lastSuccessWeightBackfilled: true }
+    needsUpdate = true
   }
 
   if (needsUpdate) {

@@ -41,6 +41,7 @@ export interface LiftState {
   weight: number
   stage: 1 | 2 | 3
   lastStage1Weight?: number // For T2 reset calculation
+  lastSuccessWeight?: number // Last weight successfully completed (used by maintenance)
   pending5RMTest?: boolean // T1 only: true when awaiting 5RM input after stage 3 fail
   bestSetReps?: number // Best set reps from failed stage 3 for 5RM estimation
   bestSetWeight?: number // Weight of best set
@@ -110,6 +111,7 @@ export interface ProgramState {
   t3: Record<string, { weight: number }>
   nextWorkoutType: RotatingWorkoutType
   workoutCount: number
+  lastSuccessWeightBackfilled?: boolean // One-time migration marker
 }
 
 // Workout definitions

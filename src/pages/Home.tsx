@@ -155,7 +155,7 @@ export function Home() {
               Maintenance Day
             </span>
             <span className="text-xs text-zinc-500">
-              {MAINTENANCE_LIFTS.map((id) => `${LIFTS[id].name} ${state.t1[id].weight}`).join(' / ')} {settings.weightUnit}
+              {MAINTENANCE_LIFTS.map((id) => `${LIFTS[id].name} ${state.t1[id].lastSuccessWeight ?? state.t1[id].weight}`).join(' / ')} {settings.weightUnit}
             </span>
           </Link>
         </div>

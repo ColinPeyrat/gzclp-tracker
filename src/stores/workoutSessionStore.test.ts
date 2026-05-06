@@ -89,6 +89,33 @@ describe('workoutSessionStore', () => {
     })
   })
 
+  describe('startMaintenanceWorkout', () => {
+    it('uses lastSuccessWeight when set, not the next-attempt weight', () => {
+      // After successful 110kg deadlift, t1.weight = 115 (next target), lastSuccessWeight = 110
+      const programState = createMockProgramState()
+      programState.t1.deadlift = {
+        liftId: 'deadlift', tier: 'T1', weight: 115, stage: 1, lastSuccessWeight: 110,
+      }
+
+      useWorkoutSessionStore.getState().startMaintenanceWorkout(programState)
+
+      const { workout } = useWorkoutSessionStore.getState()
+      const deadlift = workout?.exercises.find((e) => e.liftId === 'deadlift')
+      expect(deadlift?.weight).toBe(110)
+    })
+
+    it('falls back to current weight when lastSuccessWeight is undefined', () => {
+      const programState = createMockProgramState()
+      // No lastSuccessWeight set (initial state, never completed a workout)
+
+      useWorkoutSessionStore.getState().startMaintenanceWorkout(programState)
+
+      const { workout } = useWorkoutSessionStore.getState()
+      const deadlift = workout?.exercises.find((e) => e.liftId === 'deadlift')
+      expect(deadlift?.weight).toBe(120) // mock state's current weight
+    })
+  })
+
   describe('hasActiveSession', () => {
     it('returns false when no workout', () => {
       const store = useWorkoutSessionStore.getState()

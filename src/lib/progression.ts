@@ -66,7 +66,7 @@ export function calculateT1Progression(
   if (success) {
     const newWeight = exercise.weight + increment
     return {
-      newState: { ...currentState, weight: newWeight },
+      newState: { ...currentState, weight: newWeight, lastSuccessWeight: exercise.weight },
       message: `+${increment} ${unit} → ${newWeight} ${unit}`,
     }
   }
@@ -121,6 +121,7 @@ export function calculateT2Progression(
       ...currentState,
       weight: newWeight,
       lastStage1Weight: stage === 1 ? exercise.weight : lastStage1Weight,
+      lastSuccessWeight: exercise.weight,
     }
     return {
       newState,
@@ -160,6 +161,7 @@ export function calculateT2Progression(
       stage: 1,
       weight: resetWeight,
       lastStage1Weight: undefined,
+      lastSuccessWeight: undefined,
     },
     message: `Reset to 3×10 at ${resetWeight} ${unit}`,
   }
@@ -213,6 +215,7 @@ export function applyT1Reset(currentState: LiftState, new5RM: number, unit: Weig
     pending5RMTest: undefined,
     bestSetReps: undefined,
     bestSetWeight: undefined,
+    lastSuccessWeight: undefined,
   }
 }
 
@@ -270,9 +273,12 @@ export function applyWorkoutProgression(
     if (sub?.forceT3Progression) {
       const syncedWeight = Math.max(currentState.weight, programState.t2[liftId]?.weight ?? 0)
       const newWeight = applyT3StyleProgression(syncedWeight, t1Exercise, smallestPlate)
-      if (newWeight !== null) {
-        newState.t1 = { ...newState.t1, [liftId]: { ...currentState, weight: newWeight } }
+      const updated: LiftState = {
+        ...currentState,
+        weight: newWeight ?? currentState.weight,
+        lastSuccessWeight: t1Exercise.weight,
       }
+      newState.t1 = { ...newState.t1, [liftId]: updated }
     } else {
       const increment = getIncrement('T1', LIFTS[liftId].isLower, ctx.unit)
       const result = calculateT1Progression(currentState, t1Exercise, increment, ctx.unit)
@@ -290,9 +296,12 @@ export function applyWorkoutProgression(
     if (sub?.forceT3Progression) {
       const syncedWeight = Math.max(currentState.weight, programState.t1[liftId]?.weight ?? 0)
       const newWeight = applyT3StyleProgression(syncedWeight, t2Exercise, smallestPlate)
-      if (newWeight !== null) {
-        newState.t2 = { ...newState.t2, [liftId]: { ...currentState, weight: newWeight } }
+      const updated: LiftState = {
+        ...currentState,
+        weight: newWeight ?? currentState.weight,
+        lastSuccessWeight: t2Exercise.weight,
       }
+      newState.t2 = { ...newState.t2, [liftId]: updated }
     } else {
       const increment = getIncrement('T2', LIFTS[liftId].isLower, ctx.unit)
       const result = calculateT2Progression(currentState, t2Exercise, increment, ctx.unit)
@@ -307,11 +316,14 @@ export function applyWorkoutProgression(
       const t1Weight = newState.t1[liftId].weight
       const t2Weight = newState.t2[liftId].weight
       const syncedWeight = Math.max(t1Weight, t2Weight)
-      if (t1Weight !== syncedWeight) {
-        newState.t1 = { ...newState.t1, [liftId]: { ...newState.t1[liftId], weight: syncedWeight } }
+      const t1Last = newState.t1[liftId].lastSuccessWeight ?? 0
+      const t2Last = newState.t2[liftId].lastSuccessWeight ?? 0
+      const syncedLast = Math.max(t1Last, t2Last) || undefined
+      if (t1Weight !== syncedWeight || newState.t1[liftId].lastSuccessWeight !== syncedLast) {
+        newState.t1 = { ...newState.t1, [liftId]: { ...newState.t1[liftId], weight: syncedWeight, lastSuccessWeight: syncedLast } }
       }
-      if (t2Weight !== syncedWeight) {
-        newState.t2 = { ...newState.t2, [liftId]: { ...newState.t2[liftId], weight: syncedWeight } }
+      if (t2Weight !== syncedWeight || newState.t2[liftId].lastSuccessWeight !== syncedLast) {
+        newState.t2 = { ...newState.t2, [liftId]: { ...newState.t2[liftId], weight: syncedWeight, lastSuccessWeight: syncedLast } }
       }
     }
   }
@@ -332,4 +344,60 @@ export function applyWorkoutProgression(
   newState.workoutCount += 1
 
   return newState
+}
+
+// Backfills lastSuccessWeight for any T1/T2 lift that doesn't have it set,
+// by scanning workout history for the most recent successful exercise. Caps
+// the backfilled weight at the lift's current weight so a post-success deload
+// can't poison the value.
+export function backfillLastSuccessWeight(
+  state: ProgramState,
+  workouts: Workout[]
+): { state: ProgramState; migrated: boolean } {
+  const t1Needs = (Object.keys(state.t1) as LiftName[]).filter(
+    (id) => state.t1[id].lastSuccessWeight === undefined
+  )
+  const t2Needs = (Object.keys(state.t2) as LiftName[]).filter(
+    (id) => state.t2[id].lastSuccessWeight === undefined
+  )
+  if (t1Needs.length === 0 && t2Needs.length === 0) {
+    return { state, migrated: false }
+  }
+
+  const completed = workouts
+    .filter((w) => w.completed && w.type !== 'MN')
+    .sort((a, b) => b.date.localeCompare(a.date))
+
+  let migrated = false
+  const newT1 = { ...state.t1 }
+  const newT2 = { ...state.t2 }
+
+  function findMostRecentSuccess(tier: 'T1' | 'T2', liftId: LiftName, currentWeight: number): number | undefined {
+    for (const w of completed) {
+      const ex = w.exercises.find((e) => e.tier === tier && e.liftId === liftId)
+      if (!ex) continue
+      if (didHitRepTarget(ex) && ex.weight <= currentWeight) {
+        return ex.weight
+      }
+    }
+    return undefined
+  }
+
+  for (const liftId of t1Needs) {
+    const w = findMostRecentSuccess('T1', liftId, state.t1[liftId].weight)
+    if (w !== undefined) {
+      newT1[liftId] = { ...newT1[liftId], lastSuccessWeight: w }
+      migrated = true
+    }
+  }
+
+  for (const liftId of t2Needs) {
+    const w = findMostRecentSuccess('T2', liftId, state.t2[liftId].weight)
+    if (w !== undefined) {
+      newT2[liftId] = { ...newT2[liftId], lastSuccessWeight: w }
+      migrated = true
+    }
+  }
+
+  return { state: migrated ? { ...state, t1: newT1, t2: newT2 } : state, migrated }
 }

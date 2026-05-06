@@ -14,6 +14,7 @@ import {
   estimate5RM,
   applyT1Reset,
   applyWorkoutProgression,
+  backfillLastSuccessWeight,
 } from './progression'
 import type { ExerciseLog, LiftState, SetLog, ProgramState, Workout } from './types'
 
@@ -180,6 +181,16 @@ describe('calculateT1Progression', () => {
       const result = calculateT1Progression(state, exercise, 5, 'kg')
       expect(result.newState.weight).toBe(110) // 105 + 5, not 100 + 5
     })
+
+    it('records exercise weight as lastSuccessWeight', () => {
+      const state = makeLiftState({ weight: 100, stage: 1 })
+      const exercise = makeExercise({
+        weight: 100,
+        sets: [makeSet(3), makeSet(3), makeSet(3), makeSet(3), makeSet(3)],
+      })
+      const result = calculateT1Progression(state, exercise, 5, 'kg')
+      expect(result.newState.lastSuccessWeight).toBe(100)
+    })
   })
 
   describe('on failure at stage 1', () => {
@@ -191,6 +202,15 @@ describe('calculateT1Progression', () => {
       const result = calculateT1Progression(state, exercise, 5, 'kg')
       expect(result.newState.stage).toBe(2)
       expect(result.newState.weight).toBe(100)
+    })
+
+    it('preserves prior lastSuccessWeight on failure', () => {
+      const state = makeLiftState({ weight: 100, stage: 1, lastSuccessWeight: 95 })
+      const exercise = makeExercise({
+        sets: [makeSet(3), makeSet(3), makeSet(2), makeSet(2), makeSet(2)],
+      })
+      const result = calculateT1Progression(state, exercise, 5, 'kg')
+      expect(result.newState.lastSuccessWeight).toBe(95)
     })
   })
 
@@ -376,6 +396,19 @@ describe('calculateT2Progression', () => {
       const result = calculateT2Progression(state, exercise, 2.5, 'kg')
       expect(result.newState.lastStage1Weight).toBe(50)
     })
+
+    it('records exercise weight as lastSuccessWeight', () => {
+      const state = makeLiftState({ tier: 'T2', weight: 50, stage: 1 })
+      const exercise = makeExercise({
+        tier: 'T2',
+        weight: 50,
+        targetSets: 3,
+        targetReps: 10,
+        sets: [makeSet(10), makeSet(10), makeSet(10)],
+      })
+      const result = calculateT2Progression(state, exercise, 2.5, 'kg')
+      expect(result.newState.lastSuccessWeight).toBe(50)
+    })
   })
 
   describe('on failure at stage 1', () => {
@@ -458,6 +491,24 @@ describe('calculateT2Progression', () => {
       })
       const result = calculateT2Progression(state, exercise, 2.5, 'kg')
       expect(result.newState.weight).toBe(70) // 60 + 10
+    })
+
+    it('clears lastSuccessWeight on stage 3 reset', () => {
+      const state = makeLiftState({
+        tier: 'T2',
+        weight: 60,
+        stage: 3,
+        lastStage1Weight: 50,
+        lastSuccessWeight: 55,
+      })
+      const exercise = makeExercise({
+        tier: 'T2',
+        targetSets: 3,
+        targetReps: 6,
+        sets: [makeSet(6), makeSet(4), makeSet(3)],
+      })
+      const result = calculateT2Progression(state, exercise, 2.5, 'kg')
+      expect(result.newState.lastSuccessWeight).toBeUndefined()
     })
   })
 
@@ -651,6 +702,16 @@ describe('applyT1Reset', () => {
     const result = applyT1Reset(state, 200, 'lbs')
     // 200 * 0.85 = 170
     expect(result.weight).toBe(170)
+  })
+
+  it('clears lastSuccessWeight (deload weight is unvalidated)', () => {
+    const state = makeLiftState({
+      stage: 3,
+      pending5RMTest: true,
+      lastSuccessWeight: 110,
+    })
+    const result = applyT1Reset(state, 100, 'kg')
+    expect(result.lastSuccessWeight).toBeUndefined()
   })
 })
 
@@ -861,6 +922,33 @@ describe('applyWorkoutProgression - forceT3Progression weight sync', () => {
     expect(result.t2.squat.weight).toBe(15)
   })
 
+  it('records lastSuccessWeight on completed forceT3Progression workout', () => {
+    // T1 squat completes at synced weight 15, even with AMRAP < 25 (no progression)
+    const programState = makeProgramState()
+    const workout: Workout = {
+      id: '6', date: '2025-01-06', type: 'A1', completed: true,
+      exercises: [
+        makeExercise({
+          liftId: 'squat', tier: 'T1', weight: 15, targetSets: 3, targetReps: 15,
+          sets: [makeSet(15), makeSet(15), makeSet(20, true, true)], // AMRAP=20, no increase
+        }),
+        makeExercise({
+          liftId: 'bench', tier: 'T2', weight: 24, targetSets: 3, targetReps: 10,
+          sets: [makeSet(10), makeSet(10), makeSet(10)],
+        }),
+        makeExercise({
+          liftId: 'lat-pulldown', tier: 'T3', weight: 50, targetSets: 3, targetReps: 15,
+          sets: [makeSet(15), makeSet(15), makeSet(20, true, true)],
+        }),
+      ],
+    }
+
+    const result = applyWorkoutProgression(workout, programState, ctx)
+    // Both T1 and T2 squat should record the validated weight
+    expect(result.t1.squat.lastSuccessWeight).toBe(15)
+    expect(result.t2.squat.lastSuccessWeight).toBe(15)
+  })
+
   it('progresses from synced weight when T1/T2 have diverged', () => {
     // T1 squat = 15, T2 squat = 9 (diverged from initial setup)
     // B1 workout: T2 = squat, AMRAP hits 25 → should progress from 15 (synced), not 9
@@ -887,5 +975,188 @@ describe('applyWorkoutProgression - forceT3Progression weight sync', () => {
     // Should progress from synced weight 15, not stored T2 weight 9
     expect(result.t2.squat.weight).toBe(16.25) // 15 + 1.25
     expect(result.t1.squat.weight).toBe(16.25) // synced
+  })
+})
+
+describe('backfillLastSuccessWeight', () => {
+  function makeBaseState(): ProgramState {
+    return {
+      t1: {
+        squat: { liftId: 'squat', tier: 'T1', weight: 100, stage: 1 },
+        bench: { liftId: 'bench', tier: 'T1', weight: 80, stage: 1 },
+        deadlift: { liftId: 'deadlift', tier: 'T1', weight: 120, stage: 1 },
+        ohp: { liftId: 'ohp', tier: 'T1', weight: 50, stage: 1 },
+      },
+      t2: {
+        squat: { liftId: 'squat', tier: 'T2', weight: 60, stage: 1 },
+        bench: { liftId: 'bench', tier: 'T2', weight: 50, stage: 1 },
+        deadlift: { liftId: 'deadlift', tier: 'T2', weight: 70, stage: 1 },
+        ohp: { liftId: 'ohp', tier: 'T2', weight: 30, stage: 1 },
+      },
+      t3: {},
+      nextWorkoutType: 'A1',
+      workoutCount: 0,
+    }
+  }
+
+  function makeWorkout(date: string, type: 'A1' | 'A2' | 'B1' | 'B2' | 'MN', exercises: ExerciseLog[], completed = true): Workout {
+    return { id: date, date, type: type as Workout['type'], exercises, completed }
+  }
+
+  it('returns unchanged state when nothing needs backfill', () => {
+    const state = makeBaseState()
+    state.t1.squat.lastSuccessWeight = 95
+    state.t1.bench.lastSuccessWeight = 75
+    state.t1.deadlift.lastSuccessWeight = 115
+    state.t1.ohp.lastSuccessWeight = 45
+    state.t2.squat.lastSuccessWeight = 55
+    state.t2.bench.lastSuccessWeight = 45
+    state.t2.deadlift.lastSuccessWeight = 65
+    state.t2.ohp.lastSuccessWeight = 25
+
+    const result = backfillLastSuccessWeight(state, [])
+    expect(result.migrated).toBe(false)
+    expect(result.state).toBe(state)
+  })
+
+  it('backfills from most recent T1 success', () => {
+    // Deadlift T1 was successfully done at 110kg in last B2 workout
+    // Current state has weight=120 (already progressed) but no lastSuccessWeight
+    const state = makeBaseState()
+    const workouts = [
+      makeWorkout('2026-01-15', 'B2', [
+        makeExercise({
+          liftId: 'deadlift', tier: 'T1', weight: 110, targetSets: 5, targetReps: 3,
+          sets: [makeSet(3), makeSet(3), makeSet(3), makeSet(3), makeSet(5, true, true)],
+        }),
+      ]),
+    ]
+    const result = backfillLastSuccessWeight(state, workouts)
+    expect(result.migrated).toBe(true)
+    expect(result.state.t1.deadlift.lastSuccessWeight).toBe(110)
+  })
+
+  it('skips lifts that already have lastSuccessWeight set (idempotent)', () => {
+    const state = makeBaseState()
+    state.t1.deadlift.lastSuccessWeight = 105 // intentionally lower than history
+    const workouts = [
+      makeWorkout('2026-01-15', 'B2', [
+        makeExercise({
+          liftId: 'deadlift', tier: 'T1', weight: 110, targetSets: 5, targetReps: 3,
+          sets: [makeSet(3), makeSet(3), makeSet(3), makeSet(3), makeSet(5, true, true)],
+        }),
+      ]),
+    ]
+    const result = backfillLastSuccessWeight(state, workouts)
+    expect(result.state.t1.deadlift.lastSuccessWeight).toBe(105) // unchanged
+  })
+
+  it('caps at current weight (a deload makes old success irrelevant)', () => {
+    // Past success at 110, but state.weight is now 90 (post-deload)
+    const state = makeBaseState()
+    state.t1.deadlift.weight = 90
+    const workouts = [
+      makeWorkout('2026-01-15', 'B2', [
+        makeExercise({
+          liftId: 'deadlift', tier: 'T1', weight: 110, targetSets: 5, targetReps: 3,
+          sets: [makeSet(3), makeSet(3), makeSet(3), makeSet(3), makeSet(5, true, true)],
+        }),
+      ]),
+    ]
+    const result = backfillLastSuccessWeight(state, workouts)
+    expect(result.state.t1.deadlift.lastSuccessWeight).toBeUndefined()
+  })
+
+  it('picks most recent success when multiple exist', () => {
+    const state = makeBaseState()
+    const workouts = [
+      makeWorkout('2026-01-10', 'B2', [
+        makeExercise({
+          liftId: 'deadlift', tier: 'T1', weight: 100, targetSets: 5, targetReps: 3,
+          sets: [makeSet(3), makeSet(3), makeSet(3), makeSet(3), makeSet(5, true, true)],
+        }),
+      ]),
+      makeWorkout('2026-01-15', 'B2', [
+        makeExercise({
+          liftId: 'deadlift', tier: 'T1', weight: 110, targetSets: 5, targetReps: 3,
+          sets: [makeSet(3), makeSet(3), makeSet(3), makeSet(3), makeSet(5, true, true)],
+        }),
+      ]),
+    ]
+    const result = backfillLastSuccessWeight(state, workouts)
+    expect(result.state.t1.deadlift.lastSuccessWeight).toBe(110)
+  })
+
+  it('skips failed exercises and uses prior successful one', () => {
+    const state = makeBaseState()
+    const workouts = [
+      // Most recent: failed at 110
+      makeWorkout('2026-01-15', 'B2', [
+        makeExercise({
+          liftId: 'deadlift', tier: 'T1', weight: 110, targetSets: 5, targetReps: 3,
+          sets: [makeSet(3), makeSet(3), makeSet(2), makeSet(2), makeSet(2)],
+        }),
+      ]),
+      // Earlier: succeeded at 105
+      makeWorkout('2026-01-10', 'B2', [
+        makeExercise({
+          liftId: 'deadlift', tier: 'T1', weight: 105, targetSets: 5, targetReps: 3,
+          sets: [makeSet(3), makeSet(3), makeSet(3), makeSet(3), makeSet(5, true, true)],
+        }),
+      ]),
+    ]
+    const result = backfillLastSuccessWeight(state, workouts)
+    expect(result.state.t1.deadlift.lastSuccessWeight).toBe(105)
+  })
+
+  it('ignores maintenance workouts', () => {
+    const state = makeBaseState()
+    const workouts = [
+      makeWorkout('2026-01-15', 'MN', [
+        makeExercise({
+          liftId: 'deadlift', tier: 'T1', weight: 110, targetSets: 1, targetReps: 1,
+          sets: [makeSet(1)],
+        }),
+      ]),
+    ]
+    const result = backfillLastSuccessWeight(state, workouts)
+    expect(result.state.t1.deadlift.lastSuccessWeight).toBeUndefined()
+  })
+
+  it('ignores incomplete workouts', () => {
+    const state = makeBaseState()
+    const workouts = [
+      makeWorkout('2026-01-15', 'B2', [
+        makeExercise({
+          liftId: 'deadlift', tier: 'T1', weight: 110, targetSets: 5, targetReps: 3,
+          sets: [makeSet(3), makeSet(3), makeSet(3), makeSet(3), makeSet(5, true, true)],
+        }),
+      ], false),
+    ]
+    const result = backfillLastSuccessWeight(state, workouts)
+    expect(result.state.t1.deadlift.lastSuccessWeight).toBeUndefined()
+  })
+
+  it('handles T1 and T2 of same lift independently', () => {
+    const state = makeBaseState()
+    const workouts = [
+      makeWorkout('2026-01-15', 'A1', [
+        // squat T1 success at 95
+        makeExercise({
+          liftId: 'squat', tier: 'T1', weight: 95, targetSets: 5, targetReps: 3,
+          sets: [makeSet(3), makeSet(3), makeSet(3), makeSet(3), makeSet(3)],
+        }),
+      ]),
+      makeWorkout('2026-01-13', 'B1', [
+        // squat T2 success at 55
+        makeExercise({
+          liftId: 'squat', tier: 'T2', weight: 55, targetSets: 3, targetReps: 10,
+          sets: [makeSet(10), makeSet(10), makeSet(10)],
+        }),
+      ]),
+    ]
+    const result = backfillLastSuccessWeight(state, workouts)
+    expect(result.state.t1.squat.lastSuccessWeight).toBe(95)
+    expect(result.state.t2.squat.lastSuccessWeight).toBe(55)
   })
 })
