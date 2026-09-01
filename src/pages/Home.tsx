@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 import { Dumbbell, Play, Bug, Settings, Shield } from 'lucide-react'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
-import { WORKOUTS, WORKOUT_ORDER, MAINTENANCE_LIFTS, LIFTS, getUpcomingWorkoutTypes, type RotatingWorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit, type LiftSubstitution, type ExerciseDefinition } from '../lib/types'
-import { estimate5RM, applyT1Reset } from '../lib/progression'
+import { WORKOUTS, WORKOUT_ORDER, MAINTENANCE_LIFTS, MAINTENANCE_SETS, MAINTENANCE_REPS, LIFTS, getUpcomingWorkoutTypes, type RotatingWorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit, type LiftSubstitution, type ExerciseDefinition } from '../lib/types'
+import { estimate5RM, applyT1Reset, getMaintenanceWeight } from '../lib/progression'
 import { getExerciseName } from '../lib/exercises'
 import { Modal } from '../components/ui/Modal'
 import { BottomNav } from '../components/ui/BottomNav'
@@ -155,7 +155,7 @@ export function Home() {
               Maintenance Day
             </span>
             <span className="text-xs text-zinc-500">
-              {MAINTENANCE_LIFTS.map((id) => `${LIFTS[id].name} ${state.t1[id].lastSuccessWeight ?? state.t1[id].weight}`).join(' / ')} {settings.weightUnit}
+              {MAINTENANCE_LIFTS.map((id) => `${LIFTS[id].name} ${getMaintenanceWeight(state.t1[id], settings.weightUnit)}`).join(' / ')} {settings.weightUnit} · {MAINTENANCE_SETS}×{MAINTENANCE_REPS}
             </span>
           </Link>
         </div>

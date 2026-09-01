@@ -136,6 +136,40 @@ The app automatically calculates the next workout based on performance.
 
 ---
 
+### 6. Maintenance Day
+
+A non-rotating session for deload, travel, or a week off the program. Started from the home
+screen (`/workout?mode=maintenance`), stored as `WorkoutType` `'MN'`.
+
+#### Prescription
+- Lifts: **deadlift, squat, bench** (OHP excluded)
+- **1 set of 5 reps** per lift, straight set — not an AMRAP
+- Weight: **~80% of a triples-equivalent T1 weight**, derived from the last validated
+  weight with a stage-dependent multiplier:
+
+  | T1 stage | rep scheme | multiplier |
+  |----------|-----------|------------|
+  | 1 | 5×3+ | 0.80 |
+  | 2 | 6×2+ | 0.75 |
+  | 3 | 10×1+ | 0.70 |
+
+  `round(pct[stage] × (t1.lastSuccessWeight ?? t1.weight))`, rounded to 2.5 kg / 5 lb.
+  The multiplier steps down because a later-stage weight was validated over a shorter rep
+  scheme; a flat percentage would make maintenance creep heavier as a lift stalls. See
+  ADR 0001.
+- Single source of truth: `getMaintenanceWeight` in `lib/progression.ts`. The home-screen
+  preview and the workout store both call it.
+
+#### Behaviour
+- Does **not** advance progression — `ProgramState` is untouched on completion
+- Does **not** award medals
+- Is saved to history and rendered from its stored `ExerciseLog`, so past sessions logged
+  under an older prescription still display correctly
+- Warm-ups and the rest timer follow the T1 path, since maintenance exercises carry
+  `tier: 'T1'`
+
+---
+
 ## Data Model
 
 ### Lift

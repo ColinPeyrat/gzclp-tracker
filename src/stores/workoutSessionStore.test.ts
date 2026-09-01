@@ -90,29 +90,60 @@ describe('workoutSessionStore', () => {
   })
 
   describe('startMaintenanceWorkout', () => {
-    it('uses lastSuccessWeight when set, not the next-attempt weight', () => {
-      // After successful 110kg deadlift, t1.weight = 115 (next target), lastSuccessWeight = 110
+    it('derives from lastSuccessWeight, not the next-attempt weight', () => {
+      // After a successful 110 deadlift, t1.weight = 115 (next target), lastSuccessWeight = 110
       const programState = createMockProgramState()
       programState.t1.deadlift = {
         liftId: 'deadlift', tier: 'T1', weight: 115, stage: 1, lastSuccessWeight: 110,
       }
 
-      useWorkoutSessionStore.getState().startMaintenanceWorkout(programState)
+      useWorkoutSessionStore.getState().startMaintenanceWorkout(programState, createMockSettings())
 
       const { workout } = useWorkoutSessionStore.getState()
       const deadlift = workout?.exercises.find((e) => e.liftId === 'deadlift')
-      expect(deadlift?.weight).toBe(110)
+      expect(deadlift?.weight).toBe(90) // 0.8 × 110 = 88, rounded to 5
     })
 
     it('falls back to current weight when lastSuccessWeight is undefined', () => {
       const programState = createMockProgramState()
       // No lastSuccessWeight set (initial state, never completed a workout)
 
-      useWorkoutSessionStore.getState().startMaintenanceWorkout(programState)
+      useWorkoutSessionStore.getState().startMaintenanceWorkout(programState, createMockSettings())
 
       const { workout } = useWorkoutSessionStore.getState()
       const deadlift = workout?.exercises.find((e) => e.liftId === 'deadlift')
-      expect(deadlift?.weight).toBe(120) // mock state's current weight
+      expect(deadlift?.weight).toBe(95) // 0.8 × 120 = 96, rounded to 5
+    })
+
+    it('prescribes a straight set of 5 for every maintenance lift', () => {
+      useWorkoutSessionStore.getState().startMaintenanceWorkout(createMockProgramState(), createMockSettings())
+
+      const { workout } = useWorkoutSessionStore.getState()
+      expect(workout?.type).toBe('MN')
+      expect(workout?.exercises).toHaveLength(3)
+      for (const exercise of workout!.exercises) {
+        expect(exercise.targetSets).toBe(1)
+        expect(exercise.targetReps).toBe(5)
+        expect(exercise.sets).toHaveLength(1)
+        expect(exercise.sets[0].isAmrap).toBe(false)
+      }
+    })
+
+    it('keeps the prescribed load flat as a lift advances through stages', () => {
+      // Same lifter deeper into the cycle: lastSuccessWeight climbs, load should not
+      const weights = ([1, 2, 3] as const).map((stage, i) => {
+        useWorkoutSessionStore.setState({ workout: null, currentExerciseIndex: 0 })
+        const programState = createMockProgramState()
+        programState.t1.deadlift = {
+          liftId: 'deadlift', tier: 'T1', weight: 300, stage,
+          lastSuccessWeight: 235 + i * 20, // 235 / 255 / 275
+        }
+        useWorkoutSessionStore.getState().startMaintenanceWorkout(programState, createMockSettings())
+        return useWorkoutSessionStore.getState().workout!.exercises.find((e) => e.liftId === 'deadlift')!.weight
+      })
+
+      expect(weights).toEqual([190, 190, 195])
+      expect(Math.max(...weights) - Math.min(...weights)).toBeLessThanOrEqual(5)
     })
   })
 

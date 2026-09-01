@@ -205,6 +205,17 @@ export function estimate5RM(weight: number, amrapReps: number, unit: WeightUnit)
   return Math.round(estimated5RM / roundTo) * roundTo
 }
 
+// Maintenance targets ~80% of a stage 1 (triples) weight. lastSuccessWeight is a
+// shorter-rep weight at later stages, so the percentage drops to compensate and keep
+// the prescribed load flat. See docs/adr/0001-maintenance-day-prescription.md
+const MAINTENANCE_PERCENTAGE: Record<1 | 2 | 3, number> = { 1: 0.8, 2: 0.75, 3: 0.7 }
+
+export function getMaintenanceWeight(liftState: LiftState, unit: WeightUnit): number {
+  const base = liftState.lastSuccessWeight ?? liftState.weight
+  const roundTo = unit === 'kg' ? 2.5 : 5
+  return Math.round((base * MAINTENANCE_PERCENTAGE[liftState.stage]) / roundTo) * roundTo
+}
+
 export function applyT1Reset(currentState: LiftState, new5RM: number, unit: WeightUnit): LiftState {
   const roundTo = unit === 'kg' ? 2.5 : 5
   const resetWeight = Math.round((new5RM * 0.85) / roundTo) * roundTo

@@ -116,6 +116,8 @@ export interface ProgramState {
 
 // Workout definitions
 export const MAINTENANCE_LIFTS: LiftName[] = ['deadlift', 'squat', 'bench']
+export const MAINTENANCE_SETS = 1
+export const MAINTENANCE_REPS = 5
 
 export const WORKOUTS: Record<RotatingWorkoutType, { t1: LiftName; t2: LiftName; t3: string }> = {
   A1: { t1: 'squat', t2: 'bench', t3: 'lat-pulldown' },

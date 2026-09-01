@@ -148,7 +148,7 @@ export function Workout() {
     if (isFinishingRef.current) return
     if (programLoaded && programState && settingsLoaded && !workout) {
       if (isMaintenanceMode) {
-        startMaintenanceWorkout(programState)
+        startMaintenanceWorkout(programState, settings)
       } else {
         startWorkout(programState, settings)
       }

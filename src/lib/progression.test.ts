@@ -12,6 +12,7 @@ import {
   shouldIncreaseT3Weight,
   createInitialLiftState,
   estimate5RM,
+  getMaintenanceWeight,
   applyT1Reset,
   applyWorkoutProgression,
   backfillLastSuccessWeight,
@@ -1158,5 +1159,41 @@ describe('backfillLastSuccessWeight', () => {
     const result = backfillLastSuccessWeight(state, workouts)
     expect(result.state.t1.squat.lastSuccessWeight).toBe(95)
     expect(result.state.t2.squat.lastSuccessWeight).toBe(55)
+  })
+})
+
+describe('getMaintenanceWeight', () => {
+  const lift = (over: Partial<LiftState>): LiftState => ({
+    liftId: 'deadlift', tier: 'T1', weight: 300, stage: 1, ...over,
+  })
+
+  it('takes 80% of lastSuccessWeight at stage 1', () => {
+    expect(getMaintenanceWeight(lift({ lastSuccessWeight: 235 }), 'lbs')).toBe(190)
+  })
+
+  it('falls back to weight when lastSuccessWeight is unset', () => {
+    expect(getMaintenanceWeight(lift({ weight: 120 }), 'lbs')).toBe(95)
+  })
+
+  it('steps the percentage down per stage', () => {
+    expect(getMaintenanceWeight(lift({ stage: 1, lastSuccessWeight: 200 }), 'lbs')).toBe(160)
+    expect(getMaintenanceWeight(lift({ stage: 2, lastSuccessWeight: 200 }), 'lbs')).toBe(150)
+    expect(getMaintenanceWeight(lift({ stage: 3, lastSuccessWeight: 200 }), 'lbs')).toBe(140)
+  })
+
+  it('keeps load flat as a lifter climbs the stage ladder', () => {
+    // Same lifter: weight ratchets up through stages, prescribed load should not
+    const kg = [
+      getMaintenanceWeight(lift({ stage: 1, lastSuccessWeight: 105 }), 'kg'),
+      getMaintenanceWeight(lift({ stage: 2, lastSuccessWeight: 115 }), 'kg'),
+      getMaintenanceWeight(lift({ stage: 3, lastSuccessWeight: 125 }), 'kg'),
+    ]
+    expect(kg).toEqual([85, 87.5, 87.5])
+    expect(Math.max(...kg) - Math.min(...kg)).toBeLessThanOrEqual(2.5)
+  })
+
+  it('rounds to the unit increment', () => {
+    expect(getMaintenanceWeight(lift({ lastSuccessWeight: 103 }), 'kg') % 2.5).toBe(0)
+    expect(getMaintenanceWeight(lift({ lastSuccessWeight: 227 }), 'lbs') % 5).toBe(0)
   })
 })

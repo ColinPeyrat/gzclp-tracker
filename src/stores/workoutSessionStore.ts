@@ -2,8 +2,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { nanoid } from 'nanoid'
 import type { Workout, ExerciseLog, UserSettings, ProgramState, CompletedWarmupSet } from '../lib/types'
-import { WORKOUTS, MAINTENANCE_LIFTS } from '../lib/types'
-import { getStageConfig } from '../lib/progression'
+import { WORKOUTS, MAINTENANCE_LIFTS, MAINTENANCE_SETS, MAINTENANCE_REPS } from '../lib/types'
+import { getStageConfig, getMaintenanceWeight } from '../lib/progression'
 import { getEffectiveStageConfig, getT3IdsForWorkout, createSetLogs, getLiftSubstitution } from '../lib/exercises'
 
 interface WorkoutSessionState {
@@ -20,7 +20,7 @@ interface WorkoutSessionStore extends WorkoutSessionState {
 
   // Actions
   startWorkout: (programState: ProgramState, settings: UserSettings) => void
-  startMaintenanceWorkout: (programState: ProgramState) => void
+  startMaintenanceWorkout: (programState: ProgramState, settings: UserSettings) => void
   completeSet: (setIndex: number, reps: number) => void
   failSet: (setIndex: number) => void
   failRemainingCurrentExerciseSets: () => void
@@ -134,19 +134,18 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>()(
         })
       },
 
-      startMaintenanceWorkout: (programState) => {
+      startMaintenanceWorkout: (programState, settings) => {
         if (get().workout) return
 
         const exercises: ExerciseLog[] = MAINTENANCE_LIFTS.map((liftId) => {
-          const t1 = programState.t1[liftId]
-          const weight = t1.lastSuccessWeight ?? t1.weight
+          const weight = getMaintenanceWeight(programState.t1[liftId], settings.weightUnit)
           return {
             liftId,
             tier: 'T1' as const,
             weight,
             originalWeight: weight,
-            targetSets: 1,
-            targetReps: 1,
+            targetSets: MAINTENANCE_SETS,
+            targetReps: MAINTENANCE_REPS,
             sets: [{ setNumber: 1, reps: 0, completed: false, isAmrap: false }],
           }
         })
