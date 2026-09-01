@@ -155,10 +155,7 @@ export function Home() {
               Maintenance Day
             </span>
             <span className="text-xs text-zinc-500">
-              {MAINTENANCE_LIFTS.map((id) => {
-                const p = getMaintenancePrescription(state.t1[id], settings.weightUnit, settings.maintenanceOverrides?.[id])
-                return `${LIFTS[id].name} ${p.weight}${p.isOverridden ? ` (auto ${p.autoWeight})` : ''}`
-              }).join(' / ')} {settings.weightUnit} · {MAINTENANCE_SETS}×{MAINTENANCE_REPS}
+              {MAINTENANCE_LIFTS.map((id) => `${LIFTS[id].name} ${getMaintenancePrescription(state.t1[id], settings.weightUnit, settings.maintenanceOverrides?.[id]).weight}`).join(' / ')} {settings.weightUnit} · {MAINTENANCE_SETS}×{MAINTENANCE_REPS}
             </span>
           </Link>
         </div>

@@ -38,18 +38,26 @@ maintenanceOverrides?: Partial<Record<LiftName, MaintenanceOverride>>
 ```
 
 `getMaintenancePrescription` resolves a lift to `{ weight, autoWeight, isOverridden,
-hasDrifted }`. Every surface that shows an overridden weight also shows `autoWeight`, so
-divergence is visible by construction rather than discoverable only in Settings.
+hasDrifted }`.
 
 Staleness is measured as **drift of the computed weight from `autoAtSet`**, not as distance
 between the override and the current computed weight. Past a 10% threshold the override is
 flagged with a one-tap revert.
+
+The computed weight and the drift flag are surfaced in **Settings only**. An earlier
+revision annotated the Home card and Workout screen with the computed weight too; that was
+removed to keep the training surfaces uncluttered.
 
 ## Consequences
 
 - A deliberate offset never nags, however large — only a *changed lifter* raises the flag.
   Measuring override-vs-current-auto instead would warn permanently on an intentional
   offset, and a permanent warning is one users learn to ignore.
+- **Accepted trade-off:** with the computed weight confined to Settings, the drift flag is
+  the sole staleness signal, and it lives on a screen a user may go months without opening.
+  A stale override can therefore persist unseen for a whole cycle. Surfacing the flag —
+  though not the computed weight — on the Home maintenance card would close this without
+  cluttering the training surfaces, if it proves to matter in practice.
 - The threshold is 10% rather than one increment. The computed weight moves on every
   successful T1 session, so a tighter threshold would fire near-weekly and train the user
   to dismiss it.
@@ -74,4 +82,5 @@ flagged with a one-tap revert.
   grows.
 - **No flag, rely on showing the computed value.** Zero extra state. Rejected: a value
   rendered beside a number on every screen becomes invisible with familiarity, which is
-  precisely when a months-old override does its damage.
+  precisely when a months-old override does its damage. This reasoning is what makes the
+  flag load-bearing now that the computed weight appears in Settings alone.

@@ -10,13 +10,13 @@ import { RestTimer } from '../components/workout/RestTimer'
 import { WarmupModal } from '../components/workout/WarmupModal'
 import { Modal } from '../components/ui/Modal'
 import { db } from '../lib/db'
-import { applyWorkoutProgression, getMaintenanceWeight } from '../lib/progression'
+import { applyWorkoutProgression } from '../lib/progression'
 import { buildHistoryMap, detectWeightPR, detectVolumePR, detectStageClearMedal, detectStreakMedal } from '../lib/medals'
 import { getSmallestPlate } from '../lib/plates'
 import { vibrate } from '../lib/haptics'
 import { getLiftSubstitution, getExerciseName } from '../lib/exercises'
 import { useMedalToastStore } from '../stores/medalToastStore'
-import type { Medal, Workout as WorkoutType, LiftName } from '../lib/types'
+import type { Medal, Workout as WorkoutType } from '../lib/types'
 import type { HistoryRecord } from '../lib/medals'
 
 interface MedalChecks {
@@ -63,15 +63,6 @@ export function Workout() {
   const historyRef = useRef<{ workouts: WorkoutType[]; map: Map<string, HistoryRecord> } | null>(null)
 
   const currentExercise = workout?.exercises[currentExerciseIndex] ?? null
-
-  // Maintenance shows the computed weight alongside a manual override
-  const maintenanceAutoWeight =
-    workout?.type === 'MN' && currentExercise && programState
-      ? getMaintenanceWeight(
-          programState.t1[currentExercise.liftId as LiftName],
-          settings.weightUnit
-        )
-      : undefined
 
   const loadHistoryIfNeeded = useCallback(async () => {
     if (historyRef.current) return historyRef.current
@@ -379,7 +370,6 @@ export function Workout() {
       <main className="flex-1 p-4">
         <ExerciseCard
           exercise={currentExercise}
-          autoWeight={maintenanceAutoWeight}
           barWeight={settings.barWeight}
           dumbbellHandleWeight={settings.dumbbellHandleWeight}
           plateInventory={settings.plateInventory}

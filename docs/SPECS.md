@@ -162,13 +162,14 @@ screen (`/workout?mode=maintenance`), stored as `WorkoutType` `'MN'`.
 #### Manual override
 - Settings → Maintenance Day allows pinning an absolute weight per lift; blank means use
   the computed value
-- The computed value is shown alongside the override **everywhere** it is used — Settings,
-  the Home card and the Workout screen — so divergence stays visible
+- The computed value is shown alongside the override in **Settings only**. The Home card
+  and the Workout screen show the effective weight alone, without annotation
 - Stored as `{ weight, autoAtSet }` in `UserSettings.maintenanceOverrides`. `autoAtSet`
   records the computed weight at the moment the override was set
 - Once the computed weight drifts more than 10% from `autoAtSet`, the override is flagged
-  in Settings with a one-tap revert. A deliberate offset never triggers this — only a
-  change in the underlying lift does. See ADR 0002
+  in Settings with a one-tap revert. This flag is the **only** surface that reports
+  staleness. A deliberate offset never triggers it — only a change in the underlying lift
+  does. See ADR 0002
 - `getMaintenancePrescription` resolves a lift to
   `{ weight, autoWeight, isOverridden, hasDrifted }` and is the entry point for all
   surfaces
