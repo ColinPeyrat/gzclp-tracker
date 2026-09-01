@@ -13,6 +13,7 @@ import {
   createInitialLiftState,
   estimate5RM,
   getMaintenanceWeight,
+  getMaintenancePrescription,
   applyT1Reset,
   applyWorkoutProgression,
   backfillLastSuccessWeight,
@@ -1195,5 +1196,68 @@ describe('getMaintenanceWeight', () => {
   it('rounds to the unit increment', () => {
     expect(getMaintenanceWeight(lift({ lastSuccessWeight: 103 }), 'kg') % 2.5).toBe(0)
     expect(getMaintenanceWeight(lift({ lastSuccessWeight: 227 }), 'lbs') % 5).toBe(0)
+  })
+})
+
+describe('getMaintenancePrescription', () => {
+  const lift = (over: Partial<LiftState>): LiftState => ({
+    liftId: 'squat', tier: 'T1', weight: 300, stage: 1, ...over,
+  })
+
+  it('falls through to the computed weight with no override', () => {
+    const p = getMaintenancePrescription(lift({ lastSuccessWeight: 235 }), 'lbs')
+    expect(p).toEqual({ weight: 190, autoWeight: 190, isOverridden: false, hasDrifted: false })
+  })
+
+  it('prefers the override but still reports the computed weight', () => {
+    const p = getMaintenancePrescription(
+      lift({ lastSuccessWeight: 235 }), 'lbs', { weight: 205, autoAtSet: 190 }
+    )
+    expect(p.weight).toBe(205)
+    expect(p.autoWeight).toBe(190)
+    expect(p.isOverridden).toBe(true)
+  })
+
+  it('stays quiet while auto hovers near the baseline', () => {
+    // auto 190 -> 195, under the 10% threshold
+    const p = getMaintenancePrescription(
+      lift({ lastSuccessWeight: 245 }), 'lbs', { weight: 205, autoAtSet: 190 }
+    )
+    expect(p.autoWeight).toBe(195)
+    expect(p.hasDrifted).toBe(false)
+  })
+
+  it('flags once auto drifts past the threshold', () => {
+    // auto 190 -> 240, well past 10%
+    const p = getMaintenancePrescription(
+      lift({ lastSuccessWeight: 300 }), 'lbs', { weight: 205, autoAtSet: 190 }
+    )
+    expect(p.autoWeight).toBe(240)
+    expect(p.hasDrifted).toBe(true)
+  })
+
+  it('never flags a deliberate offset on its own', () => {
+    // Override sits 35% under auto, but auto has not moved
+    const p = getMaintenancePrescription(
+      lift({ lastSuccessWeight: 235 }), 'lbs', { weight: 125, autoAtSet: 190 }
+    )
+    expect(p.weight).toBe(125)
+    expect(p.hasDrifted).toBe(false)
+  })
+
+  it('flags when a stage 3 reset clears lastSuccessWeight and auto collapses', () => {
+    // applyT1Reset drops lastSuccessWeight; auto falls back to the reset weight
+    const p = getMaintenancePrescription(
+      lift({ weight: 200, lastSuccessWeight: undefined }), 'lbs', { weight: 205, autoAtSet: 190 }
+    )
+    expect(p.autoWeight).toBe(160)
+    expect(p.hasDrifted).toBe(true)
+  })
+
+  it('does not divide by zero on a zero baseline', () => {
+    const p = getMaintenancePrescription(
+      lift({ lastSuccessWeight: 235 }), 'lbs', { weight: 205, autoAtSet: 0 }
+    )
+    expect(p.hasDrifted).toBe(false)
   })
 })

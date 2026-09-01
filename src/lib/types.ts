@@ -103,6 +103,14 @@ export interface UserSettings {
   exerciseLibrary?: ExerciseDefinition[]        // Unified library of custom exercises
   liftSubstitutions?: LiftSubstitution[]        // Replaces default lifts
   additionalT3s?: AdditionalT3Assignment[]      // Extra T3s per workout (on top of defaults)
+  maintenanceOverrides?: Partial<Record<LiftName, MaintenanceOverride>>
+}
+
+// Manual maintenance weight, with the computed value at the time it was set so
+// drift can be detected later
+export interface MaintenanceOverride {
+  weight: number
+  autoAtSet: number
 }
 
 export interface ProgramState {

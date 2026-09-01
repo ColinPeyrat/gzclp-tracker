@@ -157,8 +157,21 @@ screen (`/workout?mode=maintenance`), stored as `WorkoutType` `'MN'`.
   The multiplier steps down because a later-stage weight was validated over a shorter rep
   scheme; a flat percentage would make maintenance creep heavier as a lift stalls. See
   ADR 0001.
-- Single source of truth: `getMaintenanceWeight` in `lib/progression.ts`. The home-screen
-  preview and the workout store both call it.
+- Single source of truth: `getMaintenanceWeight` in `lib/progression.ts`.
+
+#### Manual override
+- Settings → Maintenance Day allows pinning an absolute weight per lift; blank means use
+  the computed value
+- The computed value is shown alongside the override **everywhere** it is used — Settings,
+  the Home card and the Workout screen — so divergence stays visible
+- Stored as `{ weight, autoAtSet }` in `UserSettings.maintenanceOverrides`. `autoAtSet`
+  records the computed weight at the moment the override was set
+- Once the computed weight drifts more than 10% from `autoAtSet`, the override is flagged
+  in Settings with a one-tap revert. A deliberate offset never triggers this — only a
+  change in the underlying lift does. See ADR 0002
+- `getMaintenancePrescription` resolves a lift to
+  `{ weight, autoWeight, isOverridden, hasDrifted }` and is the entry point for all
+  surfaces
 
 #### Behaviour
 - Does **not** advance progression — `ProgramState` is untouched on completion

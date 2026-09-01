@@ -15,6 +15,7 @@ interface ExerciseCardProps {
   unit: WeightUnit
   liftSubstitutions?: LiftSubstitution[]
   exerciseLibrary?: ExerciseDefinition[]
+  autoWeight?: number
   onCompleteSet: (setIndex: number, reps: number) => void
   onWeightChange?: (newWeight: number) => void
 }
@@ -27,6 +28,7 @@ export function ExerciseCard({
   unit,
   liftSubstitutions,
   exerciseLibrary,
+  autoWeight,
   onCompleteSet,
   onWeightChange,
 }: ExerciseCardProps) {
@@ -66,6 +68,11 @@ export function ExerciseCard({
         {isTrial && (
           <p className="text-sm text-zinc-500">
             (original: {exercise.originalWeight} {unit})
+          </p>
+        )}
+        {autoWeight !== undefined && autoWeight !== exercise.weight && (
+          <p className="text-sm text-zinc-500">
+            (auto: {autoWeight} {unit})
           </p>
         )}
       </div>

@@ -129,6 +129,24 @@ describe('workoutSessionStore', () => {
       }
     })
 
+    it('honours a manual override from settings', () => {
+      const programState = createMockProgramState()
+      programState.t1.deadlift = {
+        liftId: 'deadlift', tier: 'T1', weight: 300, stage: 1, lastSuccessWeight: 235,
+      }
+      const settings = createMockSettings()
+      settings.maintenanceOverrides = { deadlift: { weight: 205, autoAtSet: 190 } }
+
+      useWorkoutSessionStore.getState().startMaintenanceWorkout(programState, settings)
+
+      const { workout } = useWorkoutSessionStore.getState()
+      const deadlift = workout?.exercises.find((e) => e.liftId === 'deadlift')
+      expect(deadlift?.weight).toBe(205) // override, not the computed 190
+      // Lifts without an override still compute
+      const squat = workout?.exercises.find((e) => e.liftId === 'squat')
+      expect(squat?.weight).toBe(80) // 0.8 x 100
+    })
+
     it('keeps the prescribed load flat as a lift advances through stages', () => {
       // Same lifter deeper into the cycle: lastSuccessWeight climbs, load should not
       const weights = ([1, 2, 3] as const).map((stage, i) => {

@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 import { nanoid } from 'nanoid'
 import type { Workout, ExerciseLog, UserSettings, ProgramState, CompletedWarmupSet } from '../lib/types'
 import { WORKOUTS, MAINTENANCE_LIFTS, MAINTENANCE_SETS, MAINTENANCE_REPS } from '../lib/types'
-import { getStageConfig, getMaintenanceWeight } from '../lib/progression'
+import { getStageConfig, getMaintenancePrescription } from '../lib/progression'
 import { getEffectiveStageConfig, getT3IdsForWorkout, createSetLogs, getLiftSubstitution } from '../lib/exercises'
 
 interface WorkoutSessionState {
@@ -138,7 +138,11 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>()(
         if (get().workout) return
 
         const exercises: ExerciseLog[] = MAINTENANCE_LIFTS.map((liftId) => {
-          const weight = getMaintenanceWeight(programState.t1[liftId], settings.weightUnit)
+          const { weight } = getMaintenancePrescription(
+            programState.t1[liftId],
+            settings.weightUnit,
+            settings.maintenanceOverrides?.[liftId]
+          )
           return {
             liftId,
             tier: 'T1' as const,

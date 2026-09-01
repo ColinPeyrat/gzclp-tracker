@@ -1,4 +1,4 @@
-import type { LiftState, Tier, LiftName, ExerciseLog, WeightUnit } from './types'
+import type { LiftState, Tier, LiftName, ExerciseLog, WeightUnit, MaintenanceOverride } from './types'
 
 interface StageConfig {
   sets: number
@@ -214,6 +214,40 @@ export function getMaintenanceWeight(liftState: LiftState, unit: WeightUnit): nu
   const base = liftState.lastSuccessWeight ?? liftState.weight
   const roundTo = unit === 'kg' ? 2.5 : 5
   return Math.round((base * MAINTENANCE_PERCENTAGE[liftState.stage]) / roundTo) * roundTo
+}
+
+// A manual override is flagged once the computed weight drifts this far from the value
+// it had when the override was set - deliberate offsets stay quiet, a changed lifter does not
+const MAINTENANCE_DRIFT_THRESHOLD = 0.1
+
+export interface MaintenancePrescription {
+  weight: number
+  autoWeight: number
+  isOverridden: boolean
+  hasDrifted: boolean
+}
+
+export function getMaintenancePrescription(
+  liftState: LiftState,
+  unit: WeightUnit,
+  override?: MaintenanceOverride
+): MaintenancePrescription {
+  const autoWeight = getMaintenanceWeight(liftState, unit)
+
+  if (!override) {
+    return { weight: autoWeight, autoWeight, isOverridden: false, hasDrifted: false }
+  }
+
+  const drift = override.autoAtSet > 0
+    ? Math.abs(autoWeight - override.autoAtSet) / override.autoAtSet
+    : 0
+
+  return {
+    weight: override.weight,
+    autoWeight,
+    isOverridden: true,
+    hasDrifted: drift > MAINTENANCE_DRIFT_THRESHOLD,
+  }
 }
 
 export function applyT1Reset(currentState: LiftState, new5RM: number, unit: WeightUnit): LiftState {

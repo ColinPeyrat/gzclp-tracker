@@ -6,7 +6,8 @@ import { db, DEFAULT_EXERCISE_LIBRARY } from '../lib/db'
 import { UNIT_CONFIG, getDefaultPlateInventory } from '../lib/units'
 import { BottomNav } from '../components/ui/BottomNav'
 import { Modal } from '../components/ui/Modal'
-import { LIFTS, T3_EXERCISES, WORKOUTS, WORKOUT_ORDER, type ExerciseDefinition, type LiftSubstitution, type RotatingWorkoutType } from '../lib/types'
+import { LIFTS, T3_EXERCISES, WORKOUTS, WORKOUT_ORDER, MAINTENANCE_LIFTS, MAINTENANCE_SETS, MAINTENANCE_REPS, type ExerciseDefinition, type LiftSubstitution, type RotatingWorkoutType, type LiftName } from '../lib/types'
+import { getMaintenanceWeight, getMaintenancePrescription } from '../lib/progression'
 import { getExerciseDisplayName } from '../lib/exercises'
 
 const REPLACEABLE_LIFTS = [
@@ -58,6 +59,24 @@ export function Settings() {
     if (!isNaN(num) && num >= 0) {
       update({ dumbbellHandleWeight: num })
     }
+  }
+
+  const handleMaintenanceOverrideChange = (liftId: LiftName, value: string) => {
+    if (!programState) return
+    const overrides = { ...settings.maintenanceOverrides }
+    const parsed = parseFloat(value)
+
+    if (!value.trim() || isNaN(parsed) || parsed <= 0) {
+      delete overrides[liftId]
+    } else {
+      // Snapshot the computed weight so later drift can be detected
+      overrides[liftId] = {
+        weight: parsed,
+        autoAtSet: getMaintenanceWeight(programState.t1[liftId], settings.weightUnit),
+      }
+    }
+
+    update({ maintenanceOverrides: overrides })
   }
 
   const handleRestTimerChange = (tier: 't1Seconds' | 't2Seconds' | 't3Seconds', value: string) => {
@@ -572,6 +591,58 @@ export function Settings() {
             <p className="text-xs text-zinc-500">
               Default T3s always appear. To replace them, use Lift Substitutions.
             </p>
+          </div>
+        </section>
+
+        {/* Rest Timers */}
+        {/* Maintenance */}
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-zinc-400">Maintenance Day</h2>
+          <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
+            <p className="text-xs text-zinc-500">
+              {MAINTENANCE_SETS}×{MAINTENANCE_REPS} per lift. Weight is computed from your last
+              validated T1 weight — leave blank to use it, or enter your own.
+            </p>
+            {programState &&
+              MAINTENANCE_LIFTS.map((liftId) => {
+                const prescription = getMaintenancePrescription(
+                  programState.t1[liftId],
+                  settings.weightUnit,
+                  settings.maintenanceOverrides?.[liftId]
+                )
+                return (
+                  <div key={liftId} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">{LIFTS[liftId].name}</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={settings.maintenanceOverrides?.[liftId]?.weight ?? ''}
+                          onChange={(e) => handleMaintenanceOverrideChange(liftId, e.target.value)}
+                          placeholder={String(prescription.autoWeight)}
+                          className="w-20 rounded border border-zinc-600 bg-zinc-900 px-3 py-2 text-right focus:border-blue-500 focus:outline-none"
+                          step={settings.weightUnit === 'kg' ? 2.5 : 5}
+                          min={0}
+                        />
+                        <span className="w-6 text-sm text-zinc-400">{settings.weightUnit}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 pl-1">
+                      <span className="text-xs text-zinc-500">
+                        auto {prescription.autoWeight} {settings.weightUnit}
+                      </span>
+                      {prescription.hasDrifted && (
+                        <button
+                          onClick={() => handleMaintenanceOverrideChange(liftId, '')}
+                          className="text-xs text-amber-400 hover:text-amber-300"
+                        >
+                          ⚠ auto moved since you set this — use {prescription.autoWeight}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
           </div>
         </section>
 
