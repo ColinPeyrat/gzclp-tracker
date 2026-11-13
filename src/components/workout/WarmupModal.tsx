@@ -14,6 +14,7 @@ interface WarmupModalProps {
   unit: WeightUnit
   completedWarmupSets?: CompletedWarmupSet[]
   onComplete: (completedSets?: CompletedWarmupSet[]) => void
+  doneLabel?: string
 }
 
 export function WarmupModal({
@@ -24,6 +25,7 @@ export function WarmupModal({
   unit,
   completedWarmupSets,
   onComplete,
+  doneLabel = 'Start Workout',
 }: WarmupModalProps) {
   const [sets, setSets] = useState<WarmupSet[]>(() => {
     const calculated = calculateWarmupSets(workWeight, barWeight, plateInventory, unit)
@@ -106,7 +108,7 @@ export function WarmupModal({
                 : 'bg-zinc-700 hover:bg-zinc-600'
             }`}
           >
-            {allCompleted ? 'Start Workout' : 'Close'}
+            {allCompleted ? doneLabel : 'Close'}
           </button>
         </div>
       </div>
