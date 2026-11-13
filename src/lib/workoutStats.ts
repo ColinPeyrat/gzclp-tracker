@@ -57,7 +57,8 @@ export function calculateWorkoutStats(
       if (set.completed && set.reps > 0) {
         completedSets++
         totalReps += set.reps
-        workingVolume += effectiveWeight * set.reps
+        const setWeight = set.weight === undefined ? effectiveWeight : isDumbbell ? set.weight * 2 : set.weight
+        workingVolume += setWeight * set.reps
       }
     }
 

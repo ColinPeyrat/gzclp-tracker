@@ -6,6 +6,8 @@ import { Workout } from './pages/Workout'
 import { History } from './pages/History'
 import { Progress } from './pages/Progress'
 import { Settings } from './pages/Settings'
+import { TestDay } from './pages/TestDay'
+import { ReturnSummary } from './pages/ReturnSummary'
 import { OfflineBanner } from './components/ui/OfflineBanner'
 import { ActiveWorkoutToaster } from './components/ui/ActiveWorkoutToaster'
 import { MedalToast } from './components/ui/MedalToast'
@@ -39,6 +41,8 @@ const router = createBrowserRouter([
       { path: '/history', element: <History /> },
       { path: '/progress', element: <Progress /> },
       { path: '/settings', element: <Settings /> },
+      { path: '/test-day', element: <TestDay /> },
+      { path: '/return', element: <ReturnSummary /> },
     ],
   },
 ])

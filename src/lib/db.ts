@@ -244,6 +244,7 @@ interface LegacyProgramState {
   nextWorkoutType: 'A1' | 'A2' | 'B1' | 'B2'
   workoutCount: number
   lastSuccessWeightBackfilled?: boolean
+  returnToProgression?: ProgramState['returnToProgression']
 }
 
 function migrateLiftState(lift: LegacyLiftState): LegacyLiftState {
@@ -301,6 +302,7 @@ export async function getProgramState(): Promise<ProgramState | undefined> {
     nextWorkoutType: stored.nextWorkoutType,
     workoutCount: stored.workoutCount,
     lastSuccessWeightBackfilled: stored.lastSuccessWeightBackfilled,
+    returnToProgression: stored.returnToProgression,
   }
 
   // One-time backfill of lastSuccessWeight from workout history

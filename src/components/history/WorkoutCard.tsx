@@ -1,6 +1,6 @@
 import { ChevronRight, Trophy } from 'lucide-react'
 import type { Workout, WeightUnit, LiftSubstitution, ExerciseDefinition, RotatingWorkoutType } from '../../lib/types'
-import { WORKOUTS } from '../../lib/types'
+import { WORKOUTS, getWorkoutLabel } from '../../lib/types'
 import { formatWorkoutDate } from '../../hooks/useWorkoutHistory'
 import { getExerciseName } from '../../lib/exercises'
 import { getLiftStatus, getT3Labels, type LiftStatus } from '../../lib/workoutStatus'
@@ -30,13 +30,14 @@ function StatusIndicator({ status, label }: { status: LiftStatus; label: string 
 
 export function WorkoutCard({ workout, unit, liftSubstitutions, exerciseLibrary, onClick }: WorkoutCardProps) {
   const isMaintenance = workout.type === 'MN'
-  const workoutDef = isMaintenance ? null : WORKOUTS[workout.type as RotatingWorkoutType]
+  const isTestDay = workout.type === 'TD'
+  const workoutDef = isMaintenance || isTestDay ? null : WORKOUTS[workout.type as RotatingWorkoutType]
   const t1Exercise = workout.exercises.find((e) => e.tier === 'T1')
-  const t1Name = isMaintenance
-    ? 'Heavy Singles'
+  const t1Name = isMaintenance || isTestDay
+    ? ''
     : getExerciseName(workoutDef!.t1, 'T1', liftSubstitutions, exerciseLibrary)
-  const t2Exercise = isMaintenance ? null : workout.exercises.find((e) => e.tier === 'T2')
-  const t3Exercises = isMaintenance ? [] : workout.exercises.filter((e) => e.tier === 'T3')
+  const t2Exercise = isMaintenance || isTestDay ? null : workout.exercises.find((e) => e.tier === 'T2')
+  const t3Exercises = isMaintenance || isTestDay ? [] : workout.exercises.filter((e) => e.tier === 'T3')
 
   const t1Status = t1Exercise ? getLiftStatus(t1Exercise) : 'neutral'
   const t2Status = t2Exercise ? getLiftStatus(t2Exercise) : 'neutral'
@@ -49,7 +50,7 @@ export function WorkoutCard({ workout, unit, liftSubstitutions, exerciseLibrary,
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className="font-bold">{isMaintenance ? 'Maintenance' : workout.type}</span>
+            <span className="font-bold">{getWorkoutLabel(workout.type)}</span>
             <span className="text-sm text-zinc-400">
               {formatWorkoutDate(workout.date)}
             </span>
@@ -60,9 +61,15 @@ export function WorkoutCard({ workout, unit, liftSubstitutions, exerciseLibrary,
               </span>
             )}
           </div>
-          {isMaintenance ? (
+          {isTestDay ? (
             <div className="mt-1 text-sm text-zinc-400">
-              Heavy singles — {workout.exercises.map((ex) =>
+              5RM — {workout.exercises.map((ex) =>
+                `${getExerciseName(ex.liftId, ex.tier, liftSubstitutions, exerciseLibrary)} ${ex.fiveRepMax ?? '—'}`
+              ).join(' / ')} {unit}
+            </div>
+          ) : isMaintenance ? (
+            <div className="mt-1 text-sm text-zinc-400">
+              {workout.exercises.map((ex) =>
                 `${getExerciseName(ex.liftId, ex.tier, liftSubstitutions, exerciseLibrary)} ${ex.weight}`
               ).join(' / ')} {unit}
             </div>

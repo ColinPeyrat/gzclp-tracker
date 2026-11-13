@@ -21,6 +21,7 @@ function extractLiftData(workouts: Workout[], liftId: LiftName): LiftDataPoint[]
   const dataPoints: LiftDataPoint[] = []
 
   for (const workout of workouts) {
+    if (workout.type === 'TD') continue
     const t1Exercise = workout.exercises.find(
       (ex) => ex.liftId === liftId && ex.tier === 'T1'
     )

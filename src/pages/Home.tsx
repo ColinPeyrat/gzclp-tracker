@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Dumbbell, Play, Bug, Settings, Shield } from 'lucide-react'
+import { Dumbbell, Play, Bug, Settings, Shield, X } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '../lib/db'
+import {
+  startReturnToProgression,
+  cancelReturnToProgression,
+  getLastProgramActivityDate,
+  isReturnNudgeDue,
+} from '../lib/returnToProgression'
+import { ReturnToProgressionCard } from '../components/home/ReturnToProgressionCard'
+import { useTestDayStore } from '../stores/testDayStore'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { WORKOUTS, WORKOUT_ORDER, MAINTENANCE_LIFTS, MAINTENANCE_SETS, MAINTENANCE_REPS, LIFTS, getUpcomingWorkoutTypes, type RotatingWorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit, type LiftSubstitution, type ExerciseDefinition } from '../lib/types'
@@ -48,13 +58,16 @@ export function Home() {
   const { settings, loaded: settingsLoaded, load: loadSettings } = useSettingsStore()
   const [manual5RM, setManual5RM] = useState('')
   const [showDebugModal, setShowDebugModal] = useState(false)
+  const [nudgeDismissed, setNudgeDismissed] = useState(false)
+  const lastActivityDate = useLiveQuery(async () => getLastProgramActivityDate(await db.workouts.toArray()), [])
 
   useEffect(() => {
     if (!programLoaded) loadProgram()
     if (!settingsLoaded) loadSettings()
   }, [programLoaded, settingsLoaded, loadProgram, loadSettings])
 
-  const currentPending = getPending5RMInfo(state, settings.weightUnit, settings.liftSubstitutions, settings.exerciseLibrary)
+  // A Test Day supersedes any stage-3 retest
+  const currentPending = state?.returnToProgression ? null : getPending5RMInfo(state, settings.weightUnit, settings.liftSubstitutions, settings.exerciseLibrary)
 
   const handleApply5RM = async (new5RM: number) => {
     if (!state || !currentPending) return
@@ -65,6 +78,17 @@ export function Home() {
     }
     await saveProgram(newProgramState)
     setManual5RM('')
+  }
+
+  const handleStartReturn = async () => {
+    if (!state) return
+    await saveProgram(startReturnToProgression(state))
+  }
+
+  const handleCancelReturn = async () => {
+    if (!state) return
+    useTestDayStore.getState().reset()
+    await saveProgram(cancelReturnToProgression(state))
   }
 
   const handleSetNextWorkout = async (workoutType: RotatingWorkoutType) => {
@@ -100,6 +124,8 @@ export function Home() {
   }
 
   const upcoming = getUpcomingWorkoutTypes(state.nextWorkoutType)
+  const isReturning = !!state.returnToProgression
+  const showNudge = !isReturning && !nudgeDismissed && isReturnNudgeDue(lastActivityDate ?? null)
 
   return (
     <div className="flex min-h-screen flex-col pb-(--nav-height)">
@@ -123,29 +149,58 @@ export function Home() {
       </header>
 
       <main className="flex-1 p-4">
-        <div className="mb-6">
-          <p className="text-sm text-zinc-400">Next Workout</p>
-          <h2 className="text-2xl font-bold">{state.nextWorkoutType}</h2>
-          <p className="text-zinc-400">Workout #{state.workoutCount + 1}</p>
-        </div>
+        {showNudge && (
+          <div className="mb-6 rounded-lg border border-blue-500/30 bg-blue-950/20 p-4">
+            <div className="mb-2 flex items-start justify-between gap-2">
+              <p className="text-sm">
+                No program workout in over 3 weeks. Coming back from a break? Test a fresh 5RM
+                rather than resuming at your old weights.
+              </p>
+              <button onClick={() => setNudgeDismissed(true)} className="text-zinc-500 hover:text-white" aria-label="Dismiss">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <button
+              onClick={handleStartReturn}
+              className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium hover:bg-blue-500"
+            >
+              Return to Progression
+            </button>
+          </div>
+        )}
 
-        <div className="mb-6">
-          <WorkoutPreviewCard
-            workoutType={upcoming[0]}
-            state={state}
-            settings={settings}
-            isNext={true}
-          />
-        </div>
+        {isReturning ? (
+          <ReturnToProgressionCard state={state} settings={settings} onCancel={handleCancelReturn} />
+        ) : (
+          <>
+            <div className="mb-6">
+              <p className="text-sm text-zinc-400">Next Workout</p>
+              <h2 className="text-2xl font-bold">{state.nextWorkoutType}</h2>
+              <p className="text-zinc-400">Workout #{state.workoutCount + 1}</p>
+            </div>
 
-        <div className="mb-8 space-y-3">
-          <Link
-            to="/workout"
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 font-medium text-white hover:bg-blue-500"
-          >
-            <Play className="h-5 w-5" />
-            Start Workout
-          </Link>
+            <div className="mb-6">
+              <WorkoutPreviewCard
+                workoutType={upcoming[0]}
+                state={state}
+                settings={settings}
+                isNext={true}
+              />
+            </div>
+
+            <div className="mb-3">
+              <Link
+                to="/workout"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 font-medium text-white hover:bg-blue-500"
+              >
+                <Play className="h-5 w-5" />
+                Start Workout
+              </Link>
+            </div>
+          </>
+        )}
+
+        <div className="mb-8">
           <Link
             to="/workout?mode=maintenance"
             className="flex w-full flex-col items-center gap-1 rounded-lg border border-zinc-700 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
@@ -160,20 +215,22 @@ export function Home() {
           </Link>
         </div>
 
-        <div>
-          <h3 className="mb-3 text-sm font-medium text-zinc-400">Upcoming</h3>
-          <div className="space-y-3">
-            {upcoming.slice(1).map((workoutType) => (
-              <WorkoutPreviewCard
-                key={workoutType}
-                workoutType={workoutType}
-                state={state}
-                settings={settings}
-                isNext={false}
-              />
-            ))}
+        {!isReturning && (
+          <div>
+            <h3 className="mb-3 text-sm font-medium text-zinc-400">Upcoming</h3>
+            <div className="space-y-3">
+              {upcoming.slice(1).map((workoutType) => (
+                <WorkoutPreviewCard
+                  key={workoutType}
+                  workoutType={workoutType}
+                  state={state}
+                  settings={settings}
+                  isNext={false}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </main>
 
       {currentPending && (
@@ -187,20 +244,20 @@ export function Home() {
 
           <div className="mb-4 space-y-3">
             {currentPending.bestSetReps > 0 && (
-              <>
-                <button
-                  onClick={() => handleApply5RM(currentPending.estimated5RM)}
-                  className="w-full rounded-lg bg-blue-600 py-3 font-medium hover:bg-blue-500"
-                >
-                  Use Estimate: {currentPending.estimated5RM} {settings.weightUnit}
-                </button>
+          <>
+                    <button
+                      onClick={() => handleApply5RM(currentPending.estimated5RM)}
+                      className="w-full rounded-lg bg-blue-600 py-3 font-medium hover:bg-blue-500"
+                    >
+                      Use Estimate: {currentPending.estimated5RM} {settings.weightUnit}
+                    </button>
 
-                <div className="flex items-center gap-2 text-sm text-zinc-400">
-                  <div className="h-px flex-1 bg-zinc-700" />
-                  <span>or enter manually</span>
-                  <div className="h-px flex-1 bg-zinc-700" />
-                </div>
-              </>
+                    <div className="flex items-center gap-2 text-sm text-zinc-400">
+                      <div className="h-px flex-1 bg-zinc-700" />
+                      <span>or enter manually</span>
+                      <div className="h-px flex-1 bg-zinc-700" />
+                    </div>
+          </>
             )}
 
             <div className="flex gap-2">
