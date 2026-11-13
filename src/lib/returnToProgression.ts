@@ -32,9 +32,14 @@ function roundWeight(weight: number, unit: WeightUnit): number {
   return Math.round(weight / step) * step
 }
 
+// Lower-body lift before bench, deadlift last: a ramp of sets of five leaves legs and back
+// too tired for a fair deadlift after squatting, so the deadlift is the one to move to
+// another Test Day
+const TEST_ORDER: LiftName[] = ['squat', 'bench', 'deadlift', 'ohp']
+
 // Substitutes progressing like a T3 have no 5RM to test
 export function getStageLadderLifts(settings: Pick<UserSettings, 'liftSubstitutions'>): LiftName[] {
-  return ALL_LIFTS.filter((id) => !getLiftSubstitution(id, settings.liftSubstitutions)?.forceT3Progression)
+  return TEST_ORDER.filter((id) => !getLiftSubstitution(id, settings.liftSubstitutions)?.forceT3Progression)
 }
 
 export function getT3StyleLifts(settings: Pick<UserSettings, 'liftSubstitutions'>): LiftName[] {
@@ -44,6 +49,10 @@ export function getT3StyleLifts(settings: Pick<UserSettings, 'liftSubstitutions'
 export function getLiftsToTest(state: ProgramState, settings: Pick<UserSettings, 'liftSubstitutions'>): LiftName[] {
   const results = state.returnToProgression?.results ?? {}
   return getStageLadderLifts(settings).filter((id) => results[id] === undefined)
+}
+
+export function shouldSplitSquatAndDeadlift(liftsToTest: LiftName[]): boolean {
+  return liftsToTest.includes('squat') && liftsToTest.includes('deadlift')
 }
 
 export function getTestStep(liftId: LiftName, unit: WeightUnit): number {

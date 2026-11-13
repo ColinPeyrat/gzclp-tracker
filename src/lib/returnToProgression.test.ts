@@ -3,6 +3,7 @@ import {
   getTestProgress,
   getLiftsToTest,
   getStageLadderLifts,
+  shouldSplitSquatAndDeadlift,
   getOpeningWeight,
   getTestStep,
   proposeRestart,
@@ -89,6 +90,14 @@ describe('lifts to test', () => {
   it('drops lifts once they have a result', () => {
     const state = recordTestResults(startReturnToProgression(makeState()), { squat: 95, deadlift: 120 })
     expect(getLiftsToTest(state, kg)).toEqual(['bench', 'ohp'])
+  })
+})
+
+describe('shouldSplitSquatAndDeadlift', () => {
+  it('suggests separate days only while both are untested', () => {
+    expect(shouldSplitSquatAndDeadlift(['squat', 'bench', 'deadlift'])).toBe(true)
+    expect(shouldSplitSquatAndDeadlift(['bench', 'deadlift'])).toBe(false)
+    expect(shouldSplitSquatAndDeadlift(['squat', 'bench'])).toBe(false)
   })
 })
 

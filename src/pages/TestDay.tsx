@@ -21,6 +21,7 @@ import {
   getTestProgress,
   recordTestResults,
   detect5RMPRs,
+  shouldSplitSquatAndDeadlift,
 } from '../lib/returnToProgression'
 import type { ExerciseLog, LiftName, WeightUnit, Workout } from '../lib/types'
 
@@ -28,7 +29,7 @@ export function TestDay() {
   const navigate = useNavigate()
   const { state, loaded: programLoaded, load: loadProgram, save: saveProgram } = useProgramStore()
   const { settings, loaded: settingsLoaded, load: loadSettings } = useSettingsStore()
-  const { attempts, begin, logAttempt, undoAttempt, reset } = useTestDayStore()
+  const { attempts, warmups, begin, logAttempt, undoAttempt, setWarmups, reset } = useTestDayStore()
   const restTimer = useRestTimer()
   const [warmupLift, setWarmupLift] = useState<LiftName | null>(null)
   const [showFinishModal, setShowFinishModal] = useState(false)
@@ -64,10 +65,13 @@ export function TestDay() {
       opening,
       step,
       attempts: liftAttempts,
+      warmupsDone: warmups[liftId]?.length ?? 0,
       progress: getTestProgress(opening, step, liftAttempts),
     }
   })
 
+  const liftName = (id: LiftName) => lifts.find((l) => l.liftId === id)?.name ?? id
+  const showSplitHint = shouldSplitSquatAndDeadlift(lifts.map((l) => l.liftId))
   const unconcluded = lifts.filter((l) => l.attempts.length > 0 && !l.progress.done)
   const hasAnyAttempt = lifts.some((l) => l.attempts.length > 0)
 
@@ -99,6 +103,7 @@ export function TestDay() {
           weight: a.weight,
         })),
         fiveRepMax,
+        ...(warmups[lift.liftId]?.length ? { completedWarmupSets: warmups[lift.liftId] } : {}),
       })
     }
 
@@ -139,6 +144,12 @@ export function TestDay() {
       </header>
 
       <main className="flex-1 space-y-4 p-4">
+        {showSplitHint && (
+          <p className="rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-sm text-amber-300">
+            {liftName('squat')} and {liftName('deadlift')} tire the same muscles. Test them on separate
+            days for a fair {liftName('deadlift')} result.
+          </p>
+        )}
         {lifts.map((lift) => (
           <TestLiftCard
             key={lift.liftId}
@@ -184,7 +195,12 @@ export function TestDay() {
           barWeight={settings.barWeight}
           plateInventory={settings.plateInventory}
           unit={unit}
-          onComplete={() => setWarmupLift(null)}
+          completedWarmupSets={warmups[warmup.liftId]}
+          doneLabel="Start test"
+          onComplete={(sets) => {
+            setWarmups(warmup.liftId, sets ?? [])
+            setWarmupLift(null)
+          }}
         />
       )}
 
@@ -219,6 +235,7 @@ interface TestLiftCardProps {
   opening: number
   step: number
   attempts: { weight: number; reps: number }[]
+  warmupsDone: number
   progress: ReturnType<typeof getTestProgress>
   unit: WeightUnit
   barWeight: number
@@ -235,6 +252,7 @@ function TestLiftCard({
   opening,
   step,
   attempts,
+  warmupsDone,
   progress,
   unit,
   barWeight,
@@ -254,11 +272,13 @@ function TestLiftCard({
             Opens at {opening} {unit} · +{step} {unit} per set
           </p>
         </div>
-        {attempts.length === 0 && (
-          <button onClick={onWarmup} className="p-1 text-zinc-400 hover:text-white" title="Warmup sets">
-            <Dumbbell className="h-5 w-5" />
-          </button>
-        )}
+        <button
+          onClick={onWarmup}
+          className="flex items-center gap-1.5 rounded-lg bg-zinc-700 px-3 py-1.5 text-xs font-medium hover:bg-zinc-600"
+        >
+          <Dumbbell className="h-3.5 w-3.5" />
+          Warmup{warmupsDone > 0 && <Check className="h-3.5 w-3.5 text-green-400" />}
+        </button>
       </div>
 
       {attempts.length > 0 && (
