@@ -1,4 +1,8 @@
 import { useState } from 'react'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { TierBadge } from '@/components/ui/tier-badge'
 import { ArrowLeft, Check, X, Minus, TrendingUp, TrendingDown, BarChart2, Trophy, Flame, Zap, Target } from 'lucide-react'
 import type { Workout, WeightUnit, Tier, ExerciseLog, LiftName, LiftSubstitution, ExerciseDefinition, Medal, MedalType } from '../../lib/types'
 import { WorkoutStatsModal } from './WorkoutStatsModal'
@@ -6,7 +10,7 @@ import { LIFTS, getWorkoutLabel } from '../../lib/types'
 import { getTotalReps, getTargetTotalReps, didHitRepTarget, getStageConfig } from '../../lib/progression'
 import { getIncrement, UNIT_CONFIG } from '../../lib/units'
 import { getSmallestPlate } from '../../lib/plates'
-import { getExerciseName, getLiftSubstitution, TIER_COLORS, getStageFromConfig } from '../../lib/exercises'
+import { getExerciseName, getLiftSubstitution, getStageFromConfig } from '../../lib/exercises'
 
 interface WorkoutDetailProps {
   workout: Workout
@@ -41,11 +45,10 @@ function ExerciseResult({ exercise, tier, unit, plateInventory, liftSubstitution
   const targetTotal = getTargetTotalReps(exercise)
   const success = didHitRepTarget(exercise)
 
-  // Check if this exercise uses T3 progression (either T3 tier or forceT3Progression)
+  // forceT3Progression substitutions progress like T3 regardless of tier
   const liftSubstitution = getLiftSubstitution(exercise.liftId, liftSubstitutions)
   const usesT3Progression = tier === 'T3' || liftSubstitution?.forceT3Progression
 
-  // T3 progression: AMRAP >= 25 for weight increase
   if (usesT3Progression) {
     const amrapSet = exercise.sets.find((s) => s.isAmrap)
     const amrapReps = amrapSet?.reps ?? 0
@@ -54,17 +57,20 @@ function ExerciseResult({ exercise, tier, unit, plateInventory, liftSubstitution
     const newWeight = exercise.weight + t3Increment
 
     return (
-      <div className={`mt-3 rounded px-3 py-2 text-sm ${shouldIncrease ? 'bg-green-900/30 text-green-400' : 'bg-zinc-700 text-zinc-300'}`}>
-        <div className="flex items-center justify-between">
-          <span>AMRAP: {amrapReps} reps</span>
-          {shouldIncrease ? (
-            <span className="flex items-center gap-1">
-              <TrendingUp className="h-4 w-4" /> Next: {newWeight} {unit}
-            </span>
-          ) : (
-            <span>25 reps needed for increase</span>
-          )}
-        </div>
+      <div
+        className={cn(
+          'flex items-center justify-between rounded-md px-3 py-2 text-sm tabular-nums',
+          shouldIncrease ? 'bg-success/10 text-success' : 'bg-secondary text-muted-foreground'
+        )}
+      >
+        <span>AMRAP {amrapReps} reps</span>
+        {shouldIncrease ? (
+          <span className="flex items-center gap-1.5">
+            <TrendingUp className="size-4" /> Next {newWeight} {unit}
+          </span>
+        ) : (
+          <span>25 reps to increase</span>
+        )}
       </div>
     )
   }
@@ -72,7 +78,6 @@ function ExerciseResult({ exercise, tier, unit, plateInventory, liftSubstitution
   const currentStage = getStageFromConfig(exercise)
   const nextStageLabel = getNextStageLabel(tier, currentStage)
 
-  // Calculate new weight for success case
   const liftId = exercise.liftId as LiftName
   const lift = LIFTS[liftId]
   const tierForIncrement = tier as 'T1' | 'T2'
@@ -80,21 +85,24 @@ function ExerciseResult({ exercise, tier, unit, plateInventory, liftSubstitution
   const newWeight = exercise.weight + increment
 
   return (
-    <div className={`mt-3 rounded px-3 py-2 text-sm ${success ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-      <div className="flex items-center justify-between">
-        <span>
-          {totalReps} / {targetTotal} reps
+    <div
+      className={cn(
+        'flex items-center justify-between rounded-md px-3 py-2 text-sm tabular-nums',
+        success ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
+      )}
+    >
+      <span>
+        {totalReps} / {targetTotal} reps
+      </span>
+      {success ? (
+        <span className="flex items-center gap-1.5">
+          <TrendingUp className="size-4" /> Next {newWeight} {unit}
         </span>
-        {success ? (
-          <span className="flex items-center gap-1">
-            <TrendingUp className="h-4 w-4" /> Next: {newWeight} {unit}
-          </span>
-        ) : (
-          <span className="flex items-center gap-1">
-            <TrendingDown className="h-4 w-4" /> {nextStageLabel}
-          </span>
-        )}
-      </div>
+      ) : (
+        <span className="flex items-center gap-1.5">
+          <TrendingDown className="size-4" /> <span className="font-mono">{nextStageLabel}</span>
+        </span>
+      )}
     </div>
   )
 }
@@ -124,28 +132,38 @@ function MedalsSection({ medals, unit, liftSubstitutions, exerciseLibrary }: {
   exerciseLibrary?: ExerciseDefinition[]
 }) {
   return (
-    <div className="rounded-lg border border-amber-500/20 bg-amber-950/20 p-4">
-      <h3 className="mb-2 text-sm font-medium text-amber-400">Achievements</h3>
-      <div className="space-y-1.5">
+    <section className="space-y-3">
+      <h2 className="px-1 text-sm text-muted-foreground">Achievements</h2>
+      <ul className="divide-y divide-border rounded-lg bg-card">
         {medals.map((medal, i) => {
           const Icon = MEDAL_ICONS[medal.type]
           const label = medal.type === 'streak' ? `${medal.value} Workouts` : MEDAL_LABELS[medal.type]
           const liftName = medal.liftId
             ? getExerciseName(medal.liftId, medal.tier ?? 'T1', liftSubstitutions, exerciseLibrary)
             : null
+          const showValue = medal.type === 'weight-pr' || medal.type === 'stage-clear' || medal.type === 'volume-pr' || medal.type === '5rm-pr'
           return (
-            <div key={i} className="flex items-center gap-2 text-sm">
-              <Icon className="h-4 w-4 shrink-0 text-amber-400" />
-              <span className="text-amber-300">{label}</span>
-              {liftName && <span className="text-zinc-400">{liftName}{medal.tier ? ` (${medal.tier})` : ''}</span>}
-              {(medal.type === 'weight-pr' || medal.type === 'stage-clear' || medal.type === 'volume-pr' || medal.type === '5rm-pr') && (
-                <span className="text-zinc-500">{medal.value} {unit}</span>
+            <li key={i} className="flex items-center gap-3 px-4 py-3 text-sm">
+              <Icon className="size-4 shrink-0 text-warning" />
+              <div className="min-w-0 flex-1">
+                <div className="font-medium">{label}</div>
+                {liftName && (
+                  <div className="truncate text-xs text-muted-foreground">
+                    {liftName}{medal.tier ? ` · ${medal.tier}` : ''}
+                  </div>
+                )}
+              </div>
+              {showValue && (
+                <span className="tabular-nums">
+                  <span className="font-semibold">{medal.value}</span>
+                  <span className="ml-1 text-xs text-muted-foreground">{unit}</span>
+                </span>
               )}
-            </div>
+            </li>
           )
         })}
-      </div>
-    </div>
+      </ul>
+    </section>
   )
 }
 
@@ -166,25 +184,26 @@ export function WorkoutDetail({ workout, unit, barWeight, plateInventory, liftSu
   })
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b border-zinc-800 p-4">
-        <div className="flex items-center gap-3">
-          <button onClick={onBack} className="p-1 text-zinc-400 hover:text-white">
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div className="flex-1">
-            <h1 className="font-bold">{getWorkoutLabel(workout.type)}</h1>
-            <p className="text-xs text-zinc-400">
-              {formattedDate} at {formattedTime}
-            </p>
-          </div>
-          <button
-            onClick={() => setShowStats(true)}
-            className="rounded p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"
-          >
-            <BarChart2 className="h-5 w-5" />
-          </button>
+    <div className="mx-auto flex min-h-screen max-w-md flex-col pb-8">
+      <header className="flex items-center gap-2 px-3 pt-5 pb-4">
+        <Button variant="ghost" size="icon" onClick={onBack} aria-label="Back">
+          <ArrowLeft />
+        </Button>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-semibold tracking-tight">{getWorkoutLabel(workout.type)}</h1>
+          <p className="truncate text-xs text-muted-foreground">
+            {formattedDate} · {formattedTime}
+          </p>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground"
+          onClick={() => setShowStats(true)}
+          aria-label="Workout stats"
+        >
+          <BarChart2 />
+        </Button>
       </header>
 
       {showStats && (
@@ -199,91 +218,94 @@ export function WorkoutDetail({ workout, unit, barWeight, plateInventory, liftSu
         />
       )}
 
-      <main className="flex-1 space-y-4 p-4">
+      <main className="flex-1 space-y-5 px-4">
         {workout.medals && workout.medals.length > 0 && (
           <MedalsSection medals={workout.medals} unit={unit} liftSubstitutions={liftSubstitutions} exerciseLibrary={exerciseLibrary} />
         )}
         {workout.exercises.map((exercise, i) => (
-          <div key={i} className="rounded-lg bg-zinc-800 p-4">
-            <div className="mb-1 flex items-center justify-between">
-              <div>
-                <span className={`text-xs font-medium ${TIER_COLORS[exercise.tier]}`}>
-                  {exercise.tier}
-                </span>
-                <h3 className="font-medium">
-                  {getExerciseName(exercise.liftId, exercise.tier, liftSubstitutions, exerciseLibrary)}
-                </h3>
-              </div>
-              <div className="text-right">
-                {isTestDay ? (
-                  <span className="text-zinc-400">
-                    {exercise.fiveRepMax !== undefined ? `5RM ${exercise.fiveRepMax} ${unit}` : 'Not concluded'}
-                  </span>
-                ) : (
-                  <>
-                    <span className="text-zinc-400">
-                      {exercise.weight} {unit}
-                    </span>
-                    <div className="text-xs text-zinc-500">
+          <Card key={i}>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-3">
+                <TierBadge tier={exercise.tier} />
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate font-medium">
+                    {getExerciseName(exercise.liftId, exercise.tier, liftSubstitutions, exerciseLibrary)}
+                  </h3>
+                  {!isTestDay && (
+                    <div className="font-mono text-xs text-muted-foreground">
                       {exercise.targetSets}×{exercise.targetReps}
                       {exercise.sets.some((s) => s.isAmrap) ? '+' : ''}
                     </div>
-                  </>
-                )}
+                  )}
+                </div>
+                <div className="text-right tabular-nums">
+                  {isTestDay ? (
+                    exercise.fiveRepMax !== undefined ? (
+                      <>
+                        <span className="mr-1 text-xs text-muted-foreground">5RM</span>
+                        <span className="text-lg font-semibold">{exercise.fiveRepMax}</span>
+                        <span className="ml-1 text-xs text-muted-foreground">{unit}</span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Not concluded</span>
+                    )
+                  ) : (
+                    <>
+                      <span className="text-lg font-semibold">{exercise.weight}</span>
+                      <span className="ml-1 text-xs text-muted-foreground">{unit}</span>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-1">
-              {exercise.sets.map((set, j) => {
-                const isFailed = set.completed && set.reps === 0
-                const isPartial = set.completed && set.reps !== undefined && set.reps > 0 && set.reps < exercise.targetReps
-                const isSuccess = set.completed && set.reps !== undefined && set.reps >= exercise.targetReps
-                return (
-                  <div
-                    key={j}
-                    className={`flex items-center justify-between rounded px-3 py-2 text-sm ${
-                      isFailed
-                        ? 'bg-red-900/20'
-                        : isPartial
-                          ? 'bg-amber-900/20'
-                          : set.completed
-                            ? 'bg-zinc-700'
-                            : 'bg-zinc-900'
-                    }`}
-                  >
-                    <span className="text-zinc-400">
-                      Set {set.setNumber}
-                      {set.weight !== undefined && ` · ${set.weight} ${unit}`}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className={isFailed ? 'text-red-400' : isPartial ? 'text-amber-400' : ''}>
-                        {isFailed ? 'Failed' : set.reps}
-                        {set.isAmrap && !isFailed && ' (AMRAP)'}
+              <ul className="divide-y divide-border">
+                {exercise.sets.map((set, j) => {
+                  const isFailed = set.completed && set.reps === 0
+                  const isPartial = set.completed && set.reps !== undefined && set.reps > 0 && set.reps < exercise.targetReps
+                  const isSuccess = set.completed && set.reps !== undefined && set.reps >= exercise.targetReps
+                  return (
+                    <li key={j} className="flex items-center justify-between py-2 text-sm">
+                      <span className="text-muted-foreground tabular-nums">
+                        Set {set.setNumber}
+                        {set.weight !== undefined && ` · ${set.weight} ${unit}`}
                       </span>
-                      {isFailed ? (
-                        <X className="h-4 w-4 text-red-400" />
-                      ) : isPartial ? (
-                        <Minus className="h-4 w-4 text-amber-400" />
-                      ) : isSuccess ? (
-                        <Check className="h-4 w-4 text-green-400" />
-                      ) : (
-                        <X className="h-4 w-4 text-red-400" />
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                      <div className="flex items-center gap-2 tabular-nums">
+                        <span
+                          className={cn(
+                            'font-medium',
+                            isFailed && 'text-destructive',
+                            isPartial && 'text-warning',
+                            !set.completed && 'text-muted-foreground'
+                          )}
+                        >
+                          {isFailed ? 'Failed' : set.reps}
+                          {set.isAmrap && !isFailed && <span className="ml-1 text-xs font-normal text-muted-foreground">AMRAP</span>}
+                        </span>
+                        {isFailed ? (
+                          <X className="size-4 text-destructive" />
+                        ) : isPartial ? (
+                          <Minus className="size-4 text-warning" />
+                        ) : isSuccess ? (
+                          <Check className="size-4 text-success" />
+                        ) : (
+                          <X className="size-4 text-destructive" />
+                        )}
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
 
-            {!isTestDay && <ExerciseResult exercise={exercise} tier={exercise.tier} unit={unit} plateInventory={plateInventory} liftSubstitutions={liftSubstitutions} />}
-          </div>
+              {!isTestDay && <ExerciseResult exercise={exercise} tier={exercise.tier} unit={unit} plateInventory={plateInventory} liftSubstitutions={liftSubstitutions} />}
+            </CardContent>
+          </Card>
         ))}
 
         {workout.notes && (
-          <div className="rounded-lg bg-zinc-800 p-4">
-            <h3 className="mb-2 text-sm font-medium text-zinc-400">Notes</h3>
-            <p className="text-sm">{workout.notes}</p>
-          </div>
+          <section className="space-y-3">
+            <h2 className="px-1 text-sm text-muted-foreground">Notes</h2>
+            <div className="rounded-lg bg-card p-4 text-sm">{workout.notes}</div>
+          </section>
         )}
       </main>
     </div>

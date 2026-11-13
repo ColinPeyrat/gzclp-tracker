@@ -72,9 +72,9 @@ export function getExerciseName(
 }
 
 export const TIER_COLORS: Record<Tier, string> = {
-  T1: 'text-blue-400',
-  T2: 'text-green-400',
-  T3: 'text-yellow-400',
+  T1: 'text-tier-1',
+  T2: 'text-tier-2',
+  T3: 'text-tier-3',
 }
 
 // Simple name lookup without substitution logic (for Settings page)

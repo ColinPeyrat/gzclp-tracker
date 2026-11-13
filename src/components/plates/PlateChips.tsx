@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils'
 import { plateColors } from '../../lib/plates'
 
 interface PlateChipsProps {
@@ -5,20 +6,25 @@ interface PlateChipsProps {
   size?: 'sm' | 'md'
 }
 
-export function PlateChips({ plates, size = 'md' }: PlateChipsProps) {
-  const sizeClass =
-    size === 'sm'
-      ? 'h-6 min-w-6 px-1.5 text-xs'
-      : 'h-8 min-w-8 px-2 text-sm'
+// Real-world calibrated plate colours are functional here, so raw palette classes are intentional
+function plateClass(plate: number) {
+  const colour = plateColors[plate]
+  if (!colour) return 'bg-secondary text-foreground'
+  if (colour.includes('yellow')) return `${colour} text-zinc-900`
+  return colour.includes('text-') ? colour : `${colour} text-white`
+}
 
+export function PlateChips({ plates, size = 'md' }: PlateChipsProps) {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex flex-wrap items-center gap-1">
       {plates.map((plate, i) => (
         <span
           key={i}
-          className={`flex items-center justify-center rounded font-medium ${sizeClass} ${
-            plateColors[plate] ?? 'bg-zinc-600'
-          }`}
+          className={cn(
+            'inline-flex items-center justify-center rounded-sm font-mono font-semibold tabular-nums',
+            size === 'sm' ? 'h-5 min-w-6 px-1 text-[0.7rem]' : 'h-8 min-w-9 px-1.5 text-sm',
+            plateClass(plate)
+          )}
         >
           {plate}
         </span>

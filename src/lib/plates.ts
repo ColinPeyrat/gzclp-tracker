@@ -1,14 +1,14 @@
 export const plateColors: Record<number, string> = {
   // lbs plates
-  45: 'bg-blue-600',
-  35: 'bg-yellow-500',
-  25: 'bg-green-600',
-  10: 'bg-zinc-100 text-zinc-900',
-  5: 'bg-red-600',
+  45: 'bg-[oklch(0.55_0.11_250)] text-white',
+  35: 'bg-[oklch(0.8_0.11_90)] text-zinc-900',
+  25: 'bg-[oklch(0.6_0.09_155)] text-white',
+  10: 'bg-zinc-200 text-zinc-900',
+  5: 'bg-[oklch(0.58_0.14_25)] text-white',
   2.5: 'bg-zinc-400 text-zinc-900',
   // kg plates
-  20: 'bg-blue-600',
-  15: 'bg-yellow-500',
+  20: 'bg-[oklch(0.55_0.11_250)] text-white',
+  15: 'bg-[oklch(0.8_0.11_90)] text-zinc-900',
   1.25: 'bg-zinc-400 text-zinc-900',
 }
 

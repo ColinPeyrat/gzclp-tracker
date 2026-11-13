@@ -2,8 +2,12 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import path from 'node:path'
 
 export default defineConfig({
+  resolve: {
+    alias: { '@': path.resolve(__dirname, './src') },
+  },
   test: {
     setupFiles: ['./src/test-setup.ts'],
   },
@@ -17,8 +21,8 @@ export default defineConfig({
         name: 'GZCLP Tracker',
         short_name: 'GZCLP',
         description: 'Track your GZCLP weightlifting program',
-        theme_color: '#18181b',
-        background_color: '#18181b',
+        theme_color: '#0e0f12',
+        background_color: '#0e0f12',
         display: 'standalone',
         start_url: '/',
         icons: [

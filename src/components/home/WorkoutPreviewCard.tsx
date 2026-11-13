@@ -1,6 +1,7 @@
-import type { RotatingWorkoutType, ProgramState, UserSettings } from '../../lib/types'
-import { WORKOUTS } from '../../lib/types'
-import { getExerciseName, getEffectiveStageConfig, getT3IdsForWorkout, getLiftSubstitution, TIER_COLORS } from '../../lib/exercises'
+import type { RotatingWorkoutType, ProgramState, UserSettings } from '@/lib/types'
+import { WORKOUTS } from '@/lib/types'
+import { getExerciseName, getEffectiveStageConfig, getT3IdsForWorkout, getLiftSubstitution } from '@/lib/exercises'
+import { TierBadge } from '@/components/ui/tier-badge'
 
 interface WorkoutPreviewCardProps {
   workoutType: RotatingWorkoutType
@@ -12,7 +13,8 @@ interface WorkoutPreviewCardProps {
 interface ExerciseRow {
   tier: 'T1' | 'T2' | 'T3'
   name: string
-  detail: string
+  scheme: string
+  weight: number
 }
 
 function getExerciseRows(workoutType: RotatingWorkoutType, state: ProgramState, settings: UserSettings): ExerciseRow[] {
@@ -29,7 +31,8 @@ function getExerciseRows(workoutType: RotatingWorkoutType, state: ProgramState, 
   rows.push({
     tier: 'T1',
     name: getExerciseName(workout.t1, 'T1', settings.liftSubstitutions, settings.exerciseLibrary),
-    detail: `${t1Config.sets}×${t1Config.reps}+ @ ${t1Weight} ${settings.weightUnit}`,
+    scheme: `${t1Config.sets}×${t1Config.reps}+`,
+    weight: t1Weight,
   })
 
   // T2
@@ -42,7 +45,8 @@ function getExerciseRows(workoutType: RotatingWorkoutType, state: ProgramState, 
   rows.push({
     tier: 'T2',
     name: getExerciseName(workout.t2, 'T2', settings.liftSubstitutions, settings.exerciseLibrary),
-    detail: `${t2Config.sets}×${t2Config.reps}${t2Config.hasAmrap ? '+' : ''} @ ${t2Weight} ${settings.weightUnit}`,
+    scheme: `${t2Config.sets}×${t2Config.reps}${t2Config.hasAmrap ? '+' : ''}`,
+    weight: t2Weight,
   })
 
   // T3s
@@ -50,7 +54,8 @@ function getExerciseRows(workoutType: RotatingWorkoutType, state: ProgramState, 
     rows.push({
       tier: 'T3',
       name: getExerciseName(t3Id, 'T3', settings.liftSubstitutions, settings.exerciseLibrary),
-      detail: `3×15+ @ ${state.t3[t3Id]?.weight ?? 50} ${settings.weightUnit}`,
+      scheme: '3×15+',
+      weight: state.t3[t3Id]?.weight ?? 50,
     })
   }
 
@@ -59,37 +64,39 @@ function getExerciseRows(workoutType: RotatingWorkoutType, state: ProgramState, 
 
 export function WorkoutPreviewCard({ workoutType, state, settings, isNext }: WorkoutPreviewCardProps) {
   const rows = getExerciseRows(workoutType, state, settings)
+  const unit = settings.weightUnit
 
   if (isNext) {
     return (
-      <div className="space-y-3">
+      <ul className="divide-y divide-border">
         {rows.map((row) => (
-          <div key={`${row.tier}-${row.name}`} className="rounded-lg bg-zinc-800 p-4">
-            <div className={`mb-1 text-xs font-medium ${TIER_COLORS[row.tier]}`}>{row.tier}</div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-lg font-medium">{row.name}</span>
-              <span className="text-zinc-400">{row.detail}</span>
+          <li key={`${row.tier}-${row.name}`} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+            <TierBadge tier={row.tier} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-medium">{row.name}</div>
+              <div className="font-mono text-xs text-muted-foreground">{row.scheme}</div>
             </div>
-          </div>
+            <div className="text-right tabular-nums">
+              <span className="text-lg font-semibold">{row.weight}</span>
+              <span className="ml-1 text-xs text-muted-foreground">{unit}</span>
+            </div>
+          </li>
         ))}
-      </div>
+      </ul>
     )
   }
 
   return (
-    <div className="rounded-lg bg-zinc-800/60 p-4">
-      <h3 className="mb-2 text-sm font-bold">{workoutType}</h3>
-      <div className="divide-y divide-zinc-700/50">
-        {rows.map((row) => (
-          <div key={`${row.tier}-${row.name}`} className="flex items-baseline justify-between py-1.5">
-            <span className="flex items-baseline gap-2">
-              <span className={`text-xs font-medium ${TIER_COLORS[row.tier]}`}>{row.tier}</span>
-              <span className="text-sm text-zinc-300">{row.name}</span>
-            </span>
-            <span className="text-sm text-zinc-500">{row.detail}</span>
-          </div>
+    <div className="w-40 shrink-0 snap-start rounded-lg bg-card p-4">
+      <div className="mb-3 text-xl font-semibold">{workoutType}</div>
+      <ul className="space-y-1.5">
+        {rows.slice(0, 2).map((row) => (
+          <li key={`${row.tier}-${row.name}`} className="flex items-center gap-2 text-sm">
+            <TierBadge tier={row.tier} />
+            <span className="truncate text-muted-foreground">{row.name}</span>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   )
 }

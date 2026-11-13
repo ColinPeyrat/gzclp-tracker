@@ -1,5 +1,8 @@
 import { useState, useRef } from 'react'
 import { Check, X, Minus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 import type { SetLog } from '../../lib/types'
 
 interface SetLoggerProps {
@@ -58,89 +61,95 @@ export function SetLogger({ set, targetReps, onComplete, isActive }: SetLoggerPr
 
   if (showRepInput) {
     return (
-      <div className="flex h-12 items-center gap-2 rounded-lg bg-zinc-800 px-3">
-        <span className="w-12 text-sm text-zinc-400">Set {set.setNumber}</span>
-        <input
+      <form
+        className="flex h-14 items-center gap-2 rounded-lg bg-secondary pr-2 pl-4"
+        onSubmit={(e) => {
+          e.preventDefault()
+          handleRepSubmit()
+        }}
+      >
+        <span className="w-12 text-sm text-muted-foreground">Set {set.setNumber}</span>
+        <Input
           type="number"
+          inputMode="numeric"
           value={repInput}
           onChange={(e) => setRepInput(e.target.value)}
           placeholder="Reps"
-          className="h-8 w-20 rounded border border-zinc-600 bg-zinc-900 px-2 text-center text-base focus:border-blue-500 focus:outline-none"
+          className="h-10 flex-1 text-center text-lg font-semibold tabular-nums md:text-lg"
           autoFocus
           min={0}
         />
-        <button
-          onClick={handleRepSubmit}
-          className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-600 hover:bg-green-500"
-        >
-          <Check className="h-4 w-4" />
-        </button>
-        <button
+        <Button type="submit" size="icon-lg" className="size-10" aria-label="Save reps">
+          <Check className="size-5" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-lg"
+          className="size-10"
+          aria-label="Cancel"
           onClick={() => {
             setShowRepInput(false)
             setRepInput('')
           }}
-          className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-700 hover:bg-zinc-600"
         >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
+          <X className="size-5" />
+        </Button>
+      </form>
     )
   }
 
   const isFailed = set.completed && set.reps === 0
   const isPartial = set.completed && set.reps !== undefined && set.reps > 0 && set.reps < targetReps
   const isSuccess = set.completed && set.reps !== undefined && set.reps >= targetReps
+  const isPending = !set.completed && !isActive
 
   return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={handleClick}
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        onContextMenu={(e) => e.preventDefault()}
-        disabled={!isActive && !set.completed}
-        className={`flex h-12 flex-1 items-center gap-3 rounded-lg px-3 transition-colors touch-manipulation ${
-          isFailed
-            ? 'bg-red-900/30 text-red-400'
-            : isPartial
-              ? 'bg-amber-900/30 text-amber-400'
-              : isSuccess
-                ? 'bg-green-900/30 text-green-400'
-                : isActive
-                  ? 'bg-zinc-700 hover:bg-zinc-600'
-                  : 'bg-zinc-800'
-        }`}
-      >
-        <span className="w-12 text-sm text-zinc-400">Set {set.setNumber}</span>
+    <button
+      onClick={handleClick}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onContextMenu={(e) => e.preventDefault()}
+      disabled={isPending}
+      aria-current={isActive ? 'step' : undefined}
+      className={cn(
+        'flex h-14 w-full touch-manipulation items-center gap-3 rounded-lg px-4 text-left transition-colors select-none outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+        isActive && 'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80',
+        set.completed && 'bg-card',
+        isPending && 'bg-card text-muted-foreground'
+      )}
+    >
+      <span className={cn('w-14 text-sm', isActive ? 'opacity-70' : 'text-muted-foreground')}>Set {set.setNumber}</span>
 
-        <div className="flex flex-1 items-center justify-center gap-2">
-          {isFailed ? (
-            <span className="text-lg font-medium">Failed</span>
-          ) : set.completed ? (
-            <span className="text-lg font-medium">{set.reps}</span>
-          ) : set.isAmrap ? (
-            <span className="text-zinc-400">{targetReps}+ AMRAP</span>
-          ) : (
-            <span className="text-zinc-400">{targetReps}</span>
-          )}
-        </div>
+      <span className="flex flex-1 items-baseline justify-center gap-1.5 tabular-nums">
+        {isFailed ? (
+          <span className="font-medium text-destructive">Failed</span>
+        ) : set.completed ? (
+          <>
+            <span className={cn('text-xl font-semibold', isPartial && 'text-warning')}>{set.reps}</span>
+            <span className="text-xs text-muted-foreground">reps</span>
+          </>
+        ) : (
+          <span className={cn('text-xl font-semibold', isPending && 'font-medium')}>
+            {targetReps}
+            {set.isAmrap && '+'}
+          </span>
+        )}
+      </span>
 
-        <div className="w-8">
-          {isFailed ? (
-            <X className="h-5 w-5 text-red-400" />
-          ) : isPartial ? (
-            <Minus className="h-5 w-5 text-amber-400" />
-          ) : isSuccess ? (
-            <Check className="h-5 w-5 text-green-400" />
-          ) : (
-            <Minus className="h-5 w-5 text-zinc-500" />
-          )}
-        </div>
-      </button>
-
-    </div>
+      <span className="flex w-14 justify-end">
+        {isFailed ? (
+          <X className="size-5 text-destructive" />
+        ) : isPartial ? (
+          <Minus className="size-5 text-warning" />
+        ) : isSuccess ? (
+          <Check className="size-5 text-primary" />
+        ) : set.isAmrap ? (
+          <span className={cn('font-mono text-xs', isActive ? 'opacity-70' : 'text-muted-foreground')}>AMRAP</span>
+        ) : null}
+      </span>
+    </button>
   )
 }

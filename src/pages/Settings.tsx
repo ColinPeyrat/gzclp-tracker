@@ -1,11 +1,30 @@
 import { useState, useEffect } from 'react'
-import { Download, Upload, Trash2, Plus, X } from 'lucide-react'
+import { Download, Upload, Trash2, Plus, Minus, X, TriangleAlert, ChevronRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { PageSkeleton } from '@/components/layout/PageSkeleton'
+import { cn } from '@/lib/utils'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useProgramStore } from '../stores/programStore'
 import { db, DEFAULT_EXERCISE_LIBRARY } from '../lib/db'
 import { UNIT_CONFIG, getDefaultPlateInventory } from '../lib/units'
 import { BottomNav } from '../components/ui/BottomNav'
-import { Modal } from '../components/ui/Modal'
 import { LIFTS, T3_EXERCISES, WORKOUTS, WORKOUT_ORDER, MAINTENANCE_LIFTS, MAINTENANCE_SETS, MAINTENANCE_REPS, type ExerciseDefinition, type LiftSubstitution, type RotatingWorkoutType, type LiftName } from '../lib/types'
 import { getMaintenanceWeight, getMaintenancePrescription } from '../lib/progression'
 import { getExerciseDisplayName } from '../lib/exercises'
@@ -20,6 +39,52 @@ const REPLACEABLE_LIFTS = [
   { id: 'lat-pulldown', name: 'Lat Pulldown', tier: 'T3' },
   { id: 'dumbbell-row', name: 'Dumbbell Row', tier: 'T3' },
 ] as const
+
+const ROW = 'flex items-center gap-3 px-4 py-3'
+const LIST_BUTTON = 'h-auto min-h-11 w-full justify-start gap-2 px-3 py-2.5 text-left font-normal'
+
+function SettingsSection({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <section className="space-y-2">
+      <h2 className="px-1 text-sm text-muted-foreground">{title}</h2>
+      {children}
+      {description && <p className="px-1 text-xs text-muted-foreground">{description}</p>}
+    </section>
+  )
+}
+
+function SettingsList({ children }: { children: React.ReactNode }) {
+  return (
+    <Card className="gap-0 py-0">
+      <ul className="divide-y divide-border">{children}</ul>
+    </Card>
+  )
+}
+
+function NumberField({ suffix, className, ...props }: React.ComponentProps<typeof Input> & { suffix: string }) {
+  return (
+    <div className="flex shrink-0 items-center gap-2">
+      <Input type="number" className={cn('h-9 w-20 text-right font-semibold tabular-nums', className)} {...props} />
+      <span className="w-7 text-xs text-muted-foreground">{suffix}</span>
+    </div>
+  )
+}
+
+function DumbbellBadge() {
+  return (
+    <Badge variant="secondary" className="rounded-md text-muted-foreground">
+      Dumbbell
+    </Badge>
+  )
+}
 
 export function Settings() {
   const { settings, loaded, load, update } = useSettingsStore()
@@ -311,11 +376,7 @@ export function Settings() {
   }
 
   if (!loaded) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-zinc-400">Loading...</div>
-      </div>
-    )
+    return <PageSkeleton />
   }
 
   const unit = settings.weightUnit
@@ -338,684 +399,646 @@ export function Settings() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col pb-(--nav-height)">
-      <header className="border-b border-zinc-800 p-4">
-        <h1 className="text-xl font-bold">Settings</h1>
+    <div className="mx-auto flex min-h-screen max-w-md flex-col pb-[calc(var(--nav-height)+1rem)]">
+      <header className="px-5 pt-6 pb-4">
+        <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
       </header>
 
-      <main className="flex-1 space-y-6 p-4">
-        {/* Equipment */}
-        <section>
-          <h2 className="mb-3 text-sm font-medium text-zinc-400">Equipment</h2>
-          <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
-            <div>
-              <label className="mb-1 block text-sm">Bar Weight</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  value={settings.barWeight}
-                  onChange={(e) => handleBarWeightChange(e.target.value)}
-                  className="w-24 rounded border border-zinc-600 bg-zinc-900 px-3 py-2 text-right focus:border-blue-500 focus:outline-none"
-                  step={unit === 'kg' ? 2.5 : 5}
-                />
-                <span className="text-zinc-400">{unit}</span>
-              </div>
-            </div>
+      <main className="flex-1 space-y-6 px-4">
+        <SettingsSection title="Equipment">
+          <SettingsList>
+            <li className={ROW}>
+              <Label htmlFor="bar-weight" className="flex-1 text-base font-medium">
+                Bar weight
+              </Label>
+              <NumberField
+                id="bar-weight"
+                suffix={unit}
+                inputMode="decimal"
+                value={settings.barWeight}
+                onChange={(e) => handleBarWeightChange(e.target.value)}
+                step={unit === 'kg' ? 2.5 : 5}
+              />
+            </li>
+            <li className={ROW}>
+              <Label htmlFor="dumbbell-handle-weight" className="flex-1 text-base font-medium">
+                Dumbbell handle
+              </Label>
+              <NumberField
+                id="dumbbell-handle-weight"
+                suffix={unit}
+                inputMode="decimal"
+                value={settings.dumbbellHandleWeight}
+                onChange={(e) => handleDumbbellHandleWeightChange(e.target.value)}
+                step={unit === 'kg' ? 0.5 : 1}
+              />
+            </li>
+          </SettingsList>
+        </SettingsSection>
 
-            <div>
-              <label className="mb-1 block text-sm">Dumbbell Handle Weight</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  value={settings.dumbbellHandleWeight}
-                  onChange={(e) => handleDumbbellHandleWeightChange(e.target.value)}
-                  className="w-24 rounded border border-zinc-600 bg-zinc-900 px-3 py-2 text-right focus:border-blue-500 focus:outline-none"
-                  step={unit === 'kg' ? 0.5 : 1}
-                />
-                <span className="text-zinc-400">{unit}</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm">Available Plates</label>
-              <div className="space-y-2">
-                {UNIT_CONFIG[unit].plates.map((plate) => {
-                  const quantity = settings.plateInventory?.[plate.toString()] ?? 0
-                  const isEnabled = quantity > 0
-                  return (
-                    <div key={plate} className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={isEnabled}
-                        onChange={(e) => {
+        <SettingsSection title="Available plates">
+          <SettingsList>
+            {UNIT_CONFIG[unit].plates.map((plate) => {
+              const quantity = settings.plateInventory?.[plate.toString()] ?? 0
+              const isEnabled = quantity > 0
+              return (
+                <li key={plate} className={cn(ROW, 'min-h-14')}>
+                  <Switch
+                    id={`plate-${plate}`}
+                    checked={isEnabled}
+                    onCheckedChange={(checked) => {
+                      const newInventory = { ...settings.plateInventory }
+                      newInventory[plate.toString()] = checked ? 2 : 0
+                      update({ plateInventory: newInventory })
+                    }}
+                  />
+                  <Label
+                    htmlFor={`plate-${plate}`}
+                    className={cn('flex-1 text-base tabular-nums', isEnabled ? 'font-semibold' : 'text-muted-foreground')}
+                  >
+                    {plate}
+                    <span className="text-xs font-normal text-muted-foreground">{unit}</span>
+                  </Label>
+                  {isEnabled && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        aria-label={`Fewer ${plate} ${unit} plates`}
+                        onClick={() => {
+                          if (quantity > 2) {
+                            const newInventory = { ...settings.plateInventory }
+                            newInventory[plate.toString()] = quantity - 2
+                            update({ plateInventory: newInventory })
+                          }
+                        }}
+                      >
+                        <Minus />
+                      </Button>
+                      <span className="w-8 text-center text-sm font-semibold tabular-nums">{quantity}×</span>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        aria-label={`More ${plate} ${unit} plates`}
+                        onClick={() => {
                           const newInventory = { ...settings.plateInventory }
-                          newInventory[plate.toString()] = e.target.checked ? 2 : 0
+                          newInventory[plate.toString()] = quantity + 2
                           update({ plateInventory: newInventory })
                         }}
-                        className="h-5 w-5 rounded border-zinc-600 bg-zinc-700 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className={`flex-1 ${isEnabled ? 'text-white' : 'text-zinc-500'}`}>
-                        {plate} {unit}
-                      </span>
-                      {isEnabled && (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => {
-                              if (quantity > 2) {
-                                const newInventory = { ...settings.plateInventory }
-                                newInventory[plate.toString()] = quantity - 2
-                                update({ plateInventory: newInventory })
-                              }
-                            }}
-                            className="h-7 w-7 rounded bg-zinc-700 text-zinc-400 hover:bg-zinc-600"
-                          >
-                            −
-                          </button>
-                          <span className="w-8 text-center text-sm">{quantity}×</span>
-                          <button
-                            onClick={() => {
-                              const newInventory = { ...settings.plateInventory }
-                              newInventory[plate.toString()] = quantity + 2
-                              update({ plateInventory: newInventory })
-                            }}
-                            className="h-7 w-7 rounded bg-zinc-700 text-zinc-400 hover:bg-zinc-600"
-                          >
-                            +
-                          </button>
-                        </div>
-                      )}
+                      >
+                        <Plus />
+                      </Button>
                     </div>
-                  )
-                })}
-              </div>
-              <button
+                  )}
+                </li>
+              )
+            })}
+            <li className="px-2 py-1.5">
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-muted-foreground"
                 onClick={() => update({ plateInventory: getDefaultPlateInventory(unit) })}
-                className="mt-3 text-sm text-blue-400 hover:text-blue-300"
               >
                 Reset to defaults
-              </button>
-            </div>
-          </div>
-        </section>
+              </Button>
+            </li>
+          </SettingsList>
+        </SettingsSection>
 
-        {/* Exercise Library */}
-        <section>
-          <h2 className="mb-3 text-sm font-medium text-zinc-400">Exercise Library</h2>
-          <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
+        <SettingsSection title="Exercise library">
+          <SettingsList>
             {exerciseLibrary.length > 0 ? (
-              <div className="space-y-2">
-                {exerciseLibrary.map((exercise) => (
-                  <div
-                    key={exercise.id}
-                    className="flex items-center justify-between rounded-lg bg-zinc-700 px-4 py-3"
+              exerciseLibrary.map((exercise) => (
+                <li key={exercise.id} className={cn(ROW, 'py-2.5')}>
+                  <span className="min-w-0 flex-1 truncate font-medium">{exercise.name}</span>
+                  {exercise.isDumbbell && <DumbbellBadge />}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label={`Remove ${exercise.name}`}
+                    onClick={() => handleRemoveExerciseFromLibrary(exercise.id)}
                   >
-                    <div>
-                      <span className="font-medium">{exercise.name}</span>
-                      {exercise.isDumbbell && (
-                        <span className="ml-2 rounded bg-blue-900/50 px-1.5 py-0.5 text-xs text-blue-400">
-                          Dumbbell
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleRemoveExerciseFromLibrary(exercise.id)}
-                      className="p-1 text-zinc-400 hover:text-red-400"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+                    <X />
+                  </Button>
+                </li>
+              ))
             ) : (
-              <p className="text-sm text-zinc-400">No exercises in library.</p>
+              <li className={cn(ROW, 'text-sm text-muted-foreground')}>No exercises in library.</li>
             )}
+            <li className="px-2 py-1.5">
+              <Button variant="ghost" className="w-full justify-start" onClick={() => setShowAddExerciseModal(true)}>
+                <Plus />
+                Add Exercise
+              </Button>
+            </li>
+          </SettingsList>
+        </SettingsSection>
 
-            <button
-              onClick={() => setShowAddExerciseModal(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-700 px-4 py-3 text-zinc-300 hover:bg-zinc-600"
-            >
-              <Plus className="h-5 w-5" />
-              Add Exercise
-            </button>
-          </div>
-        </section>
-
-        {/* Lift Substitutions */}
-        <section>
-          <h2 className="mb-3 text-sm font-medium text-zinc-400">Lift Substitutions</h2>
-          <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
+        <SettingsSection title="Lift substitutions" description="Substitutes the lift everywhere it appears in the program.">
+          <SettingsList>
             {liftSubstitutions.length > 0 ? (
-              <div className="space-y-2">
-                {liftSubstitutions.map((sub) => {
-                  const substituteExercise = getExerciseDefinition(sub.substituteId)
-                  return (
-                    <div
-                      key={sub.originalLiftId}
-                      className="flex items-center justify-between rounded-lg bg-zinc-700 px-4 py-3"
-                    >
-                      <div>
-                        <div className="font-medium">{getExerciseDisplayName(sub.substituteId, settings.exerciseLibrary)}</div>
-                        <div className="text-sm text-zinc-400">
-                          Replaces {getOriginalLiftName(sub.originalLiftId)}
-                          {sub.forceT3Progression && (
-                            <span className="ml-2 rounded bg-yellow-900/50 px-1.5 py-0.5 text-xs text-yellow-400">
-                              T3 progression
-                            </span>
-                          )}
-                          {substituteExercise?.isDumbbell && (
-                            <span className="ml-2 rounded bg-blue-900/50 px-1.5 py-0.5 text-xs text-blue-400">
-                              Dumbbell
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveSubstitution(sub.originalLiftId)}
-                        className="p-1 text-zinc-400 hover:text-red-400"
-                      >
-                        <X className="h-5 w-5" />
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <p className="text-sm text-zinc-400">
-                No substitutions. Add one to replace a default exercise with one from your library.
-              </p>
-            )}
-
-            <button
-              onClick={() => setShowAddSubstitutionModal(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-700 px-4 py-3 text-zinc-300 hover:bg-zinc-600"
-            >
-              <Plus className="h-5 w-5" />
-              Add Substitution
-            </button>
-
-            <p className="text-xs text-zinc-500">
-              Substitutes the lift everywhere it appears in the program.
-            </p>
-          </div>
-        </section>
-
-        {/* Additional T3s */}
-        <section>
-          <h2 className="mb-3 text-sm font-medium text-zinc-400">Additional T3s</h2>
-          <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
-            <div className="space-y-3">
-              {WORKOUT_ORDER.map((workoutType) => {
-                const defaultT3Id = WORKOUTS[workoutType].t3
-                const defaultT3Name = T3_EXERCISES[defaultT3Id]?.name ?? defaultT3Id
-                const assignment = additionalT3s.find((a) => a.workoutType === workoutType)
-                const additionalIds = assignment?.exerciseIds ?? []
-
+              liftSubstitutions.map((sub) => {
+                const substituteExercise = getExerciseDefinition(sub.substituteId)
                 return (
-                  <div key={workoutType} className="rounded-lg bg-zinc-700 p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="font-medium">{workoutType}</span>
-                      <button
-                        onClick={() => {
-                          setAssignT3RotatingWorkoutType(workoutType)
-                          setShowAssignT3Modal(true)
-                        }}
-                        className="rounded bg-zinc-600 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-500"
-                      >
-                        <Plus className="inline h-3 w-3" /> Add
-                      </button>
+                  <li key={sub.originalLiftId} className={cn(ROW, 'py-2.5')}>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="truncate font-medium">
+                        {getExerciseDisplayName(sub.substituteId, settings.exerciseLibrary)}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                        Replaces {getOriginalLiftName(sub.originalLiftId)}
+                        {sub.forceT3Progression && (
+                          <Badge className="rounded-md bg-warning/10 text-warning">T3 progression</Badge>
+                        )}
+                        {substituteExercise?.isDumbbell && <DumbbellBadge />}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {/* Default T3 (grayed out) */}
-                      <span className="rounded bg-zinc-600 px-2 py-1 text-xs text-zinc-400">
-                        {defaultT3Name}
-                        <span className="ml-1 text-zinc-500">(default)</span>
-                      </span>
-                      {/* Additional T3s */}
-                      {additionalIds.map((exerciseId) => (
-                        <span
-                          key={exerciseId}
-                          className="flex items-center gap-1 rounded bg-yellow-900/50 px-2 py-1 text-xs text-yellow-400"
-                        >
-                          {getExerciseDisplayName(exerciseId, settings.exerciseLibrary)}
-                          <button
-                            onClick={() => handleUnassignAdditionalT3(workoutType, exerciseId)}
-                            className="hover:text-yellow-200"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-destructive"
+                      aria-label={`Remove substitution for ${getOriginalLiftName(sub.originalLiftId)}`}
+                      onClick={() => handleRemoveSubstitution(sub.originalLiftId)}
+                    >
+                      <X />
+                    </Button>
+                  </li>
                 )
-              })}
-            </div>
+              })
+            ) : (
+              <li className={cn(ROW, 'text-sm text-muted-foreground')}>
+                No substitutions. Add one to replace a default exercise with one from your library.
+              </li>
+            )}
+            <li className="px-2 py-1.5">
+              <Button variant="ghost" className="w-full justify-start" onClick={() => setShowAddSubstitutionModal(true)}>
+                <Plus />
+                Add Substitution
+              </Button>
+            </li>
+          </SettingsList>
+        </SettingsSection>
 
-            <p className="text-xs text-zinc-500">
-              Default T3s always appear. To replace them, use Lift Substitutions.
-            </p>
-          </div>
-        </section>
+        <SettingsSection title="Additional T3s" description="Default T3s always appear. To replace them, use Lift Substitutions.">
+          <SettingsList>
+            {WORKOUT_ORDER.map((workoutType) => {
+              const defaultT3Id = WORKOUTS[workoutType].t3
+              const defaultT3Name = T3_EXERCISES[defaultT3Id]?.name ?? defaultT3Id
+              const assignment = additionalT3s.find((a) => a.workoutType === workoutType)
+              const additionalIds = assignment?.exerciseIds ?? []
 
-        {/* Rest Timers */}
-        {/* Maintenance */}
-        <section>
-          <h2 className="mb-3 text-sm font-medium text-zinc-400">Maintenance Day</h2>
-          <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
-            <p className="text-xs text-zinc-500">
-              {MAINTENANCE_SETS}×{MAINTENANCE_REPS} per lift. Weight is computed from your last
-              validated T1 weight — leave blank to use it, or enter your own.
-            </p>
-            {programState &&
-              MAINTENANCE_LIFTS.map((liftId) => {
+              return (
+                <li key={workoutType} className="space-y-2 px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold">{workoutType}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
+                      onClick={() => {
+                        setAssignT3RotatingWorkoutType(workoutType)
+                        setShowAssignT3Modal(true)
+                      }}
+                    >
+                      <Plus /> Add
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Badge variant="outline" className="h-6 rounded-md text-muted-foreground">
+                      {defaultT3Name}
+                      <span className="opacity-60">(default)</span>
+                    </Badge>
+                    {additionalIds.map((exerciseId) => (
+                      <Badge key={exerciseId} variant="secondary" className="h-6 rounded-md pr-0.5">
+                        {getExerciseDisplayName(exerciseId, settings.exerciseLibrary)}
+                        <button
+                          onClick={() => handleUnassignAdditionalT3(workoutType, exerciseId)}
+                          className="grid size-5 place-items-center rounded-sm text-muted-foreground hover:text-foreground"
+                          aria-label={`Remove ${getExerciseDisplayName(exerciseId, settings.exerciseLibrary)} from ${workoutType}`}
+                        >
+                          <X />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                </li>
+              )
+            })}
+          </SettingsList>
+        </SettingsSection>
+
+        <SettingsSection
+          title="Maintenance Day"
+          description={
+            <>
+              {MAINTENANCE_SETS}×{MAINTENANCE_REPS} per lift. Weight is computed from your last validated T1 weight —
+              leave blank to use it, or enter your own.
+            </>
+          }
+        >
+          {programState && (
+            <SettingsList>
+              {MAINTENANCE_LIFTS.map((liftId) => {
                 const prescription = getMaintenancePrescription(
                   programState.t1[liftId],
                   settings.weightUnit,
                   settings.maintenanceOverrides?.[liftId]
                 )
                 return (
-                  <div key={liftId} className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">{LIFTS[liftId].name}</span>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          value={settings.maintenanceOverrides?.[liftId]?.weight ?? ''}
-                          onChange={(e) => handleMaintenanceOverrideChange(liftId, e.target.value)}
-                          placeholder={String(prescription.autoWeight)}
-                          className="w-20 rounded border border-zinc-600 bg-zinc-900 px-3 py-2 text-right focus:border-blue-500 focus:outline-none"
-                          step={settings.weightUnit === 'kg' ? 2.5 : 5}
-                          min={0}
-                        />
-                        <span className="w-6 text-sm text-zinc-400">{settings.weightUnit}</span>
+                  <li key={liftId} className="space-y-1 px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="min-w-0 flex-1">
+                        <Label htmlFor={`maintenance-${liftId}`} className="text-base font-medium">
+                          {LIFTS[liftId].name}
+                        </Label>
+                        <div className="text-xs text-muted-foreground tabular-nums">
+                          auto {prescription.autoWeight} {settings.weightUnit}
+                        </div>
                       </div>
+                      <NumberField
+                        id={`maintenance-${liftId}`}
+                        suffix={settings.weightUnit}
+                        inputMode="decimal"
+                        value={settings.maintenanceOverrides?.[liftId]?.weight ?? ''}
+                        onChange={(e) => handleMaintenanceOverrideChange(liftId, e.target.value)}
+                        placeholder={String(prescription.autoWeight)}
+                        className="placeholder:font-normal"
+                        step={settings.weightUnit === 'kg' ? 2.5 : 5}
+                        min={0}
+                      />
                     </div>
-                    <div className="flex items-center justify-between gap-2 pl-1">
-                      <span className="text-xs text-zinc-500">
-                        auto {prescription.autoWeight} {settings.weightUnit}
-                      </span>
-                      {prescription.hasDrifted && (
-                        <button
-                          onClick={() => handleMaintenanceOverrideChange(liftId, '')}
-                          className="text-xs text-amber-400 hover:text-amber-300"
-                        >
-                          ⚠ auto moved since you set this — use {prescription.autoWeight}
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                    {prescription.hasDrifted && (
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        className="-ml-2 text-warning hover:text-warning"
+                        onClick={() => handleMaintenanceOverrideChange(liftId, '')}
+                      >
+                        <TriangleAlert />
+                        auto moved since you set this — use {prescription.autoWeight}
+                      </Button>
+                    )}
+                  </li>
                 )
               })}
-          </div>
-        </section>
+            </SettingsList>
+          )}
+        </SettingsSection>
 
-        <section>
-          <h2 className="mb-3 text-sm font-medium text-zinc-400">Return to Progression</h2>
-          <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
-            <p className="text-xs text-zinc-500">
-              Back from a break? Test a fresh 5RM on each lift, then restart every lift at stage 1.
-              Your current weights stay untouched until you confirm the restart.
+        <SettingsSection title="Return to Progression">
+          <Card className="gap-3 px-4">
+            <p className="text-sm text-muted-foreground">
+              Back from a break? Test a fresh 5RM on each lift, then restart every lift at stage 1. Your current
+              weights stay untouched until you confirm the restart.
             </p>
             {programState?.returnToProgression ? (
-              <p className="text-sm text-blue-400">
+              <p className="text-sm text-primary">
                 In progress — {getStageLadderLifts(settings).length - getLiftsToTest(programState, settings).length} of{' '}
                 {getStageLadderLifts(settings).length} lifts tested. Continue from Home.
               </p>
             ) : (
-              <button
+              <Button
+                variant="secondary"
+                size="lg"
+                className="w-full"
                 onClick={async () => {
                   if (!programState) return
                   await saveProgram(startReturnToProgression(programState))
                   navigate('/')
                 }}
                 disabled={!programState}
-                className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium hover:bg-blue-500 disabled:opacity-50"
               >
                 Start Return to Progression
-              </button>
+              </Button>
             )}
-          </div>
-        </section>
+          </Card>
+        </SettingsSection>
 
-        {/* Rest Timers */}
-        <section>
-          <h2 className="mb-3 text-sm font-medium text-zinc-400">Rest Timers</h2>
-          <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
+        <SettingsSection title="Rest timers">
+          <SettingsList>
             {[
-              { key: 't1Seconds' as const, label: 'T1 (Heavy)' },
-              { key: 't2Seconds' as const, label: 'T2 (Volume)' },
-              { key: 't3Seconds' as const, label: 'T3 (Accessory)' },
-            ].map(({ key, label }) => (
-              <div key={key} className="flex items-center justify-between">
-                <span className="text-sm">{label}</span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    value={settings.restTimers[key]}
-                    onChange={(e) => handleRestTimerChange(key, e.target.value)}
-                    className="w-20 rounded border border-zinc-600 bg-zinc-900 px-3 py-2 text-right focus:border-blue-500 focus:outline-none"
-                    step={30}
-                    min={30}
-                  />
-                  <span className="text-sm text-zinc-400">sec</span>
-                </div>
-              </div>
+              { key: 't1Seconds' as const, label: 'T1', hint: 'Heavy' },
+              { key: 't2Seconds' as const, label: 'T2', hint: 'Volume' },
+              { key: 't3Seconds' as const, label: 'T3', hint: 'Accessory' },
+            ].map(({ key, label, hint }) => (
+              <li key={key} className={ROW}>
+                <Label htmlFor={`rest-${key}`} className="flex-1 text-base font-medium">
+                  {label}
+                  <span className="text-sm font-normal text-muted-foreground">{hint}</span>
+                </Label>
+                <NumberField
+                  id={`rest-${key}`}
+                  suffix="sec"
+                  inputMode="numeric"
+                  value={settings.restTimers[key]}
+                  onChange={(e) => handleRestTimerChange(key, e.target.value)}
+                  step={30}
+                  min={30}
+                />
+              </li>
             ))}
-          </div>
-        </section>
+          </SettingsList>
+        </SettingsSection>
 
-        {/* Data */}
-        <section>
-          <h2 className="mb-3 text-sm font-medium text-zinc-400">Data</h2>
-          <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
-            <button
-              onClick={handleExport}
-              className="flex w-full items-center gap-3 rounded-lg bg-zinc-700 px-4 py-3 text-left hover:bg-zinc-600"
-            >
-              <Download className="h-5 w-5 text-zinc-400" />
-              <div>
-                <div className="font-medium">Export Data</div>
-                <div className="text-sm text-zinc-400">Download all workouts and settings</div>
-              </div>
-            </button>
-
-            <label className="flex w-full cursor-pointer items-center gap-3 rounded-lg bg-zinc-700 px-4 py-3 text-left hover:bg-zinc-600">
-              <Upload className="h-5 w-5 text-zinc-400" />
-              <div>
-                <div className="font-medium">Import Data</div>
-                <div className="text-sm text-zinc-400">Restore from a backup file</div>
-              </div>
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImport}
-                className="hidden"
-              />
-            </label>
-          </div>
-        </section>
-
-        {/* Danger Zone */}
-        <section>
-          <h2 className="mb-3 text-sm font-medium text-red-400">Danger Zone</h2>
-          <div className="rounded-lg bg-zinc-800 p-4">
-            {!showResetConfirm ? (
+        <SettingsSection title="Data">
+          <SettingsList>
+            <li>
               <button
-                onClick={() => setShowResetConfirm(true)}
-                className="flex w-full items-center gap-3 rounded-lg bg-red-900/30 px-4 py-3 text-left text-red-400 hover:bg-red-900/50"
+                onClick={handleExport}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
               >
-                <Trash2 className="h-5 w-5" />
-                <div>
-                  <div className="font-medium">Reset Program</div>
-                  <div className="text-sm text-red-400/70">Delete all data and start over</div>
+                <Download className="size-5 shrink-0 text-muted-foreground" />
+                <div className="flex-1">
+                  <div className="font-medium">Export Data</div>
+                  <div className="text-sm text-muted-foreground">Download all workouts and settings</div>
                 </div>
+                <ChevronRight className="size-5 text-muted-foreground" />
               </button>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-red-400">
-                  This will delete all workouts, settings, and progress. This cannot be undone.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleReset}
-                    className="flex-1 rounded-lg bg-red-600 py-2 font-medium hover:bg-red-500"
-                  >
-                    Yes, Reset Everything
-                  </button>
-                  <button
-                    onClick={() => setShowResetConfirm(false)}
-                    className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
-                  >
-                    Cancel
-                  </button>
+            </li>
+            <li>
+              <label className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent">
+                <Upload className="size-5 shrink-0 text-muted-foreground" />
+                <div className="flex-1">
+                  <div className="font-medium">Import Data</div>
+                  <div className="text-sm text-muted-foreground">Restore from a backup file</div>
                 </div>
-              </div>
-            )}
-          </div>
-        </section>
+                <ChevronRight className="size-5 text-muted-foreground" />
+                <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+              </label>
+            </li>
+          </SettingsList>
+        </SettingsSection>
+
+        <SettingsSection title="Danger zone">
+          <SettingsList>
+            <li>
+              <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+                <AlertDialogTrigger asChild>
+                  <button className="flex w-full items-center gap-3 px-4 py-3 text-left text-destructive transition-colors hover:bg-destructive/10">
+                    <Trash2 className="size-5 shrink-0" />
+                    <div className="flex-1">
+                      <div className="font-medium">Reset Program</div>
+                      <div className="text-sm text-destructive/70">Delete all data and start over</div>
+                    </div>
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Reset program?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will delete all workouts, settings, and progress. This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction variant="destructive" onClick={handleReset}>
+                      Yes, Reset Everything
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </li>
+          </SettingsList>
+        </SettingsSection>
       </main>
 
       <BottomNav active="settings" />
 
-      {/* Add Exercise Modal */}
-      {showAddExerciseModal && (
-        <Modal onClose={() => setShowAddExerciseModal(false)}>
-          <h2 className="mb-4 text-lg font-bold">Add Exercise to Library</h2>
+      <Dialog open={showAddExerciseModal} onOpenChange={setShowAddExerciseModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add exercise to library</DialogTitle>
+          </DialogHeader>
 
           <div className="space-y-4">
-            <div>
-              <label className="mb-1 block text-sm text-zinc-400">Exercise Name</label>
-              <input
+            <div className="space-y-2">
+              <Label htmlFor="new-exercise-name">Exercise name</Label>
+              <Input
+                id="new-exercise-name"
                 type="text"
                 value={newExerciseName}
                 onChange={(e) => setNewExerciseName(e.target.value)}
                 placeholder="e.g., Face Pulls"
-                className="w-full rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 focus:border-blue-500 focus:outline-none"
+                className="h-11"
                 autoFocus
               />
             </div>
 
-            <div>
-              <label className="mb-1 block text-sm text-zinc-400">
-                Starting Weight <span className="text-zinc-500">(optional)</span>
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="new-exercise-weight">
+                Starting weight <span className="font-normal text-muted-foreground">(optional)</span>
+              </Label>
               <div className="flex items-center gap-2">
-                <input
+                <Input
+                  id="new-exercise-weight"
                   type="number"
+                  inputMode="decimal"
                   value={newExerciseStartingWeight}
                   onChange={(e) => setNewExerciseStartingWeight(e.target.value)}
                   placeholder="50"
-                  className="flex-1 rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 focus:border-blue-500 focus:outline-none"
+                  className="h-11 tabular-nums"
                   step={unit === 'kg' ? 2.5 : 5}
                   min={0}
                 />
-                <span className="text-zinc-400">{unit}</span>
+                <span className="w-7 text-xs text-muted-foreground">{unit}</span>
               </div>
             </div>
 
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                id="isDumbbell"
-                checked={newExerciseIsDumbbell}
-                onChange={(e) => setNewExerciseIsDumbbell(e.target.checked)}
-                className="mt-1 h-5 w-5 rounded border-zinc-600 bg-zinc-700 text-blue-600 focus:ring-blue-500"
-              />
-              <label htmlFor="isDumbbell" className="text-sm">
+            <div className="flex items-start justify-between gap-4">
+              <Label htmlFor="isDumbbell" className="flex-col items-start gap-1">
                 <span className="font-medium">Dumbbell exercise</span>
-                <span className="block text-zinc-400">
+                <span className="font-normal text-muted-foreground">
                   Show plate suggestions for building the dumbbell weight.
                 </span>
-              </label>
+              </Label>
+              <Switch id="isDumbbell" checked={newExerciseIsDumbbell} onCheckedChange={setNewExerciseIsDumbbell} />
             </div>
           </div>
 
-          <div className="mt-6 flex gap-3">
-            <button
-              onClick={handleAddExerciseToLibrary}
-              disabled={!newExerciseName.trim()}
-              className="flex-1 rounded-lg bg-blue-600 py-2 font-medium hover:bg-blue-500 disabled:opacity-50"
-            >
-              Add Exercise
-            </button>
-            <button
-              onClick={() => setShowAddExerciseModal(false)}
-              className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
-            >
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="secondary" size="lg" onClick={() => setShowAddExerciseModal(false)}>
               Cancel
-            </button>
+            </Button>
+            <Button size="lg" onClick={handleAddExerciseToLibrary} disabled={!newExerciseName.trim()}>
+              Add Exercise
+            </Button>
           </div>
-        </Modal>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Add Substitution Modal */}
-      {showAddSubstitutionModal && (
-        <Modal onClose={resetSubstitutionModal}>
-          <h2 className="mb-4 text-lg font-bold">Add Lift Substitution</h2>
+      <Dialog open={showAddSubstitutionModal} onOpenChange={(open) => !open && resetSubstitutionModal()}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add lift substitution</DialogTitle>
+            {substitutionStep === 'select-original' && (
+              <DialogDescription>Select the lift to replace.</DialogDescription>
+            )}
+          </DialogHeader>
 
           {substitutionStep === 'select-original' ? (
-            <div className="space-y-2">
-              <p className="mb-3 text-sm text-zinc-400">Select the lift to replace:</p>
+            <div className="space-y-1.5">
               {REPLACEABLE_LIFTS.filter((lift) => !substitutedLiftIds.has(lift.id)).map((lift) => (
-                <button
+                <Button
                   key={lift.id}
+                  variant="secondary"
+                  className={LIST_BUTTON}
                   onClick={() => {
                     setSelectedOriginalLift(lift.id)
                     setSubstitutionStep('select-substitute')
                   }}
-                  className="w-full rounded-lg bg-zinc-700 px-4 py-3 text-left hover:bg-zinc-600"
                 >
-                  <span className="font-medium">{lift.name}</span>
-                  <span className="ml-2 text-sm text-zinc-400">{lift.tier}</span>
-                </button>
+                  <span className="flex-1 font-medium">{lift.name}</span>
+                  <span className="font-mono text-xs text-muted-foreground">{lift.tier}</span>
+                </Button>
               ))}
               {REPLACEABLE_LIFTS.filter((lift) => !substitutedLiftIds.has(lift.id)).length === 0 && (
-                <p className="text-sm text-zinc-400">All lifts have been substituted.</p>
+                <p className="text-sm text-muted-foreground">All lifts have been substituted.</p>
               )}
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="rounded-lg bg-zinc-700 px-4 py-3">
-                <span className="text-sm text-zinc-400">Replacing: </span>
-                <span className="font-medium">
-                  {REPLACEABLE_LIFTS.find((l) => l.id === selectedOriginalLift)?.name}
-                </span>
-              </div>
+              <dl className="divide-y divide-border rounded-lg bg-secondary text-sm">
+                <div className="flex justify-between gap-3 px-3 py-2.5">
+                  <dt className="text-muted-foreground">Replacing</dt>
+                  <dd className="font-medium">{REPLACEABLE_LIFTS.find((l) => l.id === selectedOriginalLift)?.name}</dd>
+                </div>
+                {selectedSubstituteId && (
+                  <div className="flex justify-between gap-3 px-3 py-2.5">
+                    <dt className="text-muted-foreground">Substitute</dt>
+                    <dd className="font-medium">
+                      {getExerciseDisplayName(selectedSubstituteId, settings.exerciseLibrary)}
+                    </dd>
+                  </div>
+                )}
+              </dl>
 
               {!selectedSubstituteId ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-zinc-400">Select substitute from library:</p>
+                <div className="space-y-1.5">
+                  <p className="text-sm text-muted-foreground">Select substitute from library:</p>
                   {exerciseLibrary.map((exercise) => (
-                    <button
+                    <Button
                       key={exercise.id}
+                      variant="secondary"
+                      className={LIST_BUTTON}
                       onClick={() => setSelectedSubstituteId(exercise.id)}
-                      className="w-full rounded-lg bg-zinc-700 px-4 py-3 text-left hover:bg-zinc-600"
                     >
-                      <span className="font-medium">{exercise.name}</span>
-                      {exercise.isDumbbell && (
-                        <span className="ml-2 rounded bg-blue-900/50 px-1.5 py-0.5 text-xs text-blue-400">
-                          Dumbbell
-                        </span>
-                      )}
-                    </button>
+                      <span className="flex-1 font-medium">{exercise.name}</span>
+                      {exercise.isDumbbell && <DumbbellBadge />}
+                    </Button>
                   ))}
                   {exerciseLibrary.length === 0 && (
-                    <p className="text-sm text-zinc-400">
-                      No exercises in library. Add exercises first.
-                    </p>
+                    <p className="text-sm text-muted-foreground">No exercises in library. Add exercises first.</p>
                   )}
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    className="w-full"
+                    onClick={() => {
+                      setSelectedOriginalLift('')
+                      setSubstitutionStep('select-original')
+                    }}
+                  >
+                    Back
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="rounded-lg bg-zinc-700 px-4 py-3">
-                    <span className="text-sm text-zinc-400">Substitute: </span>
-                    <span className="font-medium">{getExerciseDisplayName(selectedSubstituteId, settings.exerciseLibrary)}</span>
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-sm text-zinc-400">
-                      Starting Weight <span className="text-zinc-500">(optional)</span>
-                    </label>
+                  <div className="space-y-2">
+                    <Label htmlFor="substitute-weight">
+                      Starting weight <span className="font-normal text-muted-foreground">(optional)</span>
+                    </Label>
                     <div className="flex items-center gap-2">
-                      <input
+                      <Input
+                        id="substitute-weight"
                         type="number"
+                        inputMode="decimal"
                         value={substituteStartingWeight}
                         onChange={(e) => setSubstituteStartingWeight(e.target.value)}
                         placeholder="Leave empty to use current"
-                        className="flex-1 rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 focus:border-blue-500 focus:outline-none"
+                        className="h-11 tabular-nums"
                         step={unit === 'kg' ? 2.5 : 5}
                         min={0}
                       />
-                      <span className="text-zinc-400">{unit}</span>
+                      <span className="w-7 text-xs text-muted-foreground">{unit}</span>
                     </div>
                   </div>
 
                   {selectedOriginalLift in LIFTS && (
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        id="forceT3"
-                        checked={substituteForceT3}
-                        onChange={(e) => setSubstituteForceT3(e.target.checked)}
-                        className="mt-1 h-5 w-5 rounded border-zinc-600 bg-zinc-700 text-blue-600 focus:ring-blue-500"
-                      />
-                      <label htmlFor="forceT3" className="text-sm">
+                    <div className="flex items-start justify-between gap-4">
+                      <Label htmlFor="forceT3" className="flex-col items-start gap-1">
                         <span className="font-medium">Force T3 progression</span>
-                        <span className="block text-zinc-400">
+                        <span className="font-normal text-muted-foreground">
                           Use 3×15+ with AMRAP progression instead of normal tier stages.
                         </span>
-                      </label>
+                      </Label>
+                      <Switch id="forceT3" checked={substituteForceT3} onCheckedChange={setSubstituteForceT3} />
                     </div>
                   )}
 
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleAddSubstitution}
-                      className="flex-1 rounded-lg bg-blue-600 py-2 font-medium hover:bg-blue-500"
-                    >
-                      Add Substitution
-                    </button>
-                    <button
-                      onClick={() => setSelectedSubstituteId('')}
-                      className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
-                    >
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="secondary" size="lg" onClick={() => setSelectedSubstituteId('')}>
                       Back
-                    </button>
+                    </Button>
+                    <Button size="lg" onClick={handleAddSubstitution}>
+                      Add Substitution
+                    </Button>
                   </div>
                 </div>
               )}
-
-              {!selectedSubstituteId && (
-                <button
-                  onClick={() => {
-                    setSelectedOriginalLift('')
-                    setSubstitutionStep('select-original')
-                  }}
-                  className="w-full rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
-                >
-                  Back
-                </button>
-              )}
             </div>
           )}
-        </Modal>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Assign Additional T3 Modal */}
-      {showAssignT3Modal && assignT3RotatingWorkoutType && (
-        <Modal onClose={() => { setShowAssignT3Modal(false); setAssignT3RotatingWorkoutType(null) }}>
-          <h2 className="mb-4 text-lg font-bold">Add T3 to {assignT3RotatingWorkoutType}</h2>
+      <Dialog
+        open={showAssignT3Modal && !!assignT3RotatingWorkoutType}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowAssignT3Modal(false)
+            setAssignT3RotatingWorkoutType(null)
+          }
+        }}
+      >
+        {assignT3RotatingWorkoutType && (
+          <DialogContent className="max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add T3 to {assignT3RotatingWorkoutType}</DialogTitle>
+            </DialogHeader>
 
-          <div className="space-y-2">
-            {getAvailableT3sForWorkout(assignT3RotatingWorkoutType).map((exercise) => (
-              <button
-                key={exercise.id}
-                onClick={() => handleAssignAdditionalT3(exercise.id)}
-                className="w-full rounded-lg bg-zinc-700 px-4 py-3 text-left hover:bg-zinc-600"
-              >
-                {exercise.name}
-                {exercise.isDumbbell && (
-                  <span className="ml-2 rounded bg-blue-900/50 px-1.5 py-0.5 text-xs text-blue-400">
-                    Dumbbell
-                  </span>
-                )}
-              </button>
-            ))}
-            {getAvailableT3sForWorkout(assignT3RotatingWorkoutType).length === 0 && (
-              <p className="text-sm text-zinc-400">
-                All exercises from your library are already assigned to this workout.
-              </p>
-            )}
-          </div>
+            <div className="space-y-1.5">
+              {getAvailableT3sForWorkout(assignT3RotatingWorkoutType).map((exercise) => (
+                <Button
+                  key={exercise.id}
+                  variant="secondary"
+                  className={LIST_BUTTON}
+                  onClick={() => handleAssignAdditionalT3(exercise.id)}
+                >
+                  <span className="flex-1 font-medium">{exercise.name}</span>
+                  {exercise.isDumbbell && <DumbbellBadge />}
+                </Button>
+              ))}
+              {getAvailableT3sForWorkout(assignT3RotatingWorkoutType).length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  All exercises from your library are already assigned to this workout.
+                </p>
+              )}
+            </div>
 
-          <button
-            onClick={() => { setShowAssignT3Modal(false); setAssignT3RotatingWorkoutType(null) }}
-            className="mt-4 w-full rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
-          >
-            Cancel
-          </button>
-        </Modal>
-      )}
+            <Button
+              variant="ghost"
+              size="lg"
+              className="w-full"
+              onClick={() => {
+                setShowAssignT3Modal(false)
+                setAssignT3RotatingWorkoutType(null)
+              }}
+            >
+              Cancel
+            </Button>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   )
 }
