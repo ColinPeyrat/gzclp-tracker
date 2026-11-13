@@ -13,6 +13,8 @@ export interface HistoryRecord {
 export function buildHistoryMap(workouts: Workout[]): Map<string, HistoryRecord> {
   const map = new Map<string, HistoryRecord>()
   for (const w of workouts) {
+    // Test Day top sets are all-out efforts; they must not become the bar for training sessions
+    if (w.type === 'TD') continue
     for (const ex of w.exercises) {
       const totalReps = getTotalReps(ex)
       if (totalReps === 0) continue
@@ -218,7 +220,7 @@ export function detectMedals(
   }
 
   // Streak
-  const workoutCount = historicalWorkouts.length + 1
+  const workoutCount = historicalWorkouts.filter((w) => w.type !== 'TD').length + 1
   if (STREAK_MILESTONES.includes(workoutCount)) {
     medals.push({ type: 'streak', value: workoutCount })
   }

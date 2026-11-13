@@ -12,6 +12,7 @@ const MEDAL_CONFIG: Record<MedalType, { icon: typeof Trophy; label: string }> = 
   'streak': { icon: Zap, label: '' }, // dynamic label
   'amrap-record': { icon: Target, label: 'T3 Level Up!' },
   'stage-clear': { icon: TrendingUp, label: 'Weight Up!' },
+  '5rm-pr': { icon: Trophy, label: '5RM PR!' },
 }
 
 function getMedalLabel(medal: Medal): string {
@@ -30,6 +31,9 @@ function getMedalDetail(
   const tierLabel = medal.tier ? ` (${medal.tier})` : ''
   if (medal.type === 'weight-pr' || medal.type === 'stage-clear') {
     return `${name}${tierLabel}: ${medal.value} ${unit}`
+  }
+  if (medal.type === '5rm-pr') {
+    return `${name}: ${medal.value} ${unit}${medal.previousValue ? ` (was ${medal.previousValue})` : ''}`
   }
   if (medal.type === 'volume-pr') {
     return `${name}${tierLabel}: ${medal.value} ${unit}`

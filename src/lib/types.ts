@@ -1,7 +1,7 @@
 export type LiftName = 'squat' | 'bench' | 'deadlift' | 'ohp'
 export type Tier = 'T1' | 'T2' | 'T3'
 export type RotatingWorkoutType = 'A1' | 'A2' | 'B1' | 'B2'
-export type WorkoutType = RotatingWorkoutType | 'MN'
+export type WorkoutType = RotatingWorkoutType | 'MN' | 'TD'
 export type WeightUnit = 'lbs' | 'kg'
 
 export interface Lift {
@@ -52,6 +52,7 @@ export interface SetLog {
   reps: number
   completed: boolean
   isAmrap: boolean
+  weight?: number // Per-set weight, for sessions whose sets vary (Test Day ramps)
 }
 
 export interface CompletedWarmupSet {
@@ -68,9 +69,10 @@ export interface ExerciseLog {
   targetReps: number
   sets: SetLog[]
   completedWarmupSets?: CompletedWarmupSet[]
+  fiveRepMax?: number // Test Day: the concluded 5RM, absent if the test was abandoned
 }
 
-export type MedalType = 'weight-pr' | 'volume-pr' | 'streak' | 'amrap-record' | 'stage-clear'
+export type MedalType = 'weight-pr' | 'volume-pr' | 'streak' | 'amrap-record' | 'stage-clear' | '5rm-pr'
 
 export interface Medal {
   type: MedalType
@@ -120,6 +122,15 @@ export interface ProgramState {
   nextWorkoutType: RotatingWorkoutType
   workoutCount: number
   lastSuccessWeightBackfilled?: boolean // One-time migration marker
+  returnToProgression?: ReturnToProgression
+}
+
+// Present while a Return to Progression is underway; program weights are untouched
+// until the restart is confirmed, so cancelling is just deleting this.
+// See docs/adr/0003-return-to-progression.md
+export interface ReturnToProgression {
+  startedAt: string
+  results: Partial<Record<LiftName, number>> // tested 5RMs
 }
 
 // Workout definitions
@@ -144,6 +155,12 @@ export const LIFTS: Record<LiftName, Lift> = {
 export const T3_EXERCISES: Record<string, T3Exercise> = {
   'lat-pulldown': { id: 'lat-pulldown', name: 'Lat Pulldown' },
   'dumbbell-row': { id: 'dumbbell-row', name: 'Dumbbell Row' },
+}
+
+export function getWorkoutLabel(type: WorkoutType): string {
+  if (type === 'MN') return 'Maintenance'
+  if (type === 'TD') return 'Test Day'
+  return type
 }
 
 export const WORKOUT_ORDER: RotatingWorkoutType[] = ['A1', 'A2', 'B1', 'B2']

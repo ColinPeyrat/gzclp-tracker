@@ -9,6 +9,8 @@ import { Modal } from '../components/ui/Modal'
 import { LIFTS, T3_EXERCISES, WORKOUTS, WORKOUT_ORDER, MAINTENANCE_LIFTS, MAINTENANCE_SETS, MAINTENANCE_REPS, type ExerciseDefinition, type LiftSubstitution, type RotatingWorkoutType, type LiftName } from '../lib/types'
 import { getMaintenanceWeight, getMaintenancePrescription } from '../lib/progression'
 import { getExerciseDisplayName } from '../lib/exercises'
+import { useNavigate } from 'react-router-dom'
+import { startReturnToProgression, getLiftsToTest, getStageLadderLifts } from '../lib/returnToProgression'
 
 const REPLACEABLE_LIFTS = [
   { id: 'squat', name: 'Squat', tier: 'T1/T2' },
@@ -22,6 +24,7 @@ const REPLACEABLE_LIFTS = [
 export function Settings() {
   const { settings, loaded, load, update } = useSettingsStore()
   const { state: programState, load: loadProgram, save: saveProgram } = useProgramStore()
+  const navigate = useNavigate()
   const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   // Exercise Library state
@@ -643,6 +646,34 @@ export function Settings() {
                   </div>
                 )
               })}
+          </div>
+        </section>
+
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-zinc-400">Return to Progression</h2>
+          <div className="space-y-3 rounded-lg bg-zinc-800 p-4">
+            <p className="text-xs text-zinc-500">
+              Back from a break? Test a fresh 5RM on each lift, then restart every lift at stage 1.
+              Your current weights stay untouched until you confirm the restart.
+            </p>
+            {programState?.returnToProgression ? (
+              <p className="text-sm text-blue-400">
+                In progress — {getStageLadderLifts(settings).length - getLiftsToTest(programState, settings).length} of{' '}
+                {getStageLadderLifts(settings).length} lifts tested. Continue from Home.
+              </p>
+            ) : (
+              <button
+                onClick={async () => {
+                  if (!programState) return
+                  await saveProgram(startReturnToProgression(programState))
+                  navigate('/')
+                }}
+                disabled={!programState}
+                className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium hover:bg-blue-500 disabled:opacity-50"
+              >
+                Start Return to Progression
+              </button>
+            )}
           </div>
         </section>
 

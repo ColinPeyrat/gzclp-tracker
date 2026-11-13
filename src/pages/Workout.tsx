@@ -278,7 +278,7 @@ export function Workout() {
       }
 
       // Streak medal
-      const workoutCount = history.workouts.length + 1
+      const workoutCount = history.workouts.filter((w) => w.type !== 'TD').length + 1
       const streakMedal = detectStreakMedal(workoutCount)
       if (streakMedal) showMedals([streakMedal])
     }

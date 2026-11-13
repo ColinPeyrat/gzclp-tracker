@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ArrowLeft, Check, X, Minus, TrendingUp, TrendingDown, BarChart2, Trophy, Flame, Zap, Target } from 'lucide-react'
 import type { Workout, WeightUnit, Tier, ExerciseLog, LiftName, LiftSubstitution, ExerciseDefinition, Medal, MedalType } from '../../lib/types'
 import { WorkoutStatsModal } from './WorkoutStatsModal'
-import { LIFTS } from '../../lib/types'
+import { LIFTS, getWorkoutLabel } from '../../lib/types'
 import { getTotalReps, getTargetTotalReps, didHitRepTarget, getStageConfig } from '../../lib/progression'
 import { getIncrement, UNIT_CONFIG } from '../../lib/units'
 import { getSmallestPlate } from '../../lib/plates'
@@ -105,6 +105,7 @@ const MEDAL_ICONS: Record<MedalType, typeof Trophy> = {
   'streak': Zap,
   'amrap-record': Target,
   'stage-clear': TrendingUp,
+  '5rm-pr': Trophy,
 }
 
 const MEDAL_LABELS: Record<MedalType, string> = {
@@ -113,6 +114,7 @@ const MEDAL_LABELS: Record<MedalType, string> = {
   'streak': 'Streak',
   'amrap-record': 'T3 Level Up',
   'stage-clear': 'Weight Up',
+  '5rm-pr': '5RM PR',
 }
 
 function MedalsSection({ medals, unit, liftSubstitutions, exerciseLibrary }: {
@@ -136,7 +138,7 @@ function MedalsSection({ medals, unit, liftSubstitutions, exerciseLibrary }: {
               <Icon className="h-4 w-4 shrink-0 text-amber-400" />
               <span className="text-amber-300">{label}</span>
               {liftName && <span className="text-zinc-400">{liftName}{medal.tier ? ` (${medal.tier})` : ''}</span>}
-              {(medal.type === 'weight-pr' || medal.type === 'stage-clear' || medal.type === 'volume-pr') && (
+              {(medal.type === 'weight-pr' || medal.type === 'stage-clear' || medal.type === 'volume-pr' || medal.type === '5rm-pr') && (
                 <span className="text-zinc-500">{medal.value} {unit}</span>
               )}
             </div>
@@ -149,6 +151,7 @@ function MedalsSection({ medals, unit, liftSubstitutions, exerciseLibrary }: {
 
 export function WorkoutDetail({ workout, unit, barWeight, plateInventory, liftSubstitutions, exerciseLibrary, onBack }: WorkoutDetailProps) {
   const [showStats, setShowStats] = useState(false)
+  const isTestDay = workout.type === 'TD'
 
   const date = new Date(workout.date)
   const formattedDate = date.toLocaleDateString(undefined, {
@@ -170,7 +173,7 @@ export function WorkoutDetail({ workout, unit, barWeight, plateInventory, liftSu
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="flex-1">
-            <h1 className="font-bold">{workout.type === 'MN' ? 'Maintenance' : workout.type}</h1>
+            <h1 className="font-bold">{getWorkoutLabel(workout.type)}</h1>
             <p className="text-xs text-zinc-400">
               {formattedDate} at {formattedTime}
             </p>
@@ -212,13 +215,21 @@ export function WorkoutDetail({ workout, unit, barWeight, plateInventory, liftSu
                 </h3>
               </div>
               <div className="text-right">
-                <span className="text-zinc-400">
-                  {exercise.weight} {unit}
-                </span>
-                <div className="text-xs text-zinc-500">
-                  {exercise.targetSets}×{exercise.targetReps}
-                  {exercise.sets.some((s) => s.isAmrap) ? '+' : ''}
-                </div>
+                {isTestDay ? (
+                  <span className="text-zinc-400">
+                    {exercise.fiveRepMax !== undefined ? `5RM ${exercise.fiveRepMax} ${unit}` : 'Not concluded'}
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-zinc-400">
+                      {exercise.weight} {unit}
+                    </span>
+                    <div className="text-xs text-zinc-500">
+                      {exercise.targetSets}×{exercise.targetReps}
+                      {exercise.sets.some((s) => s.isAmrap) ? '+' : ''}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -240,7 +251,10 @@ export function WorkoutDetail({ workout, unit, barWeight, plateInventory, liftSu
                             : 'bg-zinc-900'
                     }`}
                   >
-                    <span className="text-zinc-400">Set {set.setNumber}</span>
+                    <span className="text-zinc-400">
+                      Set {set.setNumber}
+                      {set.weight !== undefined && ` · ${set.weight} ${unit}`}
+                    </span>
                     <div className="flex items-center gap-2">
                       <span className={isFailed ? 'text-red-400' : isPartial ? 'text-amber-400' : ''}>
                         {isFailed ? 'Failed' : set.reps}
@@ -261,7 +275,7 @@ export function WorkoutDetail({ workout, unit, barWeight, plateInventory, liftSu
               })}
             </div>
 
-            <ExerciseResult exercise={exercise} tier={exercise.tier} unit={unit} plateInventory={plateInventory} liftSubstitutions={liftSubstitutions} />
+            {!isTestDay && <ExerciseResult exercise={exercise} tier={exercise.tier} unit={unit} plateInventory={plateInventory} liftSubstitutions={liftSubstitutions} />}
           </div>
         ))}
 

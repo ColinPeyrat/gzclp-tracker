@@ -303,7 +303,7 @@ export function applyWorkoutProgression(
   programState: ProgramState,
   ctx: ProgressionContext
 ): ProgramState {
-  if (workout.type === 'MN') return programState
+  if (workout.type === 'MN' || workout.type === 'TD') return programState
   const workoutDef = WORKOUTS[workout.type]
   const newState = { ...programState }
   const smallestPlate = ctx.getSmallestPlate(ctx.plateInventory)
@@ -410,7 +410,7 @@ export function backfillLastSuccessWeight(
   }
 
   const completed = workouts
-    .filter((w) => w.completed && w.type !== 'MN')
+    .filter((w) => w.completed && w.type !== 'MN' && w.type !== 'TD')
     .sort((a, b) => b.date.localeCompare(a.date))
 
   let migrated = false
