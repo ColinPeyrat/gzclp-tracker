@@ -1,6 +1,6 @@
 import { TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { calculatePlates, formatPlates } from '../../lib/plates'
+import { calculatePlates } from '../../lib/plates'
 import { PlateChips } from './PlateChips'
 import type { WeightUnit } from '../../lib/types'
 
@@ -28,12 +28,10 @@ export function PlateDisplay({ targetWeight, barWeight, plateInventory, unit, is
         </div>
         {result.suggestedWeight && suggestedResult && (
           <>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-muted-foreground">
-                Closest <span className="font-semibold text-foreground tabular-nums">{result.suggestedWeight}</span> {unit}
-              </span>
-              {suggestedResult.perSide.length > 0 && <PlateChips plates={suggestedResult.perSide} size="sm" />}
+            <div className="text-muted-foreground">
+              Closest <span className="font-semibold text-foreground tabular-nums">{result.suggestedWeight}</span> {unit}
             </div>
+            {suggestedResult.perSide.length > 0 && <PlateChips plates={suggestedResult.perSide} size="sm" />}
             {onWeightChange && (
               <Button variant="secondary" size="lg" className="w-full" onClick={() => onWeightChange(result.suggestedWeight!)}>
                 Use {result.suggestedWeight} {unit}
@@ -60,11 +58,8 @@ export function PlateDisplay({ targetWeight, barWeight, plateInventory, unit, is
   }
 
   return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <div className="text-sm text-muted-foreground">Each side</div>
-        <div className="font-mono text-xs text-muted-foreground tabular-nums">{formatPlates(result.perSide)}</div>
-      </div>
+    <div className="space-y-2">
+      <div className="text-sm text-muted-foreground">Each side</div>
       <PlateChips plates={result.perSide} />
     </div>
   )

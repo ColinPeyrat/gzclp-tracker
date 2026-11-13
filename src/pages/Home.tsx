@@ -209,7 +209,7 @@ export function Home() {
         {!isReturning && (
           <section className="space-y-3">
             <h2 className="px-1 text-sm text-muted-foreground">Coming up</h2>
-            <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+            <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
               {upcoming.slice(1).map((workoutType) => (
                 <WorkoutPreviewCard
                   key={workoutType}
