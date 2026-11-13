@@ -140,6 +140,14 @@ describe('proposeRestart', () => {
     })
   })
 
+  it('only proposes T3s that are in the rotation', () => {
+    const state = recordTestResults(startReturnToProgression(makeState()), { deadlift: 115 })
+    state.t3['landmine-press'] = { weight: 15 }
+    expect(proposeRestart(state, kg).t3).toEqual({ 'lat-pulldown': 50, 'dumbbell-row': 22.5 })
+    const withExtra = proposeRestart(state, { ...kg, additionalT3s: [{ workoutType: 'A1', exerciseIds: ['landmine-press'] }] })
+    expect(withExtra.t3).toEqual({ 'lat-pulldown': 50, 'dumbbell-row': 22.5, 'landmine-press': 15 })
+  })
+
   it('carries T3-style substitutes at their current weight', () => {
     const state = recordTestResults(startReturnToProgression(makeState()), { deadlift: 115 })
     const proposal = proposeRestart(state, { ...kg, liftSubstitutions: legPressT3 })
