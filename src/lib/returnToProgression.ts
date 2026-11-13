@@ -1,7 +1,7 @@
 import type { LiftName, LiftState, Medal, ProgramState, UserSettings, WeightUnit, Workout } from './types'
-import { LIFTS } from './types'
+import { LIFTS, WORKOUT_ORDER } from './types'
 import { getMaintenancePrescription } from './progression'
-import { getLiftSubstitution } from './exercises'
+import { getLiftSubstitution, getT3IdsForWorkout } from './exercises'
 import { getIncrement } from './units'
 
 // See docs/adr/0003-return-to-progression.md
@@ -21,7 +21,7 @@ export type TestProgress =
   | { done: false; nextWeight: number }
   | { done: true; fiveRepMax: number }
 
-type SettingsSubset = Pick<UserSettings, 'weightUnit' | 'liftSubstitutions' | 'maintenanceOverrides'>
+type SettingsSubset = Pick<UserSettings, 'weightUnit' | 'liftSubstitutions' | 'maintenanceOverrides' | 'additionalT3s'>
 
 function roundTo(unit: WeightUnit): number {
   return unit === 'kg' ? 2.5 : 5
@@ -105,8 +105,11 @@ export function proposeRestart(state: ProgramState, settings: SettingsSubset): R
     proposal.t2[liftId] = roundWeight(fiveRM * RESTART_T2_PERCENTAGE, settings.weightUnit)
   }
 
-  for (const [id, { weight }] of Object.entries(state.t3)) {
-    proposal.t3[id] = weight
+  // state.t3 can hold weights for exercises no longer in the rotation
+  const activeT3Ids = new Set(WORKOUT_ORDER.flatMap((type) => getT3IdsForWorkout(type, settings.additionalT3s)))
+  for (const id of activeT3Ids) {
+    const weight = state.t3[id]?.weight
+    if (weight !== undefined) proposal.t3[id] = weight
   }
 
   // Mirrors the weight a T3-style substitute is prescribed in a Rotating Workout
