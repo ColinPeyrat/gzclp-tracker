@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ChevronLeft, ChevronRight, Check, Dumbbell, Plus } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Check, Dumbbell, MoreHorizontal, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { PageSkeleton } from '@/components/layout/PageSkeleton'
 import { cn } from '@/lib/utils'
 import { useProgramStore } from '../stores/programStore'
@@ -62,8 +63,10 @@ export function Workout() {
   const setWarmupSets = useWorkoutSessionStore((s) => s.setWarmupSets)
   const addT3Exercise = useWorkoutSessionStore((s) => s.addT3Exercise)
   const isLastExercise = useWorkoutSessionStore((s) => s.isLastExercise)
+  const abandonWorkout = useWorkoutSessionStore((s) => s.abandonWorkout)
 
   const [showFailModal, setShowFailModal] = useState(false)
+  const [showDiscardModal, setShowDiscardModal] = useState(false)
   const [showWarmupModal, setShowWarmupModal] = useState(false)
   const [showAddT3Modal, setShowAddT3Modal] = useState(false)
   const [newT3Id, setNewT3Id] = useState('')
@@ -219,6 +222,13 @@ export function Workout() {
     }
   }
 
+  const handleDiscardWorkout = () => {
+    // Stop the auto-start effect from opening a fresh session
+    isFinishingRef.current = true
+    abandonWorkout()
+    navigate('/')
+  }
+
   const handleNextExercise = () => {
     if (!currentExercise) return
     const hasIncompleteSets = currentExercise.sets.some((s) => !s.completed)
@@ -355,18 +365,6 @@ export function Workout() {
             Exercise {currentExerciseIndex + 1} of {workout.exercises.length}
           </p>
         </div>
-        {workout.type !== 'MN' && availableT3s.length > 0 && (
-          <Button
-            variant="ghost"
-            size="icon-lg"
-            className="text-muted-foreground"
-            onClick={() => setShowAddT3Modal(true)}
-            title="Add T3 exercise"
-            aria-label="Add T3 exercise"
-          >
-            <Plus className="size-5" />
-          </Button>
-        )}
         <Button
           variant="ghost"
           size="icon-lg"
@@ -377,6 +375,25 @@ export function Workout() {
         >
           <Dumbbell className="size-5" />
         </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon-lg" className="text-muted-foreground" aria-label="More actions">
+              <MoreHorizontal className="size-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-48">
+            {workout.type !== 'MN' && availableT3s.length > 0 && (
+              <DropdownMenuItem className="py-2.5" onSelect={() => setShowAddT3Modal(true)}>
+                <Plus />
+                Add T3 exercise
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem variant="destructive" className="py-2.5" onSelect={() => setShowDiscardModal(true)}>
+              <Trash2 />
+              Discard workout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         {allExercisesComplete && (
           <Button size="lg" className="px-4" onClick={handleFinishWorkout}>
             <Check />
@@ -450,6 +467,21 @@ export function Workout() {
           onSkip={restTimer.skip}
         />
       )}
+
+      <AlertDialog open={showDiscardModal} onOpenChange={setShowDiscardModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard workout?</AlertDialogTitle>
+            <AlertDialogDescription>The sets you've logged in this workout will be lost.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleDiscardWorkout}>
+              Discard
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={showFailModal} onOpenChange={setShowFailModal}>
         <AlertDialogContent>
