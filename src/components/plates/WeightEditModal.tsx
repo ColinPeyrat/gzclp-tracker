@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
-import { X } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { WeightUnit } from '../../lib/types'
 
 interface WeightEditModalProps {
@@ -14,18 +16,6 @@ export function WeightEditModal({ isOpen, onClose, currentWeight, unit, onSave }
   const [weight, setWeight] = useState(currentWeight.toString())
   const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (isOpen) {
-      setWeight(currentWeight.toString())
-      setTimeout(() => {
-        inputRef.current?.focus()
-        inputRef.current?.select()
-      }, 0)
-    }
-  }, [isOpen, currentWeight])
-
-  if (!isOpen) return null
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const newWeight = parseFloat(weight)
@@ -35,48 +25,41 @@ export function WeightEditModal({ isOpen, onClose, currentWeight, unit, onSave }
     }
   }
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose()
-    }
-  }
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
-      onClick={handleBackdropClick}
-    >
-      <div className="w-full max-w-xs mx-4 bg-zinc-900 rounded-lg shadow-xl">
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-          <h2 className="text-lg font-semibold">Change Weight</h2>
-          <button
-            onClick={onClose}
-            className="p-1 text-zinc-400 hover:text-zinc-200"
-          >
-            <X size={20} />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-4">
-          <div className="flex items-center gap-2">
-            <input
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        className="sm:max-w-xs"
+        aria-describedby={undefined}
+        onOpenAutoFocus={(e) => {
+          e.preventDefault()
+          setWeight(currentWeight.toString())
+          setTimeout(() => {
+            inputRef.current?.focus()
+            inputRef.current?.select()
+          }, 0)
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle className="text-lg font-semibold tracking-tight">Change weight</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Input
               ref={inputRef}
               type="number"
               inputMode="decimal"
               step="any"
               value={weight}
               onChange={(e) => setWeight(e.target.value)}
-              className="flex-1 px-3 py-2 text-lg text-center bg-zinc-800 border border-zinc-700 rounded-lg focus:outline-none focus:border-blue-500"
+              className="h-14 text-center text-2xl font-semibold tabular-nums md:text-2xl"
             />
-            <span className="text-lg text-zinc-400">{unit}</span>
+            <span className="text-muted-foreground">{unit}</span>
           </div>
-          <button
-            type="submit"
-            className="w-full mt-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors"
-          >
+          <Button type="submit" size="xl" className="w-full">
             Save
-          </button>
+          </Button>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

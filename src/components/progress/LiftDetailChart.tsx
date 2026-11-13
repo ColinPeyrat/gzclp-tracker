@@ -1,20 +1,41 @@
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  ReferenceDot,
-} from 'recharts'
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import type { LiftProgression } from '../../hooks/useProgressionData'
 
 interface LiftDetailChartProps {
   lift: LiftProgression
 }
 
+interface ChartPoint {
+  index: number
+  date: string
+  actual?: number
+  projection?: number
+  success?: boolean
+}
+
+const chartConfig = {
+  actual: { label: 'Weight', color: 'var(--chart-1)' },
+  projection: { label: 'Projected', color: 'var(--chart-1)' },
+} satisfies ChartConfig
+
 function formatDate(isoDate: string): string {
   const date = new Date(isoDate)
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+function OutcomeDot({ cx, cy, payload }: { cx?: number; cy?: number; payload?: ChartPoint }) {
+  if (cx === undefined || cy === undefined || payload?.actual === undefined) return null
+  return (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={3}
+      fill={payload.success ? 'var(--success)' : 'var(--destructive)'}
+      stroke="var(--card)"
+      strokeWidth={1.5}
+    />
+  )
 }
 
 export function LiftDetailChart({ lift }: LiftDetailChartProps) {
@@ -22,115 +43,98 @@ export function LiftDetailChart({ lift }: LiftDetailChartProps) {
 
   if (!hasData) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900">
-        <p className="text-zinc-500">Complete workouts to see your progress</p>
+      <div className="flex h-64 items-center justify-center rounded-lg bg-card px-6 text-center">
+        <p className="text-sm text-muted-foreground">Complete workouts to see your progress</p>
       </div>
     )
   }
 
-  // Build chart data with historical points
-  const chartData = lift.dataPoints.map((point) => ({
+  const chartData: ChartPoint[] = lift.dataPoints.map((point, index) => ({
+    index,
     date: formatDate(point.date),
-    weight: point.weight,
+    actual: point.weight,
     success: point.success,
-    isProjection: false,
   }))
 
-  // Add projection point
-  if (lift.dataPoints.length >= 2 && lift.projectedWeight > 0) {
-    const lastDate = new Date(lift.dataPoints[lift.dataPoints.length - 1].date)
-    const projectionDate = new Date(lastDate)
-    projectionDate.setDate(projectionDate.getDate() + 56) // 8 weeks
+  const hasProjection = lift.dataPoints.length >= 2 && lift.projectedWeight > 0
+  if (hasProjection) {
+    const last = lift.dataPoints[lift.dataPoints.length - 1]
+    const projectionDate = new Date(last.date)
+    projectionDate.setDate(projectionDate.getDate() + 56)
 
+    chartData[chartData.length - 1].projection = last.weight
     chartData.push({
+      index: chartData.length,
       date: formatDate(projectionDate.toISOString()),
-      weight: lift.projectedWeight,
-      success: true,
-      isProjection: true,
+      projection: lift.projectedWeight,
     })
   }
 
-  // Calculate Y-axis domain with padding
-  const weights = chartData.map((d) => d.weight)
+  const weights = chartData.flatMap((d) => [d.actual, d.projection]).filter((w): w is number => w !== undefined)
   const minWeight = Math.min(...weights)
   const maxWeight = Math.max(...weights)
   const padding = (maxWeight - minWeight) * 0.1 || 10
   const yMin = Math.floor((minWeight - padding) / 5) * 5
-  const yMax = Math.ceil((maxWeight + padding) / 5) * 5
-
-  // Find success and failure points for dots
-  const successPoints = lift.dataPoints
-    .filter((p) => p.success)
-    .map((p) => ({ date: formatDate(p.date), weight: p.weight }))
-  const failPoints = lift.dataPoints
-    .filter((p) => !p.success)
-    .map((p) => ({ date: formatDate(p.date), weight: p.weight }))
+  const yStep = Math.max(5, Math.ceil((maxWeight + padding - yMin) / 4 / 5) * 5)
+  const yTicks = Array.from({ length: 5 }, (_, i) => yMin + i * yStep)
 
   return (
-    <div className="h-64 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+    <div className="rounded-lg bg-card px-2 pt-4 pb-2">
+      <ChartContainer config={chartConfig} className="aspect-auto h-60 w-full">
+        <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+          <CartesianGrid vertical={false} />
           <XAxis
-            dataKey="date"
-            stroke="#71717a"
-            fontSize={12}
+            dataKey="index"
+            type="number"
+            domain={[0, chartData.length - 1]}
+            ticks={chartData.map((d) => d.index)}
+            tickFormatter={(i: number) => chartData[i]?.date ?? ''}
             tickLine={false}
             axisLine={false}
+            tickMargin={8}
+            minTickGap={24}
           />
           <YAxis
-            domain={[yMin, yMax]}
-            stroke="#71717a"
-            fontSize={12}
+            domain={[yMin, yTicks[yTicks.length - 1]]}
+            ticks={yTicks}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(value) => `${value}`}
+            tickMargin={4}
             width={40}
           />
-          {/* Solid line for historical data */}
-          <Line
-            type="monotone"
-            dataKey="weight"
-            stroke="#3b82f6"
-            strokeWidth={2}
-            dot={false}
-            strokeDasharray={`${(lift.dataPoints.length - 1) * 100} 1000`}
+          <ChartTooltip
+            cursor={false}
+            content={
+              <ChartTooltipContent
+                indicator="line"
+                labelFormatter={(_, payload) => payload?.[0]?.payload?.date}
+              />
+            }
           />
-          {/* Dashed line for projection */}
-          {lift.dataPoints.length >= 2 && (
+          <Line
+            dataKey="actual"
+            type="linear"
+            stroke="var(--color-actual)"
+            strokeWidth={1.5}
+            dot={<OutcomeDot />}
+            activeDot={false}
+            isAnimationActive={false}
+          />
+          {hasProjection && (
             <Line
-              type="monotone"
-              dataKey="weight"
-              stroke="#3b82f6"
-              strokeWidth={2}
-              strokeDasharray="5 5"
+              dataKey="projection"
+              type="linear"
+              stroke="var(--color-projection)"
+              strokeWidth={1.5}
+              strokeDasharray="4 4"
+              strokeOpacity={0.5}
               dot={false}
-              opacity={0.5}
+              activeDot={false}
+              isAnimationActive={false}
             />
           )}
-          {/* Success dots */}
-          {successPoints.map((point, i) => (
-            <ReferenceDot
-              key={`success-${i}`}
-              x={point.date}
-              y={point.weight}
-              r={4}
-              fill="#22c55e"
-              stroke="none"
-            />
-          ))}
-          {/* Failure dots */}
-          {failPoints.map((point, i) => (
-            <ReferenceDot
-              key={`fail-${i}`}
-              x={point.date}
-              y={point.weight}
-              r={4}
-              fill="#ef4444"
-              stroke="none"
-            />
-          ))}
         </LineChart>
-      </ResponsiveContainer>
+      </ChartContainer>
     </div>
   )
 }

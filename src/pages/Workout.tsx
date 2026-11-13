@@ -1,6 +1,22 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ChevronLeft, ChevronRight, Check, Dumbbell, Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { TierBadge } from '@/components/ui/tier-badge'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { PageSkeleton } from '@/components/layout/PageSkeleton'
+import { cn } from '@/lib/utils'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useWorkoutSessionStore } from '../stores/workoutSessionStore'
@@ -133,6 +149,7 @@ export function Workout() {
       const sub = getLiftSubstitution(currentExercise.liftId, settings.liftSubstitutions)
       if (!sub?.forceT3Progression) {
         lastAutoShownIndex.current = currentExerciseIndex
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-open on exercise navigation, guarded by ref
         setShowWarmupModal(true)
       }
     }
@@ -310,64 +327,65 @@ export function Workout() {
   }
 
   if (!programLoaded || !settingsLoaded || !workout || !currentExercise) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-zinc-400">Loading...</div>
-      </div>
-    )
+    return <PageSkeleton />
   }
 
   const allExercisesComplete = workout.exercises.every((ex) =>
     ex.sets.every((s) => s.completed)
   )
+  const incompleteCount = currentExercise.sets.filter((s) => !s.completed).length
+  const selectedT3 = availableT3s.find((t) => t.id === newT3Id)
 
   return (
-    <div className="flex min-h-screen flex-col pb-[calc(var(--nav-height)+var(--rest-timer-height))]">
-      <header className="border-b border-zinc-800 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/')} className="p-1 text-zinc-400 hover:text-white">
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div>
-              <h1 className="font-bold">{workout.type === 'MN' ? 'Maintenance' : workout.type}</h1>
-              <p className="text-xs text-zinc-400">
-                Exercise {currentExerciseIndex + 1} of {workout.exercises.length}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {workout.type !== 'MN' && availableT3s.length > 0 && (
-              <button
-                onClick={() => setShowAddT3Modal(true)}
-                className="p-2 text-zinc-400 hover:text-white"
-                title="Add T3 exercise"
-              >
-                <Plus className="h-5 w-5" />
-              </button>
-            )}
-            <button
-              onClick={() => setShowWarmupModal(true)}
-              className="p-2 text-zinc-400 hover:text-white"
-              title="View warmup sets"
-            >
-              <Dumbbell className="h-5 w-5" />
-            </button>
-            {allExercisesComplete && (
-              <button
-                onClick={handleFinishWorkout}
-                className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 font-medium hover:bg-green-500"
-              >
-                <Check className="h-4 w-4" />
-                Finish
-              </button>
-            )}
-          </div>
+    <div
+      className={cn(
+        'mx-auto flex min-h-screen max-w-md flex-col',
+        restTimer.isRunning
+          ? 'pb-[calc(var(--nav-height)+var(--rest-timer-height)+1rem)]'
+          : 'pb-[calc(var(--nav-height)+1rem)]'
+      )}
+    >
+      <header className="flex items-center gap-2 px-3 pt-4 pb-3">
+        <Button variant="ghost" size="icon-lg" onClick={() => navigate('/')} aria-label="Back">
+          <ArrowLeft className="size-5" />
+        </Button>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-semibold tracking-tight">{workout.type === 'MN' ? 'Maintenance' : workout.type}</h1>
+          <p className="text-sm text-muted-foreground tabular-nums">
+            Exercise {currentExerciseIndex + 1} of {workout.exercises.length}
+          </p>
         </div>
+        {workout.type !== 'MN' && availableT3s.length > 0 && (
+          <Button
+            variant="ghost"
+            size="icon-lg"
+            className="text-muted-foreground"
+            onClick={() => setShowAddT3Modal(true)}
+            title="Add T3 exercise"
+            aria-label="Add T3 exercise"
+          >
+            <Plus className="size-5" />
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="icon-lg"
+          className="text-muted-foreground"
+          onClick={() => setShowWarmupModal(true)}
+          title="View warmup sets"
+          aria-label="View warmup sets"
+        >
+          <Dumbbell className="size-5" />
+        </Button>
+        {allExercisesComplete && (
+          <Button size="lg" className="px-4" onClick={handleFinishWorkout}>
+            <Check />
+            Finish
+          </Button>
+        )}
       </header>
 
-      <main className="flex-1 p-4">
+      <main className="flex-1 px-4">
         <ExerciseCard
           exercise={currentExercise}
           barWeight={settings.barWeight}
@@ -381,40 +399,45 @@ export function Workout() {
         />
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-zinc-900 px-4 h-(--nav-height) flex items-center">
-        <div className="flex w-full items-center justify-between">
-          <button
+      <div className="fixed inset-x-0 bottom-0 z-30 h-(--nav-height) border-t border-border bg-background">
+        <div className="mx-auto flex h-full max-w-md items-center justify-between gap-2 px-4">
+          <Button
+            variant="ghost"
+            size="lg"
+            className="h-12 px-3 text-muted-foreground"
             onClick={prevExercise}
             disabled={currentExerciseIndex === 0}
-            className="flex items-center gap-1 rounded-lg px-4 py-2 text-zinc-400 hover:text-white disabled:opacity-30"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="size-5" />
             Prev
-          </button>
+          </Button>
 
-          <div className="flex gap-1">
+          <div className="flex items-center gap-1.5">
             {workout.exercises.map((ex, i) => (
               <div
                 key={i}
-                className={`h-2 w-2 rounded-full ${
+                className={cn(
+                  'h-1.5 rounded-full transition-all',
                   i === currentExerciseIndex
-                    ? 'bg-blue-500'
+                    ? 'w-5 bg-primary'
                     : ex.sets.every((s) => s.completed)
-                      ? 'bg-green-500'
-                      : 'bg-zinc-600'
-                }`}
+                      ? 'w-1.5 bg-primary/40'
+                      : 'w-1.5 bg-secondary'
+                )}
               />
             ))}
           </div>
 
-          <button
+          <Button
+            variant="secondary"
+            size="lg"
+            className="h-12 px-4"
             onClick={handleNextExercise}
             disabled={isLastExercise()}
-            className="flex items-center gap-1 rounded-lg px-4 py-2 text-zinc-400 hover:text-white disabled:opacity-30"
           >
             Next
-            <ChevronRight className="h-5 w-5" />
-          </button>
+            <ChevronRight className="size-5" />
+          </Button>
         </div>
       </div>
 
@@ -428,28 +451,22 @@ export function Workout() {
         />
       )}
 
-      {showFailModal && (
-        <Modal onClose={() => setShowFailModal(false)}>
-          <h2 className="mb-2 text-lg font-bold">Incomplete Sets</h2>
-          <p className="mb-6 text-sm text-zinc-400">
-            You have {currentExercise.sets.filter((s) => !s.completed).length} incomplete sets. Mark them as failed and move on?
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={handleConfirmFail}
-              className="flex-1 rounded-lg bg-red-600 py-2 font-medium hover:bg-red-500"
-            >
-              Mark Failed
-            </button>
-            <button
-              onClick={() => setShowFailModal(false)}
-              className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
-            >
-              Go Back
-            </button>
-          </div>
-        </Modal>
-      )}
+      <AlertDialog open={showFailModal} onOpenChange={setShowFailModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Incomplete sets</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have {incompleteCount} incomplete sets. Mark them as failed and move on?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go back</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleConfirmFail}>
+              Mark failed
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {showWarmupModal && (
         <WarmupModal
@@ -469,76 +486,73 @@ export function Workout() {
       )}
 
       {showAddT3Modal && (
-        <Modal onClose={() => setShowAddT3Modal(false)}>
-          <h2 className="mb-4 text-lg font-bold">Add T3 Exercise</h2>
-
+        <Modal onClose={() => setShowAddT3Modal(false)} title="Add T3 exercise">
           {!newT3Id ? (
             <div className="space-y-2">
               {availableT3s.map((t3) => {
                 const savedWeight = programState?.t3[t3.id]?.weight
                 return (
-                  <button
+                  <Button
                     key={t3.id}
+                    variant="secondary"
+                    className="h-12 w-full justify-between px-4 text-base font-normal"
                     onClick={() => {
                       setNewT3Id(t3.id)
                       if (savedWeight) {
                         setNewT3Weight(savedWeight.toString())
                       }
                     }}
-                    className="w-full rounded-lg bg-zinc-700 px-4 py-3 text-left hover:bg-zinc-600"
                   >
-                    <span className="font-medium">{t3.name}</span>
+                    <span className="truncate font-medium">{t3.name}</span>
                     {savedWeight && (
-                      <span className="ml-2 text-sm text-zinc-400">
+                      <span className="text-sm text-muted-foreground tabular-nums">
                         {savedWeight} {settings.weightUnit}
                       </span>
                     )}
-                  </button>
+                  </Button>
                 )
               })}
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="rounded-lg bg-zinc-700 px-4 py-3">
-                <span className="font-medium">
-                  {availableT3s.find((t) => t.id === newT3Id)?.name}
-                </span>
+              <div className="flex items-center gap-2">
+                <TierBadge tier="T3" />
+                <span className="font-medium">{selectedT3?.name}</span>
               </div>
 
-              <div>
-                <label className="mb-1 block text-sm text-zinc-400">Weight</label>
-                <div className="flex items-center gap-2">
-                  <input
+              <div className="space-y-2">
+                <Label htmlFor="new-t3-weight">Weight</Label>
+                <div className="flex items-center gap-3">
+                  <Input
+                    id="new-t3-weight"
                     type="number"
+                    inputMode="decimal"
                     value={newT3Weight}
                     onChange={(e) => setNewT3Weight(e.target.value)}
                     placeholder="Weight"
-                    className="flex-1 rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 focus:border-blue-500 focus:outline-none"
+                    className="h-11 tabular-nums"
                     step={settings.weightUnit === 'kg' ? 2.5 : 5}
                     min={0}
                     autoFocus
                   />
-                  <span className="text-zinc-400">{settings.weightUnit}</span>
+                  <span className="text-muted-foreground">{settings.weightUnit}</span>
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <button
-                  onClick={handleAddT3}
-                  disabled={!newT3Weight}
-                  className="flex-1 rounded-lg bg-blue-600 py-2 font-medium hover:bg-blue-500 disabled:opacity-50"
-                >
-                  Add
-                </button>
-                <button
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="secondary"
+                  size="xl"
                   onClick={() => {
                     setNewT3Id('')
                     setNewT3Weight('')
                   }}
-                  className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
                 >
                   Back
-                </button>
+                </Button>
+                <Button size="xl" onClick={handleAddT3} disabled={!newT3Weight}>
+                  Add
+                </Button>
               </div>
             </div>
           )}

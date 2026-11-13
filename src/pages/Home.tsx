@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Dumbbell, Play, Bug, Settings, Shield, X } from 'lucide-react'
+import { Dumbbell, Bug, Settings, Shield, X, ChevronRight, RotateCcw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { PageSkeleton } from '@/components/layout/PageSkeleton'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../lib/db'
 import {
@@ -13,12 +19,13 @@ import { ReturnToProgressionCard } from '../components/home/ReturnToProgressionC
 import { useTestDayStore } from '../stores/testDayStore'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
-import { WORKOUTS, WORKOUT_ORDER, MAINTENANCE_LIFTS, MAINTENANCE_SETS, MAINTENANCE_REPS, LIFTS, getUpcomingWorkoutTypes, type RotatingWorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit, type LiftSubstitution, type ExerciseDefinition } from '../lib/types'
+import { WORKOUTS, WORKOUT_ORDER, MAINTENANCE_LIFTS, MAINTENANCE_SETS, MAINTENANCE_REPS, getUpcomingWorkoutTypes, type RotatingWorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit, type LiftSubstitution, type ExerciseDefinition } from '../lib/types'
 import { estimate5RM, applyT1Reset, getMaintenancePrescription } from '../lib/progression'
 import { getExerciseName } from '../lib/exercises'
-import { Modal } from '../components/ui/Modal'
 import { BottomNav } from '../components/ui/BottomNav'
 import { WorkoutPreviewCard } from '../components/home/WorkoutPreviewCard'
+
+const LIFT_CODES: Record<LiftName, string> = { squat: 'SQ', bench: 'BP', deadlift: 'DL', ohp: 'OHP' }
 
 interface Pending5RMInfo {
   liftId: LiftName
@@ -98,27 +105,20 @@ export function Home() {
   }
 
   if (!programLoaded || !settingsLoaded) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-zinc-400">Loading...</div>
-      </div>
-    )
+    return <PageSkeleton />
   }
 
   if (!state) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-4">
-        <Dumbbell className="h-16 w-16 text-zinc-400" />
-        <h1 className="text-2xl font-bold">GZCLP Tracker</h1>
-        <p className="text-center text-zinc-400">
-          Set up your program to get started
-        </p>
-        <Link
-          to="/setup"
-          className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-500"
-        >
-          Get Started
-        </Link>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
+        <Dumbbell className="size-10 text-muted-foreground" />
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight">GZCLP Tracker</h1>
+          <p className="text-muted-foreground">Set up your program to get started</p>
+        </div>
+        <Button asChild size="xl" className="w-full max-w-xs">
+          <Link to="/setup">Get started</Link>
+        </Button>
       </div>
     )
   }
@@ -126,99 +126,90 @@ export function Home() {
   const upcoming = getUpcomingWorkoutTypes(state.nextWorkoutType)
   const isReturning = !!state.returnToProgression
   const showNudge = !isReturning && !nudgeDismissed && isReturnNudgeDue(lastActivityDate ?? null)
+  const unit = settings.weightUnit
 
   return (
-    <div className="flex min-h-screen flex-col pb-(--nav-height)">
-      <header className="border-b border-zinc-800 p-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">GZCLP</h1>
-          <div className="flex items-center gap-2">
-            {import.meta.env.DEV && (
-              <button
-                onClick={() => setShowDebugModal(true)}
-                className="p-2 text-yellow-500 hover:text-yellow-400"
-              >
-                <Bug className="h-5 w-5" />
-              </button>
-            )}
-            <Link to="/settings" className="p-2 text-zinc-400 hover:text-white">
-              <Settings className="h-5 w-5" />
+    <div className="mx-auto flex min-h-screen max-w-md flex-col pb-[calc(var(--nav-height)+1rem)]">
+      <header className="flex items-center justify-between px-5 pt-6 pb-4">
+        <span className="text-lg font-semibold tracking-tight">GZCLP</span>
+        <div className="flex items-center gap-1">
+          {import.meta.env.DEV && (
+            <Button variant="ghost" size="icon" onClick={() => setShowDebugModal(true)} className="text-warning">
+              <Bug />
+            </Button>
+          )}
+          <Button asChild variant="ghost" size="icon" className="text-muted-foreground">
+            <Link to="/settings" aria-label="Settings">
+              <Settings />
             </Link>
-          </div>
+          </Button>
         </div>
       </header>
 
-      <main className="flex-1 p-4">
+      <main className="flex-1 space-y-5 px-4">
         {showNudge && (
-          <div className="mb-6 rounded-lg border border-blue-500/30 bg-blue-950/20 p-4">
-            <div className="mb-2 flex items-start justify-between gap-2">
-              <p className="text-sm">
-                No program workout in over 3 weeks. Coming back from a break? Test a fresh 5RM
-                rather than resuming at your old weights.
-              </p>
-              <button onClick={() => setNudgeDismissed(true)} className="text-zinc-500 hover:text-white" aria-label="Dismiss">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <button
-              onClick={handleStartReturn}
-              className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium hover:bg-blue-500"
-            >
-              Return to Progression
-            </button>
-          </div>
+          <Card>
+            <CardContent className="space-y-3">
+              <div className="flex items-start gap-3">
+                <RotateCcw className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+                <p className="flex-1 text-sm">
+                  <span className="font-semibold">Back from a break?</span>{' '}
+                  <span className="text-muted-foreground">
+                    No program workout in over 3 weeks. Test a fresh 5RM instead of resuming at old weights.
+                  </span>
+                </p>
+                <Button variant="ghost" size="icon-xs" onClick={() => setNudgeDismissed(true)} aria-label="Dismiss">
+                  <X />
+                </Button>
+              </div>
+              <Button variant="secondary" className="w-full" size="lg" onClick={handleStartReturn}>
+                Return to Progression
+              </Button>
+            </CardContent>
+          </Card>
         )}
 
         {isReturning ? (
           <ReturnToProgressionCard state={state} settings={settings} onCancel={handleCancelReturn} />
         ) : (
-          <>
-            <div className="mb-6">
-              <p className="text-sm text-zinc-400">Next Workout</p>
-              <h2 className="text-2xl font-bold">{state.nextWorkoutType}</h2>
-              <p className="text-zinc-400">Workout #{state.workoutCount + 1}</p>
-            </div>
-
-            <div className="mb-6">
-              <WorkoutPreviewCard
-                workoutType={upcoming[0]}
-                state={state}
-                settings={settings}
-                isNext={true}
-              />
-            </div>
-
-            <div className="mb-3">
-              <Link
-                to="/workout"
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 font-medium text-white hover:bg-blue-500"
-              >
-                <Play className="h-5 w-5" />
-                Start Workout
-              </Link>
-            </div>
-          </>
+          <Card>
+            <CardContent className="space-y-5">
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Next up</p>
+                  <h1 className="text-4xl font-semibold tracking-tight">{state.nextWorkoutType}</h1>
+                </div>
+                <span className="font-mono text-sm text-muted-foreground tabular-nums">#{state.workoutCount + 1}</span>
+              </div>
+              <WorkoutPreviewCard workoutType={upcoming[0]} state={state} settings={settings} isNext={true} />
+              <Button asChild size="xl" className="w-full">
+                <Link to="/workout">
+                  Start workout
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         )}
 
-        <div className="mb-8">
-          <Link
-            to="/workout?mode=maintenance"
-            className="flex w-full flex-col items-center gap-1 rounded-lg border border-zinc-700 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
-          >
-            <span className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Maintenance Day
-            </span>
-            <span className="text-xs text-zinc-500">
-              {MAINTENANCE_LIFTS.map((id) => `${LIFTS[id].name} ${getMaintenancePrescription(state.t1[id], settings.weightUnit, settings.maintenanceOverrides?.[id]).weight}`).join(' / ')} {settings.weightUnit} · {MAINTENANCE_SETS}×{MAINTENANCE_REPS}
-            </span>
-          </Link>
-        </div>
+        <Link
+          to="/workout?mode=maintenance"
+          className="flex items-center gap-3 rounded-lg bg-card p-4 transition-colors hover:bg-accent"
+        >
+          <Shield className="size-5 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <div className="font-medium">Maintenance Day</div>
+            <div className="truncate font-mono text-xs text-muted-foreground tabular-nums">
+              {MAINTENANCE_SETS}×{MAINTENANCE_REPS} ·{' '}
+              {MAINTENANCE_LIFTS.map((id) => `${LIFT_CODES[id]} ${getMaintenancePrescription(state.t1[id], unit, settings.maintenanceOverrides?.[id]).weight}`).join(' · ')}
+            </div>
+          </div>
+          <ChevronRight className="size-5 text-muted-foreground" />
+        </Link>
 
         {!isReturning && (
-          <div>
-            <h3 className="mb-3 text-sm font-medium text-zinc-400">Upcoming</h3>
-            <div className="space-y-3">
+          <section className="space-y-3">
+            <h2 className="px-1 text-sm text-muted-foreground">Coming up</h2>
+            <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
               {upcoming.slice(1).map((workoutType) => (
                 <WorkoutPreviewCard
                   key={workoutType}
@@ -229,98 +220,88 @@ export function Home() {
                 />
               ))}
             </div>
-          </div>
+          </section>
         )}
       </main>
 
-      {currentPending && (
-        <Modal>
-          <h2 className="mb-2 text-lg font-bold">Reset {currentPending.liftName}</h2>
-          <p className="mb-4 text-sm text-zinc-400">
-            {currentPending.bestSetReps > 0
-              ? `Enter your new 5RM or use the estimate based on your best set (${currentPending.bestSetReps} reps @ ${currentPending.bestSetWeight} ${settings.weightUnit}).`
-              : 'Enter your tested 5RM to start a new cycle.'}
-          </p>
+      <Dialog open={!!currentPending}>
+        {currentPending && (
+          <DialogContent showCloseButton={false} onInteractOutside={(e) => e.preventDefault()}>
+            <DialogHeader>
+              <DialogTitle>Reset {currentPending.liftName}</DialogTitle>
+              <DialogDescription>
+                {currentPending.bestSetReps > 0
+                  ? `Enter your new 5RM or use the estimate from your best set (${currentPending.bestSetReps} reps @ ${currentPending.bestSetWeight} ${unit}).`
+                  : 'Enter your tested 5RM to start a new cycle.'}
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="mb-4 space-y-3">
-            {currentPending.bestSetReps > 0 && (
-          <>
-                    <button
-                      onClick={() => handleApply5RM(currentPending.estimated5RM)}
-                      className="w-full rounded-lg bg-blue-600 py-3 font-medium hover:bg-blue-500"
-                    >
-                      Use Estimate: {currentPending.estimated5RM} {settings.weightUnit}
-                    </button>
-
-                    <div className="flex items-center gap-2 text-sm text-zinc-400">
-                      <div className="h-px flex-1 bg-zinc-700" />
-                      <span>or enter manually</span>
-                      <div className="h-px flex-1 bg-zinc-700" />
-                    </div>
-          </>
-            )}
-
-            <div className="flex gap-2">
-              <input
-                type="number"
-                value={manual5RM}
-                onChange={(e) => setManual5RM(e.target.value)}
-                placeholder={`5RM in ${settings.weightUnit}`}
-                className="flex-1 rounded-lg bg-zinc-700 px-4 py-3 text-white placeholder:text-zinc-500"
-              />
-              <button
-                onClick={() => {
-                  const value = parseFloat(manual5RM)
-                  if (!isNaN(value) && value > 0) {
-                    handleApply5RM(value)
-                  }
-                }}
-                disabled={!manual5RM || isNaN(parseFloat(manual5RM))}
-                className="rounded-lg bg-zinc-600 px-4 py-3 font-medium hover:bg-zinc-500 disabled:opacity-50"
-              >
-                Use This
-              </button>
+            <div className="space-y-3">
+              {currentPending.bestSetReps > 0 && (
+                <>
+                  <Button size="xl" className="w-full" onClick={() => handleApply5RM(currentPending.estimated5RM)}>
+                    Use estimate: {currentPending.estimated5RM} {unit}
+                  </Button>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Separator className="flex-1" />
+                    or enter manually
+                    <Separator className="flex-1" />
+                  </div>
+                </>
+              )}
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={manual5RM}
+                  onChange={(e) => setManual5RM(e.target.value)}
+                  placeholder={`5RM in ${unit}`}
+                  className="h-11"
+                />
+                <Button
+                  variant="secondary"
+                  className="h-11"
+                  onClick={() => {
+                    const value = parseFloat(manual5RM)
+                    if (!isNaN(value) && value > 0) handleApply5RM(value)
+                  }}
+                  disabled={!manual5RM || isNaN(parseFloat(manual5RM))}
+                >
+                  Use this
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Your new working weight will be 85% of the 5RM you enter.</p>
             </div>
-          </div>
+          </DialogContent>
+        )}
+      </Dialog>
 
-          <p className="text-xs text-zinc-500">
-            Your new working weight will be 85% of the 5RM you enter.
-          </p>
-        </Modal>
-      )}
-
-      {showDebugModal && (
-        <Modal onClose={() => setShowDebugModal(false)}>
-          <h2 className="mb-4 text-lg font-bold text-yellow-500">Debug: Select Workout</h2>
+      <Dialog open={showDebugModal} onOpenChange={setShowDebugModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-warning">Debug: select workout</DialogTitle>
+          </DialogHeader>
           <div className="space-y-2">
             {WORKOUT_ORDER.map((workoutType) => {
               const w = WORKOUTS[workoutType]
               return (
-                <button
+                <Button
                   key={workoutType}
+                  variant={state.nextWorkoutType === workoutType ? 'default' : 'secondary'}
+                  className="h-auto w-full justify-start py-3"
                   onClick={() => handleSetNextWorkout(workoutType)}
-                  className={`w-full rounded-lg p-3 text-left ${
-                    state?.nextWorkoutType === workoutType
-                      ? 'bg-blue-600'
-                      : 'bg-zinc-700 hover:bg-zinc-600'
-                  }`}
                 >
-                  <span className="font-medium">{workoutType}</span>
-                  <span className="ml-2 text-sm text-zinc-400">
-                    T1: {getExerciseName(w.t1, 'T1', settings.liftSubstitutions, settings.exerciseLibrary)}, T2: {getExerciseName(w.t2, 'T2', settings.liftSubstitutions, settings.exerciseLibrary)}
+                  <span className="font-semibold">{workoutType}</span>
+                  <span className="truncate text-xs opacity-70">
+                    T1: {getExerciseName(w.t1, 'T1', settings.liftSubstitutions, settings.exerciseLibrary)} · T2:{' '}
+                    {getExerciseName(w.t2, 'T2', settings.liftSubstitutions, settings.exerciseLibrary)}
                   </span>
-                </button>
+                </Button>
               )
             })}
           </div>
-          <button
-            onClick={() => setShowDebugModal(false)}
-            className="mt-4 w-full rounded-lg bg-zinc-700 py-2 text-sm hover:bg-zinc-600"
-          >
-            Cancel
-          </button>
-        </Modal>
-      )}
+        </DialogContent>
+      </Dialog>
 
       <BottomNav active="home" />
     </div>

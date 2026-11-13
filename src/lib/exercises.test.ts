@@ -35,9 +35,9 @@ describe('getExerciseName', () => {
 
 describe('TIER_COLORS', () => {
   it('has correct color classes', () => {
-    expect(TIER_COLORS.T1).toBe('text-blue-400')
-    expect(TIER_COLORS.T2).toBe('text-green-400')
-    expect(TIER_COLORS.T3).toBe('text-yellow-400')
+    expect(TIER_COLORS.T1).toBe('text-tier-1')
+    expect(TIER_COLORS.T2).toBe('text-tier-2')
+    expect(TIER_COLORS.T3).toBe('text-tier-3')
   })
 })
 

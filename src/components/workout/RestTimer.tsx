@@ -1,4 +1,6 @@
 import { Plus, Minus, SkipForward } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import { formatTime } from '../../hooks/useRestTimer'
 
 interface RestTimerProps {
@@ -15,41 +17,29 @@ export function RestTimer({ seconds, totalSeconds, isRunning, onAddTime, onSkip 
   const progress = isRunning ? (seconds / totalSeconds) * 100 : 0
 
   return (
-    <div className="fixed left-0 right-0 border-t border-zinc-700 bg-zinc-900 p-4 bottom-(--nav-height)">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm text-zinc-400">Rest</span>
-        <span className="text-3xl font-bold tabular-nums">{formatTime(seconds)}</span>
-      </div>
+    <div className="fixed inset-x-0 bottom-(--nav-height) z-30 h-(--rest-timer-height) border-t border-border bg-background">
+      <div className="mx-auto flex h-full max-w-md flex-col justify-center gap-3 px-4">
+        <div className="flex items-baseline justify-between">
+          <span className="text-sm text-muted-foreground">Rest</span>
+          <span className="text-4xl font-semibold tracking-tight tabular-nums">{formatTime(seconds)}</span>
+        </div>
 
-      <div className="mb-3 h-1 overflow-hidden rounded-full bg-zinc-700">
-        <div
-          className="h-full bg-blue-500 transition-all duration-1000"
-          style={{ width: `${Math.min(100, progress)}%` }}
-        />
-      </div>
+        <Progress value={Math.min(100, progress)} className="[&>*]:duration-1000" />
 
-      <div className="flex items-center justify-center gap-3">
-        <button
-          onClick={() => onAddTime(-30)}
-          className="flex items-center gap-1 rounded-lg bg-zinc-800 px-4 py-2 text-sm hover:bg-zinc-700"
-        >
-          <Minus className="h-4 w-4" />
-          30s
-        </button>
-        <button
-          onClick={() => onAddTime(30)}
-          className="flex items-center gap-1 rounded-lg bg-zinc-800 px-4 py-2 text-sm hover:bg-zinc-700"
-        >
-          <Plus className="h-4 w-4" />
-          30s
-        </button>
-        <button
-          onClick={onSkip}
-          className="flex items-center gap-1 rounded-lg bg-zinc-800 px-4 py-2 text-sm hover:bg-zinc-700"
-        >
-          <SkipForward className="h-4 w-4" />
-          Skip
-        </button>
+        <div className="grid grid-cols-3 gap-2">
+          <Button variant="secondary" size="lg" className="h-10" onClick={() => onAddTime(-30)}>
+            <Minus />
+            30s
+          </Button>
+          <Button variant="secondary" size="lg" className="h-10" onClick={() => onAddTime(30)}>
+            <Plus />
+            30s
+          </Button>
+          <Button variant="secondary" size="lg" className="h-10" onClick={onSkip}>
+            <SkipForward />
+            Skip
+          </Button>
+        </div>
       </div>
     </div>
   )
