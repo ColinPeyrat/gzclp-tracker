@@ -1,4 +1,5 @@
 import { ChevronRight, Trophy } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { Workout, WeightUnit, LiftSubstitution, ExerciseDefinition, RotatingWorkoutType } from '../../lib/types'
 import { WORKOUTS, getWorkoutLabel } from '../../lib/types'
 import { formatWorkoutDate } from '../../hooks/useWorkoutHistory'
@@ -13,18 +14,18 @@ interface WorkoutCardProps {
   onClick: () => void
 }
 
-function StatusIndicator({ status, label }: { status: LiftStatus; label: string }) {
-  const colors = {
-    success: 'bg-green-500',
-    fail: 'bg-red-500',
-    neutral: 'bg-zinc-500',
-  }
+const STATUS_DOT: Record<LiftStatus, string> = {
+  success: 'bg-success',
+  fail: 'bg-destructive',
+  neutral: 'bg-muted-foreground/50',
+}
 
+function StatusIndicator({ status, label }: { status: LiftStatus; label: string }) {
   return (
-    <div className="flex items-center gap-1">
-      <div className={`h-2 w-2 rounded-full ${colors[status]}`} />
-      <span className="text-xs text-zinc-500">{label}</span>
-    </div>
+    <span className="flex items-center gap-1.5">
+      <span className={cn('size-1.5 rounded-full', STATUS_DOT[status])} />
+      <span className="font-mono text-xs text-muted-foreground">{label}</span>
+    </span>
   )
 }
 
@@ -45,51 +46,47 @@ export function WorkoutCard({ workout, unit, liftSubstitutions, exerciseLibrary,
   return (
     <button
       onClick={onClick}
-      className="w-full rounded-lg bg-zinc-800 p-4 text-left hover:bg-zinc-700"
+      className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-accent"
     >
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <span className="font-bold">{getWorkoutLabel(workout.type)}</span>
-            <span className="text-sm text-zinc-400">
-              {formatWorkoutDate(workout.date)}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2">
+          <span className="font-medium">{getWorkoutLabel(workout.type)}</span>
+          <span className="text-sm text-muted-foreground">{formatWorkoutDate(workout.date)}</span>
+          {workout.medals && workout.medals.length > 0 && (
+            <span className="ml-auto flex items-center gap-1 self-center text-warning">
+              <Trophy className="size-3.5" />
+              <span className="text-xs font-medium tabular-nums">{workout.medals.length}</span>
             </span>
-            {workout.medals && workout.medals.length > 0 && (
-              <span className="flex items-center gap-0.5 text-amber-400">
-                <Trophy className="h-3.5 w-3.5" />
-                <span className="text-xs font-medium">{workout.medals.length}</span>
-              </span>
-            )}
-          </div>
-          {isTestDay ? (
-            <div className="mt-1 text-sm text-zinc-400">
-              5RM — {workout.exercises.map((ex) =>
-                `${getExerciseName(ex.liftId, ex.tier, liftSubstitutions, exerciseLibrary)} ${ex.fiveRepMax ?? '—'}`
-              ).join(' / ')} {unit}
-            </div>
-          ) : isMaintenance ? (
-            <div className="mt-1 text-sm text-zinc-400">
-              {workout.exercises.map((ex) =>
-                `${getExerciseName(ex.liftId, ex.tier, liftSubstitutions, exerciseLibrary)} ${ex.weight}`
-              ).join(' / ')} {unit}
-            </div>
-          ) : (
-            <>
-              <div className="mt-1 text-sm text-zinc-400">
-                {t1Name} @ {t1Exercise?.weight ?? '?'} {unit}
-              </div>
-              <div className="mt-2 flex items-center gap-3">
-                <StatusIndicator status={t1Status} label="T1" />
-                <StatusIndicator status={t2Status} label="T2" />
-                {t3Exercises.map((t3, i) => (
-                  <StatusIndicator key={i} status={getLiftStatus(t3)} label={getT3Labels(t3Exercises.length)[i]} />
-                ))}
-              </div>
-            </>
           )}
         </div>
-        <ChevronRight className="h-5 w-5 text-zinc-500" />
+        {isTestDay ? (
+          <div className="mt-0.5 truncate text-sm text-muted-foreground tabular-nums">
+            5RM · {workout.exercises.map((ex) =>
+              `${getExerciseName(ex.liftId, ex.tier, liftSubstitutions, exerciseLibrary)} ${ex.fiveRepMax ?? '—'}`
+            ).join(' / ')} {unit}
+          </div>
+        ) : isMaintenance ? (
+          <div className="mt-0.5 truncate text-sm text-muted-foreground tabular-nums">
+            {workout.exercises.map((ex) =>
+              `${getExerciseName(ex.liftId, ex.tier, liftSubstitutions, exerciseLibrary)} ${ex.weight}`
+            ).join(' / ')} {unit}
+          </div>
+        ) : (
+          <>
+            <div className="mt-0.5 truncate text-sm text-muted-foreground tabular-nums">
+              {t1Name} · {t1Exercise?.weight ?? '?'} {unit}
+            </div>
+            <div className="mt-2 flex items-center gap-3">
+              <StatusIndicator status={t1Status} label="T1" />
+              <StatusIndicator status={t2Status} label="T2" />
+              {t3Exercises.map((t3, i) => (
+                <StatusIndicator key={i} status={getLiftStatus(t3)} label={getT3Labels(t3Exercises.length)[i]} />
+              ))}
+            </div>
+          </>
+        )}
       </div>
+      <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
     </button>
   )
 }

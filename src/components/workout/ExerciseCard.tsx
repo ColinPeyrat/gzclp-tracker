@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { Pencil } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { TierBadge } from '@/components/ui/tier-badge'
 import type { ExerciseLog, WeightUnit, LiftSubstitution, ExerciseDefinition } from '../../lib/types'
 import { SetLogger } from './SetLogger'
 import { PlateDisplay } from '../plates/PlateDisplay'
 import { WeightEditModal } from '../plates/WeightEditModal'
-import { getExerciseName, TIER_COLORS, isDumbbellExercise } from '../../lib/exercises'
+import { getExerciseName, isDumbbellExercise } from '../../lib/exercises'
 import { isTrialWeight } from '../../lib/progression'
 
 interface ExerciseCardProps {
@@ -38,37 +41,60 @@ export function ExerciseCard({
   const completedSets = exercise.sets.filter((s) => s.completed).length
   const nextSetIndex = exercise.sets.findIndex((s) => !s.completed)
   const isTrial = isTrialWeight(exercise)
+  const scheme = `${exercise.targetSets}×${exercise.targetReps}${exercise.sets.some((s) => s.isAmrap) ? '+' : ''}`
 
   return (
-    <div className="space-y-4">
-      <div className="text-center">
-        <span className={`text-sm font-medium ${TIER_COLORS[exercise.tier]}`}>
-          {exercise.tier}
-          {isTrial && (
-            <span className="ml-2 px-1.5 py-0.5 text-xs bg-amber-500/20 text-amber-400 rounded">
-              trial
-            </span>
+    <div className="space-y-5">
+      <Card>
+        <CardContent className="space-y-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <TierBadge tier={exercise.tier} />
+              <span className="font-mono text-sm text-muted-foreground">{scheme}</span>
+              {isTrial && (
+                <span className="rounded-sm bg-warning/10 px-1.5 py-0.5 text-xs font-medium text-warning">trial</span>
+              )}
+            </div>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight">{exerciseName}</h2>
+          </div>
+
+          <div className="flex items-end justify-between gap-3">
+            <div className="tabular-nums">
+              <span className="text-5xl font-semibold tracking-tight">{exercise.weight}</span>
+              <span className="ml-1.5 text-base text-muted-foreground">{unit}</span>
+              {isTrial && (
+                <div className="mt-1 text-sm text-muted-foreground">
+                  original {exercise.originalWeight} {unit}
+                </div>
+              )}
+            </div>
+            {onWeightChange && (
+              <Button
+                variant="secondary"
+                size="icon-lg"
+                className="size-11"
+                onClick={() => setIsWeightModalOpen(true)}
+                aria-label="Change weight"
+              >
+                <Pencil />
+              </Button>
+            )}
+          </div>
+
+          {showPlates && (
+            <div className="border-t border-border pt-4 empty:hidden">
+              <PlateDisplay
+                targetWeight={exercise.weight}
+                barWeight={effectiveBarWeight}
+                plateInventory={plateInventory}
+                unit={unit}
+                isDumbbell={isDumbbell}
+                onWeightChange={onWeightChange}
+              />
+            </div>
           )}
-        </span>
-        <h2 className="text-2xl font-bold">{exerciseName}</h2>
-        <p className="text-lg text-zinc-400">
-          {exercise.targetSets}×{exercise.targetReps}
-          {exercise.sets.some((s) => s.isAmrap) ? '+' : ''} @ {exercise.weight} {unit}
-          {onWeightChange && (
-            <button
-              onClick={() => setIsWeightModalOpen(true)}
-              className="ml-2 p-1 text-zinc-500 hover:text-zinc-300 inline-flex align-middle"
-            >
-              <Pencil size={16} />
-            </button>
-          )}
-        </p>
-        {isTrial && (
-          <p className="text-sm text-zinc-500">
-            (original: {exercise.originalWeight} {unit})
-          </p>
-        )}
-      </div>
+        </CardContent>
+      </Card>
 
       {onWeightChange && (
         <WeightEditModal
@@ -80,22 +106,11 @@ export function ExerciseCard({
         />
       )}
 
-      {showPlates && (
-        <PlateDisplay
-          targetWeight={exercise.weight}
-          barWeight={effectiveBarWeight}
-          plateInventory={plateInventory}
-          unit={unit}
-          isDumbbell={isDumbbell}
-          onWeightChange={onWeightChange}
-        />
-      )}
-
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-sm text-zinc-400">
-          <span>Sets</span>
-          <span>
-            {completedSets} / {exercise.targetSets}
+      <section className="space-y-2">
+        <div className="flex items-center justify-between px-1 text-sm text-muted-foreground">
+          <h3>Sets</h3>
+          <span className="tabular-nums">
+            {completedSets}/{exercise.targetSets}
           </span>
         </div>
 
@@ -108,7 +123,7 @@ export function ExerciseCard({
             isActive={index === nextSetIndex}
           />
         ))}
-      </div>
+      </section>
     </div>
   )
 }

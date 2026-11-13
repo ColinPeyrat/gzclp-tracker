@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Check, Circle } from 'lucide-react'
+import { Check } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { Modal } from '../ui/Modal'
 import { calculateWarmupSets, type WarmupSet } from '../../lib/warmup'
 import { PlateChips } from '../plates/PlateChips'
@@ -49,68 +51,66 @@ export function WarmupModal({
   const allCompleted = sets.every((s) => s.completed)
 
   return (
-    <Modal>
+    <Modal
+      title="Warmup"
+      description={
+        <>
+          {exerciseName} · work weight{' '}
+          <span className="font-semibold text-foreground tabular-nums">{workWeight}</span> {unit}
+        </>
+      }
+    >
       <div className="space-y-4">
-        <div className="text-center">
-          <h2 className="text-lg font-bold">Warmup Sets</h2>
-          <p className="text-zinc-400">{exerciseName}</p>
-          <p className="text-sm text-zinc-500">
-            Work: {workWeight} {unit}
-          </p>
-        </div>
-
-        <div className="space-y-2">
+        <ul className="space-y-2">
           {sets.map((set, index) => (
-            <button
-              key={index}
-              onClick={() => toggleSet(index)}
-              className={`flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors ${
-                set.completed
-                  ? 'bg-zinc-700/50 text-zinc-500'
-                  : 'bg-zinc-700 hover:bg-zinc-600'
-              }`}
-            >
-              {set.completed ? (
-                <Check className="h-5 w-5 shrink-0 text-green-500" />
-              ) : (
-                <Circle className="h-5 w-5 shrink-0 text-zinc-400" />
-              )}
-              <div className="flex flex-1 items-center justify-between">
-                <div>
-                  <span className="font-medium">
-                    {set.weight} {unit} x {set.reps}
-                  </span>
-                  <span className="ml-2 text-sm text-zinc-400">
-                    ({set.label})
-                  </span>
-                </div>
-                {set.plates.length === 0 ? (
-                  <span className="text-xs text-zinc-500">Empty bar</span>
-                ) : (
-                  <PlateChips plates={set.plates} size="sm" />
+            <li key={index}>
+              <button
+                onClick={() => toggleSet(index)}
+                aria-pressed={set.completed}
+                className={cn(
+                  'flex min-h-14 w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+                  set.completed ? 'bg-transparent text-muted-foreground' : 'bg-secondary hover:bg-accent'
                 )}
-              </div>
-            </button>
+              >
+                <span
+                  className={cn(
+                    'flex size-6 shrink-0 items-center justify-center rounded-full border',
+                    set.completed ? 'border-primary bg-primary text-primary-foreground' : 'border-input'
+                  )}
+                >
+                  {set.completed && <Check className="size-4" />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium tabular-nums">
+                    {set.weight} <span className="text-xs text-muted-foreground">{unit}</span> × {set.reps}
+                  </span>
+                  <span className="block font-mono text-xs text-muted-foreground">{set.label}</span>
+                </span>
+                {set.plates.length === 0 ? (
+                  <span className="text-xs text-muted-foreground">Empty bar</span>
+                ) : (
+                  <span className={cn(set.completed && 'opacity-50')}>
+                    <PlateChips plates={set.plates} size="sm" />
+                  </span>
+                )}
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
 
-        <div className="pt-2">
-          <button
-            onClick={() => {
-              const completed = sets
-                .filter((s) => s.completed)
-                .map(({ weight, reps }) => ({ weight, reps }))
-              onComplete(completed.length > 0 ? completed : undefined)
-            }}
-            className={`w-full rounded-lg py-2 font-medium transition-colors ${
-              allCompleted
-                ? 'bg-blue-600 hover:bg-blue-500'
-                : 'bg-zinc-700 hover:bg-zinc-600'
-            }`}
-          >
-            {allCompleted ? doneLabel : 'Close'}
-          </button>
-        </div>
+        <Button
+          size="xl"
+          variant={allCompleted ? 'default' : 'secondary'}
+          className="w-full"
+          onClick={() => {
+            const completed = sets
+              .filter((s) => s.completed)
+              .map(({ weight, reps }) => ({ weight, reps }))
+            onComplete(completed.length > 0 ? completed : undefined)
+          }}
+        >
+          {allCompleted ? doneLabel : 'Close'}
+        </Button>
       </div>
     </Modal>
   )

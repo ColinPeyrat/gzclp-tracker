@@ -1,30 +1,31 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { cn } from '@/lib/utils'
 import { Trophy, Flame, Zap, Target, TrendingUp } from 'lucide-react'
 import { useMedalToastStore } from '../../stores/medalToastStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { getExerciseName } from '../../lib/exercises'
 import { vibrateSuccess } from '../../lib/haptics'
-import type { Medal, MedalType } from '../../lib/types'
+import type { Medal, MedalType, LiftSubstitution, ExerciseDefinition } from '../../lib/types'
 
 const MEDAL_CONFIG: Record<MedalType, { icon: typeof Trophy; label: string }> = {
-  'weight-pr': { icon: Trophy, label: 'Weight PR!' },
-  'volume-pr': { icon: Flame, label: 'Volume PR!' },
+  'weight-pr': { icon: Trophy, label: 'Weight PR' },
+  'volume-pr': { icon: Flame, label: 'Volume PR' },
   'streak': { icon: Zap, label: '' }, // dynamic label
-  'amrap-record': { icon: Target, label: 'T3 Level Up!' },
-  'stage-clear': { icon: TrendingUp, label: 'Weight Up!' },
-  '5rm-pr': { icon: Trophy, label: '5RM PR!' },
+  'amrap-record': { icon: Target, label: 'T3 level up' },
+  'stage-clear': { icon: TrendingUp, label: 'Weight up' },
+  '5rm-pr': { icon: Trophy, label: '5RM PR' },
 }
 
 function getMedalLabel(medal: Medal): string {
-  if (medal.type === 'streak') return `${medal.value} Workouts!`
+  if (medal.type === 'streak') return `${medal.value} workout streak`
   return MEDAL_CONFIG[medal.type].label
 }
 
 function getMedalDetail(
   medal: Medal,
   unit: string,
-  liftSubstitutions?: any[],
-  exerciseLibrary?: any[]
+  liftSubstitutions?: LiftSubstitution[],
+  exerciseLibrary?: ExerciseDefinition[]
 ): string | null {
   if (!medal.liftId) return null
   const name = getExerciseName(medal.liftId, medal.tier ?? 'T1', liftSubstitutions, exerciseLibrary)
@@ -74,16 +75,16 @@ function MedalCard({ medal, onDismiss }: { medal: VisibleMedal; onDismiss: (id: 
 
   return (
     <div
-      className={`rounded-lg border border-amber-500/30 bg-zinc-800 px-4 py-3 shadow-lg transition-all duration-300 ${
-        visible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-      }`}
+      role="status"
+      className={cn(
+        'flex items-center gap-3 rounded-lg bg-popover px-4 py-3 text-popover-foreground ring-1 ring-border transition-[opacity,translate] duration-200',
+        visible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+      )}
     >
-      <div className="flex items-center gap-3">
-        <Icon className="h-5 w-5 shrink-0 text-amber-400" />
-        <div className="min-w-0">
-          <div className="font-bold text-amber-400">{label}</div>
-          {detail && <div className="truncate text-sm text-zinc-300">{detail}</div>}
-        </div>
+      <Icon className="size-4 shrink-0 text-warning" />
+      <div className="min-w-0 text-sm">
+        <div className="font-medium">{label}</div>
+        {detail && <div className="truncate text-xs text-muted-foreground tabular-nums">{detail}</div>}
       </div>
     </div>
   )
@@ -121,7 +122,7 @@ export function MedalToast() {
 
   return (
     <div
-      className="fixed left-4 right-4 z-50 flex flex-col gap-2"
+      className="fixed inset-x-4 z-50 mx-auto flex max-w-md flex-col gap-2"
       style={{ bottom: 'calc(var(--nav-height) + 0.5rem)' }}
     >
       {visibleMedals.map((vm) => (

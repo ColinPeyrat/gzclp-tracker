@@ -1,11 +1,22 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, ClipboardCheck, RotateCcw } from 'lucide-react'
-import { Modal } from '../ui/Modal'
-import { getExerciseName } from '../../lib/exercises'
-import { getLiftsToTest, getOpeningWeight, getStageLadderLifts } from '../../lib/returnToProgression'
-import { useTestDayStore } from '../../stores/testDayStore'
-import type { ProgramState, UserSettings } from '../../lib/types'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { getExerciseName } from '@/lib/exercises'
+import { getLiftsToTest, getOpeningWeight, getStageLadderLifts } from '@/lib/returnToProgression'
+import { useTestDayStore } from '@/stores/testDayStore'
+import type { ProgramState, UserSettings } from '@/lib/types'
 
 interface Props {
   state: ProgramState
@@ -14,87 +25,97 @@ interface Props {
 }
 
 export function ReturnToProgressionCard({ state, settings, onCancel }: Props) {
-  const [confirmCancel, setConfirmCancel] = useState(false)
   const testDayInProgress = useTestDayStore((s) => Object.values(s.attempts).some((a) => a && a.length > 0))
   const results = state.returnToProgression?.results ?? {}
   const toTest = getLiftsToTest(state, settings)
+  const lifts = getStageLadderLifts(settings)
   const unit = settings.weightUnit
   const name = (id: string) => getExerciseName(id, 'T1', settings.liftSubstitutions, settings.exerciseLibrary)
+  const testedCount = lifts.length - toTest.length
 
   return (
-    <div className="mb-3 rounded-lg border border-blue-500/30 bg-blue-950/20 p-4">
-      <p className="text-sm text-zinc-400">Return to Progression</p>
-      <h2 className="mb-3 text-2xl font-bold">{toTest.length > 0 ? 'Test Day' : 'Ready to restart'}</h2>
-
-      <ul className="mb-4 space-y-1.5 text-sm">
-        {getStageLadderLifts(settings).map((id) => {
-          const result = results[id]
-          return (
-            <li key={id} className="flex justify-between">
-              <span>{name(id)}</span>
-              {result !== undefined ? (
-                <span className="flex items-center gap-1 text-green-400">
-                  <Check className="h-3.5 w-3.5" /> 5RM {result} {unit}
-                </span>
-              ) : (
-                <span className="text-zinc-400">from {getOpeningWeight(state, id, settings)} {unit}</span>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-
-      {toTest.length > 0 ? (
-        <Link
-          to="/test-day"
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 font-medium text-white hover:bg-blue-500"
-        >
-          <ClipboardCheck className="h-5 w-5" />
-          {testDayInProgress ? 'Resume Test Day' : 'Start Test Day'}
-        </Link>
-      ) : (
-        <Link
-          to="/return"
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 py-4 font-medium text-white hover:bg-green-500"
-        >
-          <Check className="h-5 w-5" />
-          Review restart weights
-        </Link>
-      )}
-
-      <button
-        onClick={() => setConfirmCancel(true)}
-        className="mt-3 flex w-full items-center justify-center gap-1 text-xs text-zinc-500 hover:text-zinc-300"
-      >
-        <RotateCcw className="h-3 w-3" /> Cancel return
-      </button>
-
-      {confirmCancel && (
-        <Modal onClose={() => setConfirmCancel(false)}>
-          <h2 className="mb-2 text-lg font-bold">Cancel Return to Progression?</h2>
-          <p className="mb-6 text-sm text-zinc-400">
-            Your program goes back to the weights you left off at. Test results so far are discarded;
-            Test Days stay in History.
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => {
-                setConfirmCancel(false)
-                onCancel()
-              }}
-              className="flex-1 rounded-lg bg-red-600 py-2 font-medium hover:bg-red-500"
-            >
-              Cancel return
-            </button>
-            <button
-              onClick={() => setConfirmCancel(false)}
-              className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
-            >
-              Keep going
-            </button>
+    <Card>
+      <CardContent className="space-y-5">
+        <div>
+          <p className="text-sm text-muted-foreground">Return to Progression</p>
+          <div className="flex items-end justify-between">
+            <h1 className="text-3xl font-semibold tracking-tight">{toTest.length > 0 ? 'Test Day' : 'Ready'}</h1>
+            <span className="font-mono text-sm text-muted-foreground tabular-nums">
+              {testedCount}/{lifts.length} tested
+            </span>
           </div>
-        </Modal>
-      )}
-    </div>
+          <div className="mt-3 flex gap-1">
+            {lifts.map((id) => (
+              <div
+                key={id}
+                className={`h-1 flex-1 rounded-full ${results[id] !== undefined ? 'bg-primary' : 'bg-secondary'}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        <ul className="divide-y divide-border">
+          {lifts.map((id) => {
+            const result = results[id]
+            return (
+              <li key={id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                <span className="font-medium">{name(id)}</span>
+                {result !== undefined ? (
+                  <span className="flex items-center gap-1.5 text-primary tabular-nums">
+                    <Check className="size-4" />
+                    <span className="font-semibold">{result}</span>
+                    <span className="text-xs opacity-70">{unit} 5RM</span>
+                  </span>
+                ) : (
+                  <span className="text-sm text-muted-foreground tabular-nums">
+                    opens at <span className="font-semibold text-foreground">{getOpeningWeight(state, id, settings)}</span> {unit}
+                  </span>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+
+        {toTest.length > 0 ? (
+          <Button asChild size="xl" className="w-full">
+            <Link to="/test-day">
+              <ClipboardCheck />
+              {testDayInProgress ? 'Resume Test Day' : 'Start Test Day'}
+            </Link>
+          </Button>
+        ) : (
+          <Button asChild size="xl" className="w-full">
+            <Link to="/return">
+              <Check />
+              Review restart weights
+            </Link>
+          </Button>
+        )}
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="ghost" size="sm" className="w-full text-muted-foreground">
+              <RotateCcw />
+              Cancel return
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel Return to Progression?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Your program goes back to the weights you left off at. Test results so far are discarded; Test Days
+                stay in History.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep going</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={onCancel}>
+                Cancel return
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </CardContent>
+    </Card>
   )
 }

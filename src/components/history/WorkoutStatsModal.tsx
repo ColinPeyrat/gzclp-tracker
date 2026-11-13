@@ -1,5 +1,4 @@
-import { X } from 'lucide-react'
-import { Modal } from '../ui/Modal'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { Workout, WeightUnit, LiftSubstitution, ExerciseDefinition } from '../../lib/types'
 import { getExerciseName } from '../../lib/exercises'
 import { calculateWorkoutStats } from '../../lib/workoutStats'
@@ -22,11 +21,11 @@ interface StatRowProps {
 
 function StatRow({ label, value, subValue }: StatRowProps) {
   return (
-    <div className="flex items-center justify-between py-2">
-      <span className="text-zinc-400">{label}</span>
-      <div className="text-right">
-        <span className="font-medium">{value}</span>
-        {subValue && <span className="ml-1 text-sm text-zinc-500">{subValue}</span>}
+    <div className="flex items-center justify-between gap-4 py-2.5">
+      <span className="text-muted-foreground">{label}</span>
+      <div className="min-w-0 truncate text-right tabular-nums">
+        <span className="font-semibold">{value}</span>
+        {subValue && <span className="ml-1 text-xs text-muted-foreground">{subValue}</span>}
       </div>
     </div>
   )
@@ -48,19 +47,13 @@ export function WorkoutStatsModal({ workout, unit, barWeight, plateInventory, li
   const formattedTotalVolume = stats.totalVolume.toLocaleString()
 
   return (
-    <Modal onClose={onClose}>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">Workout Stats</h2>
-          <button
-            onClick={onClose}
-            className="rounded p-1 text-zinc-400 hover:bg-zinc-700 hover:text-white"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Workout stats</DialogTitle>
+        </DialogHeader>
 
-        <div className="divide-y divide-zinc-700">
+        <div className="divide-y divide-border">
           {stats.warmupVolume > 0 && (
             <StatRow
               label="Warmup Volume"
@@ -101,7 +94,7 @@ export function WorkoutStatsModal({ workout, unit, barWeight, plateInventory, li
             />
           )}
         </div>
-      </div>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   )
 }

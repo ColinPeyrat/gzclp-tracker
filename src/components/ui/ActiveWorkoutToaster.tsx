@@ -1,8 +1,19 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { ChevronRight, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { useWorkoutSessionStore } from '../../stores/workoutSessionStore'
-import { Modal } from './Modal'
 
 export function ActiveWorkoutToaster() {
   const navigate = useNavigate()
@@ -34,58 +45,52 @@ export function ActiveWorkoutToaster() {
 
   return (
     <>
-      <div
-        className="fixed left-4 right-4 z-40 cursor-pointer rounded-lg bg-zinc-800 p-3 shadow-lg"
-        style={{ bottom: 'calc(var(--nav-height) + 0.5rem)' }}
-        onClick={handleResume}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <span className="font-medium">{workout.type === 'MN' ? 'Maintenance' : workout.type} in progress</span>
-            <span className="mx-2 text-zinc-400">•</span>
-            <span className="text-zinc-400">{completedExercises}/{totalExercises} done</span>
+      <div className="fixed inset-x-0 bottom-[calc(var(--nav-height)+0.5rem)] z-40 px-4">
+        <div
+          className="mx-auto flex max-w-md cursor-pointer items-center gap-2 rounded-lg bg-secondary py-2.5 pr-2 pl-4 transition-colors hover:bg-accent"
+          onClick={handleResume}
+        >
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-medium">{workout.type === 'MN' ? 'Maintenance' : workout.type} in progress</span>
+              <span className="text-muted-foreground tabular-nums">
+                {completedExercises}/{totalExercises} done
+              </span>
+              <ChevronRight className="ml-auto size-4 text-muted-foreground" />
+            </div>
+            <Progress value={progress} className="bg-background" />
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground"
             onClick={(e) => {
               e.stopPropagation()
               setShowAbandonModal(true)
             }}
-            className="p-1 text-zinc-400 hover:text-white"
             aria-label="Abandon workout"
           >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-700">
-          <div
-            className="h-full bg-blue-500 transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
+            <X />
+          </Button>
         </div>
       </div>
 
-      {showAbandonModal && (
-        <Modal onClose={() => setShowAbandonModal(false)}>
-          <h2 className="mb-2 text-lg font-bold">Abandon Workout?</h2>
-          <p className="mb-6 text-sm text-zinc-400">
-            Your progress will be lost. Are you sure you want to abandon this workout?
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={handleAbandon}
-              className="flex-1 rounded-lg bg-red-600 py-2 font-medium hover:bg-red-500"
-            >
+      <AlertDialog open={showAbandonModal} onOpenChange={setShowAbandonModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Abandon workout?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your progress will be lost. Are you sure you want to abandon this workout?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleAbandon}>
               Abandon
-            </button>
-            <button
-              onClick={() => setShowAbandonModal(false)}
-              className="flex-1 rounded-lg bg-zinc-700 py-2 font-medium hover:bg-zinc-600"
-            >
-              Cancel
-            </button>
-          </div>
-        </Modal>
-      )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
