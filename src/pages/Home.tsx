@@ -19,13 +19,11 @@ import { ReturnToProgressionCard } from '../components/home/ReturnToProgressionC
 import { useTestDayStore } from '../stores/testDayStore'
 import { useProgramStore } from '../stores/programStore'
 import { useSettingsStore } from '../stores/settingsStore'
-import { WORKOUTS, WORKOUT_ORDER, MAINTENANCE_LIFTS, MAINTENANCE_SETS, MAINTENANCE_REPS, getUpcomingWorkoutTypes, type RotatingWorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit, type LiftSubstitution, type ExerciseDefinition } from '../lib/types'
+import { LIFT_CODES, WORKOUTS, WORKOUT_ORDER, MAINTENANCE_LIFTS, MAINTENANCE_SETS, MAINTENANCE_REPS, getUpcomingWorkoutTypes, type RotatingWorkoutType, type ProgramState, type LiftState, type LiftName, type WeightUnit, type LiftSubstitution, type ExerciseDefinition } from '../lib/types'
 import { estimate5RM, applyT1Reset, getMaintenancePrescription } from '../lib/progression'
 import { getExerciseName } from '../lib/exercises'
 import { BottomNav } from '../components/ui/BottomNav'
 import { WorkoutPreviewCard } from '../components/home/WorkoutPreviewCard'
-
-const LIFT_CODES: Record<LiftName, string> = { squat: 'SQ', bench: 'BP', deadlift: 'DL', ohp: 'OHP' }
 
 interface Pending5RMInfo {
   liftId: LiftName

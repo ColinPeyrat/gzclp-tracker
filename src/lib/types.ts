@@ -157,6 +157,8 @@ export const T3_EXERCISES: Record<string, T3Exercise> = {
   'dumbbell-row': { id: 'dumbbell-row', name: 'Dumbbell Row' },
 }
 
+export const LIFT_CODES: Record<LiftName, string> = { squat: 'SQ', bench: 'BP', deadlift: 'DL', ohp: 'OHP' }
+
 export function getWorkoutLabel(type: WorkoutType): string {
   if (type === 'MN') return 'Maintenance'
   if (type === 'TD') return 'Test Day'
