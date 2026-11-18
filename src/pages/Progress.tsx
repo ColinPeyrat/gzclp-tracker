@@ -6,6 +6,7 @@ import { useProgressionData } from '../hooks/useProgressionData'
 import { useSettingsStore } from '../stores/settingsStore'
 import { LiftCard } from '../components/progress/LiftCard'
 import { LiftDetailChart } from '../components/progress/LiftDetailChart'
+import { TestDaySummary } from '../components/progress/TestDaySummary'
 import { BottomNav } from '../components/ui/BottomNav'
 import type { LiftName } from '../lib/types'
 
@@ -104,6 +105,8 @@ export function Progress() {
       </header>
 
       <main className="flex-1 space-y-5 px-4">
+        <TestDaySummary lifts={lifts} order={LIFT_ORDER} unit={unit} />
+
         <section className="space-y-3">
           <h2 className="px-1 text-sm text-muted-foreground">T1 lifts</h2>
           <div className="grid grid-cols-2 gap-3">
