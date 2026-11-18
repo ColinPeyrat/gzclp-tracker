@@ -196,9 +196,9 @@ export function Home() {
           <Shield className="size-5 shrink-0 text-muted-foreground" />
           <div className="min-w-0 flex-1">
             <div className="font-medium">Maintenance Day</div>
-            <div className="truncate font-mono text-xs text-muted-foreground tabular-nums">
-              {MAINTENANCE_SETS}×{MAINTENANCE_REPS} ·{' '}
-              {MAINTENANCE_LIFTS.map((id) => `${LIFT_CODES[id]} ${getMaintenancePrescription(state.t1[id], unit, settings.maintenanceOverrides?.[id]).weight}`).join(' · ')}
+            <div className="truncate text-sm text-muted-foreground tabular-nums">
+              <span className="font-mono text-xs">{MAINTENANCE_SETS}×{MAINTENANCE_REPS}</span> ·{' '}
+              {MAINTENANCE_LIFTS.map((id) => `${LIFT_CODES[id]} ${getMaintenancePrescription(state.t1[id], unit, settings.maintenanceOverrides?.[id]).weight}`).join(' · ')} {unit}
             </div>
           </div>
           <ChevronRight className="size-5 text-muted-foreground" />

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calculatePlates, formatPlates, getSmallestPlate } from './plates'
+import { calculatePlates, getSmallestPlate } from './plates'
 
 describe('calculatePlates', () => {
   const standardKgInventory: Record<string, number> = {
@@ -178,28 +178,6 @@ describe('calculatePlates', () => {
       expect(result.perSide).toEqual([1.25, 0.5])
       expect(result.totalWeight).toBe(23.5)
     })
-  })
-})
-
-describe('formatPlates', () => {
-  it('returns "Empty bar" for no plates', () => {
-    expect(formatPlates([])).toBe('Empty bar')
-  })
-
-  it('formats single plate', () => {
-    expect(formatPlates([20])).toBe('20')
-  })
-
-  it('formats multiple different plates', () => {
-    expect(formatPlates([20, 10, 5])).toBe('20 + 10 + 5')
-  })
-
-  it('groups multiple of same plate', () => {
-    expect(formatPlates([20, 20, 10])).toBe('2×20 + 10')
-  })
-
-  it('formats complex plate setup', () => {
-    expect(formatPlates([20, 20, 10, 10, 5, 2.5])).toBe('2×20 + 2×10 + 5 + 2.5')
   })
 })
 

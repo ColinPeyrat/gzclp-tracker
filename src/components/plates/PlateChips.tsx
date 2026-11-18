@@ -8,10 +8,7 @@ interface PlateChipsProps {
 
 // Real-world calibrated plate colours are functional here, so raw palette classes are intentional
 function plateClass(plate: number) {
-  const colour = plateColors[plate]
-  if (!colour) return 'bg-secondary text-foreground'
-  if (colour.includes('yellow')) return `${colour} text-zinc-900`
-  return colour.includes('text-') ? colour : `${colour} text-white`
+  return plateColors[plate] ?? 'bg-secondary text-foreground'
 }
 
 export function PlateChips({ plates, size = 'md' }: PlateChipsProps) {

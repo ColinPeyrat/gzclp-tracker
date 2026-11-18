@@ -40,7 +40,7 @@ export function ReturnToProgressionCard({ state, settings, onCancel }: Props) {
           <p className="text-sm text-muted-foreground">Return to Progression</p>
           <div className="flex items-end justify-between">
             <h1 className="text-3xl font-semibold tracking-tight">{toTest.length > 0 ? 'Test Day' : 'Ready'}</h1>
-            <span className="font-mono text-sm text-muted-foreground tabular-nums">
+            <span className="text-sm text-muted-foreground tabular-nums">
               {testedCount}/{lifts.length} tested
             </span>
           </div>
@@ -67,8 +67,9 @@ export function ReturnToProgressionCard({ state, settings, onCancel }: Props) {
                     <span className="text-xs opacity-70">{unit} 5RM</span>
                   </span>
                 ) : (
-                  <span className="text-sm text-muted-foreground tabular-nums">
-                    opens at <span className="font-semibold text-foreground">{getOpeningWeight(state, id, settings)}</span> {unit}
+                  <span className="tabular-nums">
+                    <span className="font-semibold">{getOpeningWeight(state, id, settings)}</span>{' '}
+                    <span className="text-xs text-muted-foreground">{unit}</span>
                   </span>
                 )}
               </li>

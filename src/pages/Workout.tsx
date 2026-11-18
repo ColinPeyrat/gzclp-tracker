@@ -34,6 +34,7 @@ import { vibrate } from '../lib/haptics'
 import { getLiftSubstitution, getExerciseName } from '../lib/exercises'
 import { useMedalToastStore } from '../stores/medalToastStore'
 import type { Medal, Workout as WorkoutType } from '../lib/types'
+import { getWorkoutLabel } from '../lib/types'
 import type { HistoryRecord } from '../lib/medals'
 
 interface MedalChecks {
@@ -360,7 +361,7 @@ export function Workout() {
           <ArrowLeft className="size-5" />
         </Button>
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold tracking-tight">{workout.type === 'MN' ? 'Maintenance' : workout.type}</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{getWorkoutLabel(workout.type)}</h1>
           <p className="text-sm text-muted-foreground tabular-nums">
             Exercise {currentExerciseIndex + 1} of {workout.exercises.length}
           </p>
@@ -375,7 +376,7 @@ export function Workout() {
         >
           <Dumbbell className="size-5" />
         </Button>
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon-lg" className="text-muted-foreground" aria-label="More actions">
               <MoreHorizontal className="size-5" />
