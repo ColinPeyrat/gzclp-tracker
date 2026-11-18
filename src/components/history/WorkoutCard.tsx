@@ -20,22 +20,23 @@ const STATUS_TEXT: Record<LiftStatus, string> = {
   neutral: 'text-muted-foreground/60',
 }
 
-function liftCode(liftId: string): string {
-  return LIFT_CODES[liftId as LiftName] ?? liftId
-}
-
 export function WorkoutCard({ workout, unit, liftSubstitutions, exerciseLibrary, onClick }: WorkoutCardProps) {
   const isMaintenance = workout.type === 'MN'
   const isTestDay = workout.type === 'TD'
   const medalCount = workout.medals?.length ?? 0
+  const liftLabel = (liftId: string) => {
+    const code = LIFT_CODES[liftId as LiftName]
+    const name = getExerciseName(liftId, 'T1', liftSubstitutions, exerciseLibrary)
+    return code && name === getExerciseName(liftId, 'T1') ? code : name
+  }
 
   let summary: ReactNode
   if (isTestDay) {
-    summary = `5RM · ${workout.exercises.map((ex) => `${liftCode(ex.liftId)} ${ex.fiveRepMax ?? '—'}`).join(' · ')} ${unit}`
+    summary = `5RM · ${workout.exercises.map((ex) => `${liftLabel(ex.liftId)} ${ex.fiveRepMax ?? '—'}`).join(' · ')} ${unit}`
   } else if (isMaintenance) {
     const first = workout.exercises[0]
     const scheme = first ? `${first.targetSets}×${first.targetReps} · ` : ''
-    summary = `${scheme}${workout.exercises.map((ex) => `${liftCode(ex.liftId)} ${ex.weight}`).join(' · ')} ${unit}`
+    summary = `${scheme}${workout.exercises.map((ex) => `${liftLabel(ex.liftId)} ${ex.weight}`).join(' · ')} ${unit}`
   } else {
     const workoutDef = WORKOUTS[workout.type as RotatingWorkoutType]
     const t1Exercise = workout.exercises.find((e) => e.tier === 'T1')

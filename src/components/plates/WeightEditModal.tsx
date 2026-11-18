@@ -14,6 +14,11 @@ interface WeightEditModalProps {
 
 export function WeightEditModal({ isOpen, onClose, currentWeight, unit, onSave }: WeightEditModalProps) {
   const [weight, setWeight] = useState(currentWeight.toString())
+  const [syncedFor, setSyncedFor] = useState({ isOpen, currentWeight })
+  if (syncedFor.isOpen !== isOpen || syncedFor.currentWeight !== currentWeight) {
+    setSyncedFor({ isOpen, currentWeight })
+    if (isOpen) setWeight(currentWeight.toString())
+  }
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -32,7 +37,6 @@ export function WeightEditModal({ isOpen, onClose, currentWeight, unit, onSave }
         aria-describedby={undefined}
         onOpenAutoFocus={(e) => {
           e.preventDefault()
-          setWeight(currentWeight.toString())
           setTimeout(() => {
             inputRef.current?.focus()
             inputRef.current?.select()

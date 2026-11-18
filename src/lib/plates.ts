@@ -97,22 +97,6 @@ export function calculatePlates(
   return result
 }
 
-export function formatPlates(plates: number[]): string {
-  if (plates.length === 0) return 'Empty bar'
-
-  const counts = new Map<number, number>()
-  for (const plate of plates) {
-    counts.set(plate, (counts.get(plate) || 0) + 1)
-  }
-
-  const parts: string[] = []
-  for (const [weight, count] of counts) {
-    parts.push(count > 1 ? `${count}×${weight}` : `${weight}`)
-  }
-
-  return parts.join(' + ')
-}
-
 export function getSmallestPlate(plateInventory: Record<string, number>): number {
   const availablePlates = Object.entries(plateInventory)
     .filter(([_, qty]) => qty > 0)

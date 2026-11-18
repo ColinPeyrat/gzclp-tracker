@@ -67,7 +67,7 @@ function ReturnSummaryForm({ state, settings }: { state: ProgramState; settings:
     <div key={`${section}-${id}`} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
       <div className="min-w-0">
         <div className="truncate font-medium">{label}</div>
-        {hint && <div className="font-mono text-xs text-muted-foreground tabular-nums">{hint}</div>}
+        {hint && <div className="text-xs text-muted-foreground tabular-nums">{hint}</div>}
       </div>
       <div className="flex items-center gap-2">
         <Input

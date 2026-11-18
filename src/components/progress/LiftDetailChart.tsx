@@ -104,12 +104,15 @@ export function LiftDetailChart({ lift }: LiftDetailChartProps) {
           />
           <ChartTooltip
             cursor={false}
-            content={
+            content={({ active, payload, label }) => (
               <ChartTooltipContent
+                active={active}
+                label={label}
+                payload={payload?.filter((p) => !(p.dataKey === 'projection' && p.payload?.actual !== undefined))}
                 indicator="line"
                 labelFormatter={(_, payload) => payload?.[0]?.payload?.date}
               />
-            }
+            )}
           />
           <Line
             dataKey="actual"
