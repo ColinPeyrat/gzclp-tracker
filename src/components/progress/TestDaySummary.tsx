@@ -20,6 +20,19 @@ function signed(value: number) {
   return v > 0 ? `+${v}` : v < 0 ? `${v}` : '±0'
 }
 
+function formatDay(isoDate: string) {
+  return new Date(isoDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+function formatSince(isoDate: string, reference: string) {
+  const sameYear = new Date(isoDate).getFullYear() === new Date(reference).getFullYear()
+  return new Date(isoDate).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    ...(!sameYear && { year: 'numeric' }),
+  })
+}
+
 function deltaClass(value: number) {
   return value > 0 ? 'text-success' : value < 0 ? 'text-destructive' : 'text-muted-foreground'
 }
@@ -34,32 +47,34 @@ export function TestDaySummary({ lifts, order, unit }: TestDaySummaryProps) {
   const previousTotal = tested.reduce((sum, id) => sum + (lifts[id].previousTest ?? lifts[id].lastTest!).weight, 0)
   const totalDelta = total - previousTotal
 
+  const previousDates = tested.flatMap((id) => lifts[id].previousTest?.date ?? [])
+  const sameDay = new Set(previousDates.map((d) => d.slice(0, 10))).size === 1
+  const comparedTo = sameDay
+    ? `since ${formatSince(previousDates[0], lastDate)}`
+    : 'since previous tests'
+
   return (
     <section className="rounded-lg bg-card p-4">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Diamond className="size-3.5 fill-warning text-warning" />
-            Last Test Day ·{' '}
-            {new Date(lastDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-          </p>
-          <p className="mt-1 tabular-nums">
-            <span className="text-3xl font-semibold tracking-tight">{round(total)}</span>
-            <span className="ml-1 text-sm text-muted-foreground">{unit} total</span>
-          </p>
-        </div>
-        {totalDelta !== 0 && (
-          <span
-            className={cn(
-              'flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums',
-              totalDelta > 0 ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'
-            )}
-          >
-            {totalDelta > 0 && <ArrowUp className="size-3" />}
-            {signed(totalDelta)}
-          </span>
-        )}
-      </div>
+      <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Diamond className="size-3.5 fill-warning text-warning" />
+        Last Test Day · {formatDay(lastDate)}
+      </p>
+      <p className="mt-1 tabular-nums">
+        <span className="text-3xl font-semibold tracking-tight">{round(total)}</span>
+        <span className="ml-1 text-sm text-muted-foreground">{unit} total</span>
+      </p>
+      {totalDelta !== 0 && (
+        <span
+          className={cn(
+            'mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs tabular-nums',
+            totalDelta > 0 ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'
+          )}
+        >
+          {totalDelta > 0 && <ArrowUp className="size-3" />}
+          <span className="font-medium">{signed(totalDelta)}</span>
+          <span className="opacity-70">{comparedTo}</span>
+        </span>
+      )}
       <div className={cn('mt-4 grid gap-2', GRID_COLS[tested.length])}>
         {tested.map((id) => {
           const { lastTest, previousTest } = lifts[id]
