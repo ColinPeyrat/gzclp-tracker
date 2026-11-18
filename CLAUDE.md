@@ -125,3 +125,4 @@ See `TODO.md` for detailed progress tracking.
 - **Progression as pure functions:** Easy to test, no side effects
 - **Mobile-first:** Designed for phone use at the gym
 - **Dark theme:** Easier on eyes, standard for fitness apps
+- **Mono means program notation:** Geist Mono (`font-mono`) only for set schemes (`5×3+`, `3×10`, `1×5`) and tier codes (`T1`/`T2`/`T3`). Words, labels, weights, counts, dates and percentages use Geist sans; align numbers with `tabular-nums`, not mono.

@@ -84,7 +84,7 @@ export function WarmupModal({
                   <span className="block font-medium tabular-nums">
                     {set.weight} <span className="text-xs text-muted-foreground">{unit}</span> × {set.reps}
                   </span>
-                  <span className="block font-mono text-xs text-muted-foreground">{set.label}</span>
+                  <span className="block text-xs text-muted-foreground">{set.label}</span>
                 </span>
                 {set.plates.length === 0 ? (
                   <span className="text-xs text-muted-foreground">Empty bar</span>

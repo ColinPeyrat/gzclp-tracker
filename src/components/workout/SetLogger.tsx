@@ -147,7 +147,7 @@ export function SetLogger({ set, targetReps, onComplete, isActive }: SetLoggerPr
         ) : isSuccess ? (
           <Check className="size-5 text-primary" />
         ) : set.isAmrap ? (
-          <span className={cn('font-mono text-xs', isActive ? 'opacity-70' : 'text-muted-foreground')}>AMRAP</span>
+          <span className={cn('text-xs', isActive ? 'opacity-70' : 'text-muted-foreground')}>AMRAP</span>
         ) : null}
       </span>
     </button>
