@@ -18,7 +18,7 @@ export function PlateChips({ plates, size = 'md' }: PlateChipsProps) {
         <span
           key={i}
           className={cn(
-            'inline-flex items-center justify-center rounded-sm font-mono font-semibold tabular-nums',
+            'inline-flex items-center justify-center rounded-sm font-semibold tabular-nums',
             size === 'sm' ? 'h-5 min-w-6 px-1 text-[0.7rem]' : 'h-8 min-w-9 px-1.5 text-sm',
             plateClass(plate)
           )}

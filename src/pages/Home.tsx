@@ -177,7 +177,7 @@ export function Home() {
                   <p className="text-sm text-muted-foreground">Next up</p>
                   <h1 className="text-4xl font-semibold tracking-tight">{state.nextWorkoutType}</h1>
                 </div>
-                <span className="font-mono text-sm text-muted-foreground tabular-nums">#{state.workoutCount + 1}</span>
+                <span className="text-sm text-muted-foreground tabular-nums">#{state.workoutCount + 1}</span>
               </div>
               <WorkoutPreviewCard workoutType={upcoming[0]} state={state} settings={settings} isNext={true} />
               <Button asChild size="xl" className="w-full">
