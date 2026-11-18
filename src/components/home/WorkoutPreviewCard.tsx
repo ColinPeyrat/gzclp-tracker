@@ -1,6 +1,6 @@
 import type { RotatingWorkoutType, ProgramState, UserSettings } from '@/lib/types'
 import { WORKOUTS } from '@/lib/types'
-import { getExerciseName, getEffectiveStageConfig, getT3IdsForWorkout, getLiftSubstitution } from '@/lib/exercises'
+import { getExerciseName, getEffectiveStageConfig, getT3IdsForWorkout, getLiftSubstitution, isDumbbellLift } from '@/lib/exercises'
 import { TierBadge } from '@/components/ui/tier-badge'
 
 interface WorkoutPreviewCardProps {
@@ -15,6 +15,7 @@ interface ExerciseRow {
   name: string
   scheme: string
   weight: number
+  isDumbbell: boolean
 }
 
 function getExerciseRows(workoutType: RotatingWorkoutType, state: ProgramState, settings: UserSettings): ExerciseRow[] {
@@ -33,6 +34,7 @@ function getExerciseRows(workoutType: RotatingWorkoutType, state: ProgramState, 
     name: getExerciseName(workout.t1, 'T1', settings.liftSubstitutions, settings.exerciseLibrary),
     scheme: `${t1Config.sets}×${t1Config.reps}+`,
     weight: t1Weight,
+    isDumbbell: isDumbbellLift(workout.t1, settings),
   })
 
   // T2
@@ -47,6 +49,7 @@ function getExerciseRows(workoutType: RotatingWorkoutType, state: ProgramState, 
     name: getExerciseName(workout.t2, 'T2', settings.liftSubstitutions, settings.exerciseLibrary),
     scheme: `${t2Config.sets}×${t2Config.reps}${t2Config.hasAmrap ? '+' : ''}`,
     weight: t2Weight,
+    isDumbbell: isDumbbellLift(workout.t2, settings),
   })
 
   // T3s
@@ -56,6 +59,7 @@ function getExerciseRows(workoutType: RotatingWorkoutType, state: ProgramState, 
       name: getExerciseName(t3Id, 'T3', settings.liftSubstitutions, settings.exerciseLibrary),
       scheme: '3×15+',
       weight: state.t3[t3Id]?.weight ?? 50,
+      isDumbbell: isDumbbellLift(t3Id, settings),
     })
   }
 
@@ -74,7 +78,10 @@ export function WorkoutPreviewCard({ workoutType, state, settings, isNext }: Wor
             <TierBadge tier={row.tier} />
             <div className="min-w-0 flex-1">
               <div className="truncate font-medium">{row.name}</div>
-              <div className="font-mono text-xs text-muted-foreground">{row.scheme}</div>
+              <div className="text-xs text-muted-foreground">
+                <span className="font-mono">{row.scheme}</span>
+                {row.isDumbbell && ' · per dumbbell'}
+              </div>
             </div>
             <div className="text-right tabular-nums">
               <span className="text-lg font-semibold">{row.weight}</span>

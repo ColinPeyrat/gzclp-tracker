@@ -31,7 +31,7 @@ import { applyWorkoutProgression } from '../lib/progression'
 import { buildHistoryMap, detectWeightPR, detectVolumePR, detectStageClearMedal, detectStreakMedal } from '../lib/medals'
 import { getSmallestPlate } from '../lib/plates'
 import { vibrate } from '../lib/haptics'
-import { getLiftSubstitution, getExerciseName } from '../lib/exercises'
+import { getLiftSubstitution, getExerciseName, isDumbbellLift } from '../lib/exercises'
 import { useMedalToastStore } from '../stores/medalToastStore'
 import type { Medal, Workout as WorkoutType } from '../lib/types'
 import { getWorkoutLabel } from '../lib/types'
@@ -83,6 +83,9 @@ export function Workout() {
   const historyRef = useRef<{ workouts: WorkoutType[]; map: Map<string, HistoryRecord> } | null>(null)
 
   const currentExercise = workout?.exercises[currentExerciseIndex] ?? null
+  const currentIsDumbbell = currentExercise
+    ? (currentExercise.isDumbbell ?? isDumbbellLift(currentExercise.liftId, settings))
+    : false
 
   const loadHistoryIfNeeded = useCallback(async () => {
     if (historyRef.current) return historyRef.current
@@ -412,6 +415,7 @@ export function Workout() {
           unit={settings.weightUnit}
           liftSubstitutions={settings.liftSubstitutions}
           exerciseLibrary={settings.exerciseLibrary}
+          isDumbbell={currentIsDumbbell}
           onCompleteSet={handleCompleteSet}
           onWeightChange={updateCurrentExerciseWeight}
         />
@@ -505,7 +509,8 @@ export function Workout() {
         <WarmupModal
           exerciseName={getExerciseName(currentExercise.liftId, currentExercise.tier, settings.liftSubstitutions, settings.exerciseLibrary)}
           workWeight={currentExercise.weight}
-          barWeight={settings.barWeight}
+          barWeight={currentIsDumbbell ? settings.dumbbellHandleWeight : settings.barWeight}
+          isDumbbell={currentIsDumbbell}
           plateInventory={settings.plateInventory}
           unit={settings.weightUnit}
           completedWarmupSets={currentExercise.completedWarmupSets}

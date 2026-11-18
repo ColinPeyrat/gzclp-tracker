@@ -386,6 +386,12 @@ export function Settings() {
 
   // Get exercises available for substitution (not already substituted)
   const substitutedLiftIds = new Set(liftSubstitutions.map((s) => s.originalLiftId))
+  const dumbbellLifts = settings.dumbbellLifts ?? []
+
+  const toggleDumbbellLift = (liftId: LiftName, enabled: boolean) => {
+    const others = dumbbellLifts.filter((id) => id !== liftId)
+    update({ dumbbellLifts: enabled ? [...others, liftId] : others })
+  }
 
   // Get exercises available to assign as additional T3s for the selected workout
   const getAvailableT3sForWorkout = (workoutType: RotatingWorkoutType) => {
@@ -502,6 +508,35 @@ export function Settings() {
                 Reset to defaults
               </Button>
             </li>
+          </SettingsList>
+        </SettingsSection>
+
+        <SettingsSection
+          title="Dumbbell lifts"
+          description="Do a main lift with dumbbells. Weights are per dumbbell and progress like any other lift."
+        >
+          <SettingsList>
+            {(Object.keys(LIFTS) as LiftName[]).map((liftId) => {
+              const substitution = liftSubstitutions.find((s) => s.originalLiftId === liftId)
+              return (
+                <li key={liftId} className={cn(ROW, 'min-h-14')}>
+                  <Label htmlFor={`dumbbell-${liftId}`} className="min-w-0 flex-1 flex-col items-start gap-0.5">
+                    <span className="text-base font-medium">{LIFTS[liftId].name}</span>
+                    {substitution && (
+                      <span className="text-xs font-normal text-muted-foreground">
+                        Replaced by {getExerciseDisplayName(substitution.substituteId, settings.exerciseLibrary)}
+                      </span>
+                    )}
+                  </Label>
+                  <Switch
+                    id={`dumbbell-${liftId}`}
+                    checked={!substitution && dumbbellLifts.includes(liftId)}
+                    disabled={!!substitution}
+                    onCheckedChange={(checked) => toggleDumbbellLift(liftId, checked)}
+                  />
+                </li>
+              )
+            })}
           </SettingsList>
         </SettingsSection>
 

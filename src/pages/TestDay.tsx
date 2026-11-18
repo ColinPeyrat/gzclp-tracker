@@ -25,7 +25,7 @@ import { WarmupModal } from '../components/workout/WarmupModal'
 import { PlateDisplay } from '../components/plates/PlateDisplay'
 import { db } from '../lib/db'
 import { vibrate } from '../lib/haptics'
-import { getExerciseName, isDumbbellExercise } from '../lib/exercises'
+import { getExerciseName, isDumbbellLift } from '../lib/exercises'
 import {
   TEST_REPS,
   getLiftsToTest,
@@ -70,7 +70,7 @@ export function TestDay() {
     return {
       liftId,
       name: getExerciseName(liftId, 'T1', settings.liftSubstitutions, settings.exerciseLibrary),
-      isDumbbell: isDumbbellExercise(liftId, settings.liftSubstitutions, settings.exerciseLibrary),
+      isDumbbell: isDumbbellLift(liftId, settings),
       opening,
       step,
       attempts: liftAttempts,
@@ -113,6 +113,7 @@ export function TestDay() {
           weight: a.weight,
         })),
         fiveRepMax,
+        ...(lift.isDumbbell && { isDumbbell: true }),
         ...(warmups[lift.liftId]?.length ? { completedWarmupSets: warmups[lift.liftId] } : {}),
       })
     }
@@ -174,7 +175,7 @@ export function TestDay() {
             {...lift}
             isCurrent={lift.liftId === currentLiftId}
             unit={unit}
-            barWeight={settings.barWeight}
+            barWeight={lift.isDumbbell ? settings.dumbbellHandleWeight : settings.barWeight}
             plateInventory={settings.plateInventory}
             onLog={(weight, reps) => handleLog(lift.liftId, weight, reps)}
             onUndo={() => undoAttempt(lift.liftId)}
@@ -215,7 +216,8 @@ export function TestDay() {
         <WarmupModal
           exerciseName={warmup.name}
           workWeight={warmup.opening}
-          barWeight={settings.barWeight}
+          barWeight={warmup.isDumbbell ? settings.dumbbellHandleWeight : settings.barWeight}
+          isDumbbell={warmup.isDumbbell}
           plateInventory={settings.plateInventory}
           unit={unit}
           completedWarmupSets={warmups[warmup.liftId]}
@@ -335,7 +337,10 @@ function TestLiftCard({
               <div className="text-sm text-muted-foreground">Set {attempts.length + 1}</div>
               <div className="tabular-nums">
                 <span className="text-5xl font-semibold tracking-tight">{progress.nextWeight}</span>
-                <span className="ml-1.5 text-base text-muted-foreground">{unit}</span>
+                <span className="ml-1.5 text-base text-muted-foreground">
+                  {unit}
+                  {isDumbbell && ' per dumbbell'}
+                </span>
               </div>
             </div>
             <div className="border-t border-border pt-4 empty:hidden">

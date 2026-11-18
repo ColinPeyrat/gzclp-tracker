@@ -18,6 +18,7 @@ interface ExerciseCardProps {
   unit: WeightUnit
   liftSubstitutions?: LiftSubstitution[]
   exerciseLibrary?: ExerciseDefinition[]
+  isDumbbell?: boolean
   onCompleteSet: (setIndex: number, reps: number) => void
   onWeightChange?: (newWeight: number) => void
 }
@@ -30,12 +31,13 @@ export function ExerciseCard({
   unit,
   liftSubstitutions,
   exerciseLibrary,
+  isDumbbell: isDumbbellProp,
   onCompleteSet,
   onWeightChange,
 }: ExerciseCardProps) {
   const [isWeightModalOpen, setIsWeightModalOpen] = useState(false)
   const exerciseName = getExerciseName(exercise.liftId, exercise.tier, liftSubstitutions, exerciseLibrary)
-  const isDumbbell = isDumbbellExercise(exercise.liftId, liftSubstitutions, exerciseLibrary)
+  const isDumbbell = isDumbbellProp ?? isDumbbellExercise(exercise.liftId, liftSubstitutions, exerciseLibrary)
   const showPlates = exercise.tier !== 'T3' || isDumbbell
   const effectiveBarWeight = isDumbbell ? dumbbellHandleWeight : barWeight
   const completedSets = exercise.sets.filter((s) => s.completed).length
@@ -61,7 +63,10 @@ export function ExerciseCard({
           <div className="flex items-end justify-between gap-3">
             <div className="tabular-nums">
               <span className="text-5xl font-semibold tracking-tight">{exercise.weight}</span>
-              <span className="ml-1.5 text-base text-muted-foreground">{unit}</span>
+              <span className="ml-1.5 text-base text-muted-foreground">
+                {unit}
+                {isDumbbell && ' per dumbbell'}
+              </span>
               {isTrial && (
                 <div className="mt-1 text-sm text-muted-foreground">
                   original {exercise.originalWeight} {unit}

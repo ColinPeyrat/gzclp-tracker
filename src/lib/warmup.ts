@@ -5,7 +5,7 @@ export interface WarmupSet {
   reps: number
   plates: number[]
   completed: boolean
-  label: string // "Bar" or percentage
+  label: string // "Bar", "Handle" or percentage
 }
 
 // Big plates only - makes warmup loading simple
@@ -71,27 +71,30 @@ export function calculateWarmupSets(
   workWeight: number,
   barWeight: number,
   plateInventory: Record<string, number>,
-  unit: WeightUnit
+  unit: WeightUnit,
+  isDumbbell = false
 ): WarmupSet[] {
   const sets: WarmupSet[] = []
+  const emptyLabel = isDumbbell ? 'Handle' : 'Bar'
 
-  // First two sets: bar only × 5
+  // First two sets: empty bar (or dumbbell handle) × 5
   sets.push({
     weight: barWeight,
     reps: 5,
     plates: [],
     completed: false,
-    label: 'Bar',
+    label: emptyLabel,
   })
   sets.push({
     weight: barWeight,
     reps: 5,
     plates: [],
     completed: false,
-    label: 'Bar',
+    label: emptyLabel,
   })
 
-  const warmupInventory = getWarmupPlateInventory(plateInventory, unit)
+  // Dumbbell jumps are too small for the big-plates-only warmup set
+  const warmupInventory = isDumbbell ? plateInventory : getWarmupPlateInventory(plateInventory, unit)
 
   // Calculate plates independently for each warmup percentage
   const percentages = [

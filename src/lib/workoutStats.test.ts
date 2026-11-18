@@ -296,6 +296,40 @@ describe('calculateWorkoutStats', () => {
   })
 
   describe('dumbbell volume', () => {
+    it('uses the dumbbell flag saved on the exercise, including warmups', () => {
+      const workout = makeWorkout([
+        makeExercise({
+          liftId: 'ohp',
+          tier: 'T1',
+          weight: 12,
+          isDumbbell: true,
+          sets: [makeSet(3), makeSet(3), makeSet(3), makeSet(3), makeSet(5)],
+          completedWarmupSets: [{ weight: 2.5, reps: 5 }],
+        }),
+      ])
+
+      const stats = calculateWorkoutStats(workout, 20, KG_PLATE_INVENTORY, 'kg')
+      // 12 * 2 * 17 = 408, warmup 2.5 * 2 * 5 = 25
+      expect(stats.workingVolume).toBe(408)
+      expect(stats.warmupVolume).toBe(25)
+    })
+
+    it('keeps a barbell workout at single weight when the flag is absent', () => {
+      const workout = makeWorkout([
+        makeExercise({ liftId: 'ohp', tier: 'T1', weight: 40, sets: [makeSet(3), makeSet(3), makeSet(3), makeSet(3), makeSet(3)] }),
+      ])
+      const stats = calculateWorkoutStats(workout, 20, KG_PLATE_INVENTORY, 'kg')
+      expect(stats.workingVolume).toBe(600)
+    })
+
+    it('does not estimate barbell warmups for a dumbbell T1', () => {
+      const workout = makeWorkout([
+        makeExercise({ liftId: 'ohp', tier: 'T1', weight: 12, isDumbbell: true, sets: [makeSet(3)] }),
+      ])
+      const stats = calculateWorkoutStats(workout, 20, KG_PLATE_INVENTORY, 'kg')
+      expect(stats.warmupVolume).toBe(0)
+    })
+
     it('doubles working volume for built-in dumbbell exercises', () => {
       const workout = makeWorkout([
         makeExercise({

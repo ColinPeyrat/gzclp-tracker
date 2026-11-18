@@ -34,12 +34,18 @@ export function calculateWorkoutStats(
       ? getExerciseNameFn(exercise.liftId, exercise.tier)
       : exercise.liftId
 
-    // Use persisted warmup data if available, otherwise estimate for T1
+    // Saved flag first: current settings may have switched equipment since this workout
+    const isDumbbell =
+      exercise.isDumbbell ?? isDumbbellExercise(exercise.liftId, liftSubstitutions, exerciseLibrary)
+    const pairFactor = isDumbbell ? 2 : 1
+    const effectiveWeight = exercise.weight * pairFactor
+
+    // Use persisted warmup data if available, otherwise estimate for barbell T1s
     if (exercise.completedWarmupSets) {
       for (const warmupSet of exercise.completedWarmupSets) {
-        warmupVolume += warmupSet.weight * warmupSet.reps
+        warmupVolume += warmupSet.weight * pairFactor * warmupSet.reps
       }
-    } else if (exercise.tier === 'T1') {
+    } else if (exercise.tier === 'T1' && !isDumbbell) {
       const liftSubstitution = getLiftSubstitution(exercise.liftId, liftSubstitutions)
       if (!liftSubstitution?.forceT3Progression) {
         const warmupSets = calculateWarmupSets(exercise.weight, barWeight, plateInventory, unit)
@@ -49,15 +55,12 @@ export function calculateWorkoutStats(
       }
     }
 
-    const isDumbbell = isDumbbellExercise(exercise.liftId, liftSubstitutions, exerciseLibrary)
-    const effectiveWeight = isDumbbell ? exercise.weight * 2 : exercise.weight
-
     for (const set of exercise.sets) {
       totalSets++
       if (set.completed && set.reps > 0) {
         completedSets++
         totalReps += set.reps
-        const setWeight = set.weight === undefined ? effectiveWeight : isDumbbell ? set.weight * 2 : set.weight
+        const setWeight = set.weight === undefined ? effectiveWeight : set.weight * pairFactor
         workingVolume += setWeight * set.reps
       }
     }

@@ -70,6 +70,7 @@ export interface ExerciseLog {
   sets: SetLog[]
   completedWarmupSets?: CompletedWarmupSet[]
   fiveRepMax?: number // Test Day: the concluded 5RM, absent if the test was abandoned
+  isDumbbell?: boolean // Weight is per dumbbell; recorded so history survives equipment changes
 }
 
 export type MedalType = 'weight-pr' | 'volume-pr' | 'streak' | 'amrap-record' | 'stage-clear' | '5rm-pr'
@@ -104,6 +105,7 @@ export interface UserSettings {
   weightUnit: WeightUnit
   exerciseLibrary?: ExerciseDefinition[]        // Unified library of custom exercises
   liftSubstitutions?: LiftSubstitution[]        // Replaces default lifts
+  dumbbellLifts?: LiftName[]                    // Main lifts done with dumbbells, weights per dumbbell
   additionalT3s?: AdditionalT3Assignment[]      // Extra T3s per workout (on top of defaults)
   maintenanceOverrides?: Partial<Record<LiftName, MaintenanceOverride>>
 }

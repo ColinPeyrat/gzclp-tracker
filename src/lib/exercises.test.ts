@@ -196,6 +196,19 @@ describe('isDumbbellExercise', () => {
   })
 })
 
+describe('isDumbbellExercise with dumbbell lifts', () => {
+  it('treats a main lift listed in dumbbellLifts as dumbbell', () => {
+    expect(isDumbbellExercise('ohp', [], [], ['ohp'])).toBe(true)
+    expect(isDumbbellExercise('bench', [], [], ['ohp'])).toBe(false)
+  })
+
+  it('lets a substitution override the dumbbell lift setting', () => {
+    const library: ExerciseDefinition[] = [{ id: 'landmine-press', name: 'Landmine Press' }]
+    const subs = [{ originalLiftId: 'ohp', substituteId: 'landmine-press' }]
+    expect(isDumbbellExercise('ohp', subs, library, ['ohp'])).toBe(false)
+  })
+})
+
 describe('isDumbbellExercise with substitutions', () => {
   const exerciseLibrary: ExerciseDefinition[] = [
     { id: 'db-press', name: 'Dumbbell Press', isDumbbell: true },

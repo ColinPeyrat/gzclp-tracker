@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid'
 import type { Workout, ExerciseLog, UserSettings, ProgramState, CompletedWarmupSet } from '../lib/types'
 import { WORKOUTS, MAINTENANCE_LIFTS, MAINTENANCE_SETS, MAINTENANCE_REPS } from '../lib/types'
 import { getStageConfig, getMaintenancePrescription } from '../lib/progression'
-import { getEffectiveStageConfig, getT3IdsForWorkout, createSetLogs, getLiftSubstitution } from '../lib/exercises'
+import { getEffectiveStageConfig, getT3IdsForWorkout, createSetLogs, getLiftSubstitution, dumbbellFlag } from '../lib/exercises'
 
 interface WorkoutSessionState {
   workout: Workout | null
@@ -55,6 +55,7 @@ function createExerciseLogs(
     targetSets: t1Config.sets,
     targetReps: t1Config.reps,
     sets: createSetLogs(t1Config.sets, t1Config.hasAmrap),
+    ...dumbbellFlag(workoutDef.t1, settings),
   })
 
   // T2
@@ -72,6 +73,7 @@ function createExerciseLogs(
     targetSets: t2Config.sets,
     targetReps: t2Config.reps,
     sets: createSetLogs(t2Config.sets, t2Config.hasAmrap),
+    ...dumbbellFlag(workoutDef.t2, settings),
   })
 
   // T3s
@@ -84,6 +86,7 @@ function createExerciseLogs(
       targetSets: t3Config.sets,
       targetReps: t3Config.reps,
       sets: createSetLogs(t3Config.sets, true),
+      ...dumbbellFlag(t3Id, settings),
     })
   }
 
@@ -151,6 +154,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>()(
             targetSets: MAINTENANCE_SETS,
             targetReps: MAINTENANCE_REPS,
             sets: [{ setNumber: 1, reps: 0, completed: false, isAmrap: false }],
+            ...dumbbellFlag(liftId, settings),
           }
         })
 

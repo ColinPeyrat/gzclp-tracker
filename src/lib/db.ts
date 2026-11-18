@@ -192,6 +192,7 @@ export async function getSettings(): Promise<UserSettings> {
     liftSubstitutions: stored.liftSubstitutions,
     additionalT3s: stored.additionalT3s,
     maintenanceOverrides: stored.maintenanceOverrides,
+    dumbbellLifts: stored.dumbbellLifts,
     id: 'user',
   }
 

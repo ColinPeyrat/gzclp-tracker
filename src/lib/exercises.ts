@@ -1,4 +1,4 @@
-import type { Tier, LiftName, ExerciseLog, ExerciseDefinition, LiftSubstitution, RotatingWorkoutType, AdditionalT3Assignment, SetLog } from './types'
+import type { Tier, LiftName, ExerciseLog, ExerciseDefinition, LiftSubstitution, RotatingWorkoutType, AdditionalT3Assignment, SetLog, UserSettings } from './types'
 import { LIFTS, T3_EXERCISES, WORKOUTS } from './types'
 import { getStageConfig } from './progression'
 
@@ -23,17 +23,19 @@ export function getExerciseFromLibrary(
 export function isDumbbellExercise(
   liftId: string,
   liftSubstitutions?: LiftSubstitution[],
-  exerciseLibrary?: ExerciseDefinition[]
+  exerciseLibrary?: ExerciseDefinition[],
+  dumbbellLifts?: string[]
 ): boolean {
-  // Check if there's a substitution for this lift
+  // A substitute is its own exercise, so its library flag wins over the lift's equipment setting
   const substitution = getLiftSubstitution(liftId, liftSubstitutions)
   if (substitution) {
-    // Look up the substitute exercise in the library
     const substituteExercise = getExerciseFromLibrary(substitution.substituteId, exerciseLibrary)
     if (substituteExercise) {
       return substituteExercise.isDumbbell ?? false
     }
   }
+
+  if (dumbbellLifts?.includes(liftId)) return true
 
   // Check exercise library directly (for T3s that might be in the library)
   const exercise = getExerciseFromLibrary(liftId, exerciseLibrary)
@@ -42,6 +44,18 @@ export function isDumbbellExercise(
   }
 
   return BUILTIN_DUMBBELL_EXERCISES.includes(liftId)
+}
+
+export function isDumbbellLift(
+  liftId: string,
+  settings: Pick<UserSettings, 'liftSubstitutions' | 'exerciseLibrary' | 'dumbbellLifts'>
+): boolean {
+  return isDumbbellExercise(liftId, settings.liftSubstitutions, settings.exerciseLibrary, settings.dumbbellLifts)
+}
+
+// Spread into a new ExerciseLog so the equipment is frozen with the workout
+export function dumbbellFlag(liftId: string, settings: Parameters<typeof isDumbbellLift>[1]) {
+  return isDumbbellLift(liftId, settings) ? { isDumbbell: true as const } : {}
 }
 
 export function getExerciseName(

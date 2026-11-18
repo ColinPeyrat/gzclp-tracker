@@ -12,6 +12,7 @@ interface WarmupModalProps {
   exerciseName: string
   workWeight: number
   barWeight: number
+  isDumbbell?: boolean
   plateInventory: Record<string, number>
   unit: WeightUnit
   completedWarmupSets?: CompletedWarmupSet[]
@@ -23,6 +24,7 @@ export function WarmupModal({
   exerciseName,
   workWeight,
   barWeight,
+  isDumbbell = false,
   plateInventory,
   unit,
   completedWarmupSets,
@@ -30,7 +32,7 @@ export function WarmupModal({
   doneLabel = 'Start Workout',
 }: WarmupModalProps) {
   const [sets, setSets] = useState<WarmupSet[]>(() => {
-    const calculated = calculateWarmupSets(workWeight, barWeight, plateInventory, unit)
+    const calculated = calculateWarmupSets(workWeight, barWeight, plateInventory, unit, isDumbbell)
     if (!completedWarmupSets?.length) return calculated
     // Restore completed state by matching weight+reps
     return calculated.map((s) => ({
@@ -57,6 +59,7 @@ export function WarmupModal({
         <>
           {exerciseName} · work weight{' '}
           <span className="font-semibold text-foreground tabular-nums">{workWeight}</span> {unit}
+          {isDumbbell && ' per dumbbell'}
         </>
       }
     >
@@ -87,7 +90,7 @@ export function WarmupModal({
                   <span className="block text-xs text-muted-foreground">{set.label}</span>
                 </span>
                 {set.plates.length === 0 ? (
-                  <span className="text-xs text-muted-foreground">Empty bar</span>
+                  <span className="text-xs text-muted-foreground">{isDumbbell ? 'Empty handle' : 'Empty bar'}</span>
                 ) : (
                   <span className={cn(set.completed && 'opacity-50')}>
                     <PlateChips plates={set.plates} size="sm" />
