@@ -73,7 +73,7 @@ export interface ExerciseLog {
   isDumbbell?: boolean // Weight is per dumbbell; recorded so history survives equipment changes
 }
 
-export type MedalType = 'weight-pr' | 'volume-pr' | 'streak' | 'amrap-record' | 'stage-clear' | '5rm-pr'
+export type MedalType = 'weight-pr' | 'volume-pr' | 'streak' | 'amrap-record' | 'stage-clear' | '5rm-pr' | 'rep-pr'
 
 export interface Medal {
   type: MedalType

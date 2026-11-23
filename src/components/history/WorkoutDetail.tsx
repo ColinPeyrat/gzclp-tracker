@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { TierBadge } from '@/components/ui/tier-badge'
-import { ArrowLeft, Check, X, Minus, TrendingUp, TrendingDown, BarChart2, Trophy, Flame, Zap, Target } from 'lucide-react'
+import { ArrowLeft, Check, X, Minus, TrendingUp, TrendingDown, BarChart2, Trophy, Flame, Zap, Target, Repeat } from 'lucide-react'
 import type { Workout, WeightUnit, Tier, ExerciseLog, LiftName, LiftSubstitution, ExerciseDefinition, Medal, MedalType } from '../../lib/types'
 import { WorkoutStatsModal } from './WorkoutStatsModal'
 import { LIFTS, getWorkoutLabel } from '../../lib/types'
@@ -114,6 +114,7 @@ const MEDAL_ICONS: Record<MedalType, typeof Trophy> = {
   'amrap-record': Target,
   'stage-clear': TrendingUp,
   '5rm-pr': Trophy,
+  'rep-pr': Repeat,
 }
 
 const MEDAL_LABELS: Record<MedalType, string> = {
@@ -123,6 +124,7 @@ const MEDAL_LABELS: Record<MedalType, string> = {
   'amrap-record': 'T3 Level Up',
   'stage-clear': 'Weight Up',
   '5rm-pr': '5RM PR',
+  'rep-pr': 'Rep PR',
 }
 
 function MedalsSection({ medals, unit, liftSubstitutions, exerciseLibrary }: {
@@ -141,7 +143,11 @@ function MedalsSection({ medals, unit, liftSubstitutions, exerciseLibrary }: {
           const liftName = medal.liftId
             ? getExerciseName(medal.liftId, medal.tier ?? 'T1', liftSubstitutions, exerciseLibrary)
             : null
-          const showValue = medal.type === 'weight-pr' || medal.type === 'stage-clear' || medal.type === 'volume-pr' || medal.type === '5rm-pr'
+          const valueUnit = medal.type === 'rep-pr'
+            ? 'reps'
+            : medal.type === 'weight-pr' || medal.type === 'stage-clear' || medal.type === 'volume-pr' || medal.type === '5rm-pr'
+              ? unit
+              : null
           return (
             <li key={i} className="flex items-center gap-3 px-4 py-3 text-sm">
               <Icon className="size-4 shrink-0 text-warning" />
@@ -153,10 +159,10 @@ function MedalsSection({ medals, unit, liftSubstitutions, exerciseLibrary }: {
                   </div>
                 )}
               </div>
-              {showValue && (
+              {valueUnit && (
                 <span className="tabular-nums">
                   <span className="font-semibold">{medal.value}</span>
-                  <span className="ml-1 text-xs text-muted-foreground">{unit}</span>
+                  <span className="ml-1 text-xs text-muted-foreground">{valueUnit}</span>
                 </span>
               )}
             </li>

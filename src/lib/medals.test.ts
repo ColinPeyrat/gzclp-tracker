@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { detectMedals, detectWeightPR, detectVolumePR, detectStageClearMedal, detectStreakMedal, buildHistoryMap } from './medals'
+import { detectMedals, detectWeightPR, detectVolumePR, detectStageClearMedal, detectStreakMedal, detectRepPR, buildHistoryMap } from './medals'
 import type { Workout, ProgramState, ExerciseLog, SetLog } from './types'
 
 function makeSet(reps: number, completed = true, isAmrap = false): SetLog {
@@ -484,5 +484,106 @@ describe('buildHistoryMap', () => {
     ]
     const map = buildHistoryMap(workouts)
     expect(map.has('squat:T1')).toBe(false)
+  })
+})
+
+function makeT3(weight: number, amrapReps: number): ExerciseLog {
+  return makeExercise({
+    liftId: 'lat-pulldown',
+    tier: 'T3',
+    weight,
+    targetSets: 3,
+    targetReps: 15,
+    sets: [makeSet(15), makeSet(15), makeSet(amrapReps, true, true)],
+  })
+}
+
+describe('detectRepPR', () => {
+  it('fires when a T3 beats its previous AMRAP at the same weight, below 25', () => {
+    const history = buildHistoryMap([makeWorkout({ exercises: [makeT3(50, 18)] })])
+    expect(detectRepPR(makeT3(50, 19), history)).toEqual({
+      type: 'rep-pr',
+      liftId: 'lat-pulldown',
+      tier: 'T3',
+      value: 19,
+      previousValue: 18,
+    })
+  })
+
+  it('counts a best AMRAP logged at a heavier weight', () => {
+    const history = buildHistoryMap([makeWorkout({ exercises: [makeT3(55, 20)] })])
+    expect(detectRepPR(makeT3(50, 20), history)).toBeNull()
+    expect(detectRepPR(makeT3(50, 21), history)?.previousValue).toBe(20)
+  })
+
+  it('ignores AMRAPs logged at a lighter weight', () => {
+    const history = buildHistoryMap([
+      makeWorkout({ exercises: [makeT3(50, 25)] }),
+      makeWorkout({ exercises: [makeT3(52.5, 16)] }),
+    ])
+    expect(detectRepPR(makeT3(52.5, 17), history)?.previousValue).toBe(16)
+  })
+
+  it('does not fire on the first AMRAP at a new top weight', () => {
+    const history = buildHistoryMap([makeWorkout({ exercises: [makeT3(50, 25)] })])
+    expect(detectRepPR(makeT3(52.5, 15), history)).toBeNull()
+    expect(detectRepPR(makeT3(50, 20), buildHistoryMap([]))).toBeNull()
+  })
+
+  it('does not fire when tying the previous best', () => {
+    const history = buildHistoryMap([makeWorkout({ exercises: [makeT3(50, 18)] })])
+    expect(detectRepPR(makeT3(50, 18), history)).toBeNull()
+  })
+
+  it('applies to stage-ladder AMRAP sets', () => {
+    const t1 = (amrap: number) =>
+      makeExercise({ weight: 100, sets: [makeSet(3), makeSet(3), makeSet(3), makeSet(3), makeSet(amrap, true, true)] })
+    const history = buildHistoryMap([makeWorkout({ exercises: [t1(5)] })])
+    expect(detectRepPR(t1(7), history)).toMatchObject({ type: 'rep-pr', tier: 'T1', value: 7, previousValue: 5 })
+  })
+
+  it('does not compete against Test Day sets', () => {
+    const testDay = makeWorkout({
+      type: 'TD',
+      exercises: [makeExercise({ weight: 100, sets: [makeSet(12, true, true)] })],
+    })
+    const t1 = makeExercise({ weight: 100, sets: [makeSet(3), makeSet(6, true, true)] })
+    const history = buildHistoryMap([testDay, makeWorkout({ exercises: [makeExercise({ weight: 100, sets: [makeSet(3), makeSet(4, true, true)] })] })])
+    expect(detectRepPR(t1, history)?.previousValue).toBe(4)
+  })
+})
+
+describe('T3 medals', () => {
+  it('beating previous reps at the same weight below 25 earns a rep PR even when the volume record stands', () => {
+    // The 25-rep session that bumped the weight holds the volume record (50 × 55 = 2750)
+    const history = buildHistoryMap([
+      makeWorkout({ exercises: [makeT3(50, 25)] }),
+      makeWorkout({ exercises: [makeT3(52.5, 18)] }),
+    ])
+    const exercise = makeT3(52.5, 20)
+    expect(detectVolumePR(exercise, history)).toHaveLength(0)
+    expect(detectRepPR(exercise, history)?.type).toBe('rep-pr')
+  })
+
+  it('earns a volume PR when weight × total reps beats the previous best', () => {
+    const history = buildHistoryMap([makeWorkout({ exercises: [makeT3(50, 18)] })])
+    expect(detectVolumePR(makeT3(50, 19), history)).toEqual([
+      { type: 'volume-pr', liftId: 'lat-pulldown', tier: 'T3', value: 2450, previousValue: 2400 },
+    ])
+  })
+
+  it('earns a weight PR when the weight goes up', () => {
+    const history = buildHistoryMap([makeWorkout({ exercises: [makeT3(50, 25)] })])
+    expect(detectWeightPR(makeT3(52.5, 15), history)).toMatchObject({ type: 'weight-pr', value: 52.5, previousValue: 50 })
+  })
+
+  it('still earns the AMRAP record and weight increase at 25 reps', () => {
+    const history = buildHistoryMap([makeWorkout({ exercises: [makeT3(50, 24)] })])
+    const exercise = makeT3(50, 25)
+    expect(detectVolumePR(exercise, history).map((m) => m.type)).toEqual(['volume-pr', 'amrap-record'])
+    expect(detectStageClearMedal(exercise, baseProgramState(), 'lbs', undefined, 2.5)).toMatchObject({
+      type: 'stage-clear',
+      value: 52.5,
+    })
   })
 })

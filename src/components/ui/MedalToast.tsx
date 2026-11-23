@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { Trophy, Flame, Zap, Target, TrendingUp } from 'lucide-react'
+import { Trophy, Flame, Zap, Target, TrendingUp, Repeat } from 'lucide-react'
 import { useMedalToastStore } from '../../stores/medalToastStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { getExerciseName } from '../../lib/exercises'
@@ -14,6 +14,7 @@ const MEDAL_CONFIG: Record<MedalType, { icon: typeof Trophy; label: string }> = 
   'amrap-record': { icon: Target, label: 'T3 level up' },
   'stage-clear': { icon: TrendingUp, label: 'Weight up' },
   '5rm-pr': { icon: Trophy, label: '5RM PR' },
+  'rep-pr': { icon: Repeat, label: 'Rep PR' },
 }
 
 function getMedalLabel(medal: Medal): string {
@@ -38,6 +39,9 @@ function getMedalDetail(
   }
   if (medal.type === 'volume-pr') {
     return `${name}${tierLabel}: ${medal.value} ${unit}`
+  }
+  if (medal.type === 'rep-pr') {
+    return `${name}${tierLabel}: ${medal.value} reps${medal.previousValue ? ` (was ${medal.previousValue})` : ''}`
   }
   if (medal.type === 'amrap-record') {
     return `${name}: ${medal.value} reps`
