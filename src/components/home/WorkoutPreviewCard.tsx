@@ -100,7 +100,11 @@ export function WorkoutPreviewCard({ workoutType, state, settings, isNext }: Wor
         {rows.slice(0, 2).map((row) => (
           <li key={`${row.tier}-${row.name}`} className="flex items-center gap-2 text-sm">
             <TierBadge tier={row.tier} />
-            <span className="truncate text-muted-foreground">{row.name}</span>
+            <span className="min-w-0 flex-1 truncate text-muted-foreground">{row.name}</span>
+            <span className="shrink-0 font-medium tabular-nums">
+              {row.weight}
+              <span className="ml-0.5 text-xs text-muted-foreground">{unit}</span>
+            </span>
           </li>
         ))}
       </ul>
