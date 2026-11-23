@@ -1,89 +1,72 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { playTimerEnd } from '../lib/audio'
+import { useRestTimerStore, restRemaining } from '../stores/restTimerStore'
 
 interface UseRestTimerReturn {
   seconds: number
   totalSeconds: number
   isRunning: boolean
   start: (duration: number) => void
-  stop: () => void
   addTime: (seconds: number) => void
   skip: () => void
 }
 
-export function useRestTimer(onComplete?: () => void): UseRestTimerReturn {
-  const [seconds, setSeconds] = useState(0)
-  const [totalSeconds, setTotalSeconds] = useState(0)
-  const [isRunning, setIsRunning] = useState(false)
-  const endTimeRef = useRef(0)
-  const onCompleteRef = useRef(onComplete)
+interface UseRestTimerOptions {
+  alertOnEnd?: boolean
+}
+
+export function useRestTimer({ alertOnEnd = true }: UseRestTimerOptions = {}): UseRestTimerReturn {
+  const timer = useRestTimerStore((s) => s.timer)
+  const start = useRestTimerStore((s) => s.start)
+  const addTime = useRestTimerStore((s) => s.addTime)
+  const skip = useRestTimerStore((s) => s.skip)
+  const [seconds, setSeconds] = useState(() => restRemaining(useRestTimerStore.getState().timer, Date.now()))
+  const sawRunningRef = useRef(false)
 
   useEffect(() => {
-    onCompleteRef.current = onComplete
-  }, [onComplete])
-
-  const complete = useCallback(() => {
-    setIsRunning(false)
-    setSeconds(0)
-    onCompleteRef.current?.()
-    playTimerEnd()
-    if (navigator.vibrate) {
-      navigator.vibrate([200, 100, 200])
-    }
-  }, [])
-
-  const updateFromEndTime = useCallback(() => {
-    const remaining = Math.ceil((endTimeRef.current - Date.now()) / 1000)
-    if (remaining <= 0) {
-      complete()
-    } else {
-      setSeconds(remaining)
-    }
-  }, [complete])
-
-  // Tick interval
-  useEffect(() => {
-    if (!isRunning) return
-
-    const interval = setInterval(updateFromEndTime, 1000)
-    return () => clearInterval(interval)
-  }, [isRunning, updateFromEndTime])
-
-  // Recalculate when app returns from background
-  useEffect(() => {
-    if (!isRunning) return
-
+    const update = () => setSeconds(restRemaining(useRestTimerStore.getState().timer, Date.now()))
+    const unsubscribe = useRestTimerStore.subscribe(update)
+    const interval = setInterval(update, 1000)
     const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        updateFromEndTime()
-      }
+      if (document.visibilityState === 'visible') update()
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
-  }, [isRunning, updateFromEndTime])
-
-  const start = useCallback((duration: number) => {
-    endTimeRef.current = Date.now() + duration * 1000
-    setSeconds(duration)
-    setTotalSeconds(duration)
-    setIsRunning(true)
+    return () => {
+      unsubscribe()
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
   }, [])
 
-  const stop = useCallback(() => {
-    setIsRunning(false)
-  }, [])
+  useEffect(() => {
+    if (!timer) {
+      sawRunningRef.current = false
+      return
+    }
+    if (restRemaining(timer, Date.now()) > 0) {
+      sawRunningRef.current = true
+      return
+    }
+    if (!alertOnEnd) return
 
-  const addTime = useCallback((amount: number) => {
-    endTimeRef.current += amount * 1000
-    updateFromEndTime()
-  }, [updateFromEndTime])
+    // A rest that ended while this screen wasn't watching (reload, app closed) is dropped silently
+    const shouldAlert = sawRunningRef.current
+    sawRunningRef.current = false
+    skip()
+    if (shouldAlert) {
+      playTimerEnd()
+      navigator.vibrate?.([200, 100, 200])
+    }
+  }, [timer, seconds, alertOnEnd, skip])
 
-  const skip = useCallback(() => {
-    setSeconds(0)
-    setIsRunning(false)
-  }, [])
-
-  return { seconds, totalSeconds, isRunning, start, stop, addTime, skip }
+  return {
+    seconds,
+    totalSeconds: timer?.totalSeconds ?? 0,
+    isRunning: timer !== null && seconds > 0,
+    start,
+    addTime,
+    skip,
+  }
 }
 
 export function formatTime(seconds: number): string {

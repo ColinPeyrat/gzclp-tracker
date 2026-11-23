@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useWorkoutSessionStore } from './workoutSessionStore'
+import { useRestTimerStore } from './restTimerStore'
 import type { ProgramState, UserSettings } from '../lib/types'
 
 // Mock nanoid to get predictable IDs
@@ -383,6 +384,26 @@ describe('workoutSessionStore', () => {
       expect(newExercise?.liftId).toBe('face-pulls')
       expect(newExercise?.tier).toBe('T3')
       expect(newExercise?.weight).toBe(30)
+    })
+  })
+
+  describe('rest timer', () => {
+    it('is cleared when the workout is finished', () => {
+      useWorkoutSessionStore.getState().startWorkout(createMockProgramState(), createMockSettings())
+      useRestTimerStore.getState().start(180)
+
+      useWorkoutSessionStore.getState().finishWorkout()
+
+      expect(useRestTimerStore.getState().timer).toBeNull()
+    })
+
+    it('is cleared when the workout is discarded', () => {
+      useWorkoutSessionStore.getState().startWorkout(createMockProgramState(), createMockSettings())
+      useRestTimerStore.getState().start(180)
+
+      useWorkoutSessionStore.getState().abandonWorkout()
+
+      expect(useRestTimerStore.getState().timer).toBeNull()
     })
   })
 })

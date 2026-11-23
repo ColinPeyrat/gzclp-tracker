@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { nanoid } from 'nanoid'
+import { useRestTimerStore } from './restTimerStore'
 import type { Workout, ExerciseLog, UserSettings, ProgramState, CompletedWarmupSet } from '../lib/types'
 import { WORKOUTS, MAINTENANCE_LIFTS, MAINTENANCE_SETS, MAINTENANCE_REPS } from '../lib/types'
 import { getStageConfig, getMaintenancePrescription } from '../lib/progression'
@@ -246,6 +247,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>()(
 
         const completedWorkout = { ...workout, completed: true }
         set({ workout: null, currentExerciseIndex: 0 })
+        useRestTimerStore.getState().skip()
         return completedWorkout
       },
 
@@ -285,6 +287,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>()(
 
       abandonWorkout: () => {
         set({ workout: null, currentExerciseIndex: 0 })
+        useRestTimerStore.getState().skip()
       },
     }),
     {

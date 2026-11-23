@@ -1,14 +1,17 @@
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Timer } from 'lucide-react'
 import { useWorkoutSessionStore } from '../../stores/workoutSessionStore'
 import { getWorkoutLabel } from '@/lib/types'
+import { useRestTimer, formatTime } from '../../hooks/useRestTimer'
 
 export function ActiveWorkoutToaster() {
   const navigate = useNavigate()
   const location = useLocation()
   const workout = useWorkoutSessionStore((s) => s.workout)
+  const onWorkoutScreen = location.pathname === '/workout'
+  const rest = useRestTimer({ alertOnEnd: !onWorkoutScreen })
 
-  if (!workout || location.pathname === '/workout') {
+  if (!workout || onWorkoutScreen) {
     return null
   }
 
@@ -26,7 +29,13 @@ export function ActiveWorkoutToaster() {
         <span className="text-muted-foreground tabular-nums">
           {completedExercises}/{totalExercises}
         </span>
-        <ChevronRight className="ml-auto size-4 text-muted-foreground" />
+        {rest.isRunning && (
+          <span className="ml-auto flex items-center gap-1 font-medium tabular-nums" aria-label={`Rest ${formatTime(rest.seconds)} remaining`}>
+            <Timer className="size-4 text-muted-foreground" />
+            {formatTime(rest.seconds)}
+          </span>
+        )}
+        <ChevronRight className={`${rest.isRunning ? '' : 'ml-auto '}size-4 text-muted-foreground`} />
         <span
           className="absolute inset-x-0 bottom-0 h-0.5 bg-primary"
           style={{ width: `${(completedExercises / totalExercises) * 100}%` }}
