@@ -28,7 +28,7 @@ import { WarmupModal } from '../components/workout/WarmupModal'
 import { Modal } from '../components/ui/Modal'
 import { db } from '../lib/db'
 import { applyWorkoutProgression } from '../lib/progression'
-import { buildHistoryMap, detectWeightPR, detectVolumePR, detectStageClearMedal, detectStreakMedal } from '../lib/medals'
+import { buildHistoryMap, detectWeightPR, detectVolumePR, detectRepPR, detectStageClearMedal, detectStreakMedal } from '../lib/medals'
 import { getSmallestPlate } from '../lib/plates'
 import { vibrate } from '../lib/haptics'
 import { getLiftSubstitution, getExerciseName, isDumbbellLift } from '../lib/exercises'
@@ -40,6 +40,7 @@ import type { HistoryRecord } from '../lib/medals'
 interface MedalChecks {
   weightPR: boolean
   volumePR: boolean
+  repPR: boolean
   stageClear: boolean
 }
 
@@ -103,13 +104,14 @@ export function Workout() {
 
   const getChecks = useCallback((index: number): MedalChecks => {
     if (!medalChecksRef.current.has(index)) {
-      medalChecksRef.current.set(index, { weightPR: false, volumePR: false, stageClear: false })
+      medalChecksRef.current.set(index, { weightPR: false, volumePR: false, repPR: false, stageClear: false })
     }
     return medalChecksRef.current.get(index)!
   }, [])
 
   const checkExerciseComplete = useCallback(async (exerciseIndex: number) => {
     const state = useWorkoutSessionStore.getState()
+    if (state.workout?.type === 'MN') return
     const ex = state.workout?.exercises[exerciseIndex]
     if (!ex) return
     if (!ex.sets.every((s) => s.completed)) return
@@ -219,6 +221,11 @@ export function Workout() {
       if (volumeMedals.length > 0) showMedals(volumeMedals)
       checks.volumePR = true
     }
+    if (completedSet?.isAmrap && !checks.repPR) {
+      const repMedal = detectRepPR(ex, history.map)
+      if (repMedal) showMedals([repMedal])
+      checks.repPR = true
+    }
 
     // Check if exercise is now complete
     if (ex.sets.every((s) => s.completed)) {
@@ -293,6 +300,11 @@ export function Workout() {
           const volumeMedals = detectVolumePR(ex, history.map)
           if (volumeMedals.length > 0) showMedals(volumeMedals)
           checks.volumePR = true
+        }
+        if (!checks.repPR) {
+          const repMedal = detectRepPR(ex, history.map)
+          if (repMedal) showMedals([repMedal])
+          checks.repPR = true
         }
         if (!checks.stageClear) {
           const smallestPlate = getSmallestPlate(settings.plateInventory)

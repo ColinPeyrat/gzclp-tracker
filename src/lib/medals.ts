@@ -1,6 +1,6 @@
 import type { Workout, ProgramState, Medal, ExerciseLog, LiftSubstitution, WeightUnit } from './types'
 import { LIFTS } from './types'
-import { getTotalReps, didHitRepTarget } from './progression'
+import { getTotalReps, didHitRepTarget, getAmrapReps } from './progression'
 import { getIncrement } from './units'
 
 const STREAK_MILESTONES = [5, 10, 25, 50, 100]
@@ -8,6 +8,7 @@ const STREAK_MILESTONES = [5, 10, 25, 50, 100]
 export interface HistoryRecord {
   maxWeight: number
   maxVolume: number
+  amrapBests: Array<{ weight: number; reps: number }>
 }
 
 export function buildHistoryMap(workouts: Workout[]): Map<string, HistoryRecord> {
@@ -19,9 +20,11 @@ export function buildHistoryMap(workouts: Workout[]): Map<string, HistoryRecord>
       const totalReps = getTotalReps(ex)
       if (totalReps === 0) continue
       const key = `${ex.liftId}:${ex.tier}`
-      const record = map.get(key) ?? { maxWeight: 0, maxVolume: 0 }
+      const record = map.get(key) ?? { maxWeight: 0, maxVolume: 0, amrapBests: [] }
       record.maxWeight = Math.max(record.maxWeight, ex.weight)
       record.maxVolume = Math.max(record.maxVolume, ex.weight * totalReps)
+      const amrapReps = getAmrapReps(ex)
+      if (amrapReps) record.amrapBests.push({ weight: ex.weight, reps: amrapReps })
       map.set(key, record)
     }
   }
@@ -49,6 +52,30 @@ export function detectWeightPR(
     }
   }
   return null
+}
+
+export function detectRepPR(
+  exercise: ExerciseLog,
+  historyMap: Map<string, HistoryRecord>
+): Medal | null {
+  const reps = getAmrapReps(exercise)
+  if (!reps) return null
+
+  const prev = historyMap.get(`${exercise.liftId}:${exercise.tier}`)
+  const comparable = prev?.amrapBests.filter((b) => b.weight >= exercise.weight) ?? []
+  // A first AMRAP at a new top weight is already a weight PR, not a rep PR
+  if (comparable.length === 0) return null
+
+  const previousBest = Math.max(...comparable.map((b) => b.reps))
+  if (reps <= previousBest) return null
+
+  return {
+    type: 'rep-pr',
+    liftId: exercise.liftId,
+    tier: exercise.tier,
+    value: reps,
+    previousValue: previousBest,
+  }
 }
 
 export function detectVolumePR(
