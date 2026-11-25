@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { CompletedWarmupSet, LiftName } from '../lib/types'
 import type { TestAttempt } from '../lib/returnToProgression'
+import { useRestTimerStore } from './restTimerStore'
 
 interface TestDayStore {
   startedAt: string | null
@@ -40,7 +41,10 @@ export const useTestDayStore = create<TestDayStore>()(
         set({ warmups: { ...get().warmups, [liftId]: sets } })
       },
 
-      reset: () => set({ startedAt: null, attempts: {}, warmups: {} }),
+      reset: () => {
+        set({ startedAt: null, attempts: {}, warmups: {} })
+        useRestTimerStore.getState().skip()
+      },
     }),
     { name: 'test-day-session' }
   )

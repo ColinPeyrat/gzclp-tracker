@@ -126,3 +126,17 @@ See `TODO.md` for detailed progress tracking.
 - **Mobile-first:** Designed for phone use at the gym
 - **Dark theme:** Easier on eyes, standard for fitness apps
 - **Mono means program notation:** Geist Mono (`font-mono`) only for set schemes (`5×3+`, `3×10`, `1×5`) and tier codes (`T1`/`T2`/`T3`). Words, labels, weights, counts, dates and percentages use Geist sans; align numbers with `tabular-nums`, not mono.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for ColinPeyrat/gzclp-tracker (via `gh`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
